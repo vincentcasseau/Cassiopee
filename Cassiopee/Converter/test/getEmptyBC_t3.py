@@ -1,44 +1,53 @@
-# - getEmptyBCPT (pyTree) -
+# - getEmptyBC (pyTree) -
 # 2D NGon
 import Converter.PyTree as C
+import Converter.Internal as Internal
 import Generator.PyTree as G
 import KCore.test as test
-import testers as Q
 
 # Sur une zone
 a = G.cartNGon((0.,0.,0.), (0.1, 0.1, 0.1), (11, 21, 1))
 a = C.initVars(a,'F',1.); a = C.initVars(a,'centers:G',2.)
-#a = C.addBC2Zone(a, 'wall1', 'BCWall', 'imin')
-#a = C.addBC2Zone(a, 'wall2', 'BCWall', 'imax')
 wins = C.getEmptyBC(a, dim=2)
-#test.testO(wins, 1)
+test.testO(wins, 1)
 a = C.addBC2Zone(a, 'wall1', 'BCWall', faceList=wins)
-print(wins)
-C.convertPyTree2File(a, 'gg.cgns')
 wins = C.getEmptyBC(a, dim=2)
-print(wins)
-#Q.viewer(a)
-#test.testO(wins, 2)
-
-# Sur un arbre
-b = G.cartNGon((1., 0.2, 0.), (0.1, 0.1, 0.1), (11, 21, 1))
-#b = C.addBC2Zone(b, 'wall1', 'BCWall', 'imax')
-t = C.newPyTree(['Base']); t[2][1][2] += [a,b]
-t = C.initVars(t,'F',1.); t = C.initVars(t,'centers:G',2.)
-t[2][1] = C.addState(t[2][1], 'Mach', 0.6)
-wins = C.getEmptyBC(t, dim=2)
-#test.testO(wins, 2)
+test.testO(wins, 2)
 
 # Sur une liste de zones
-wins = C.getEmptyBC([a,b], dim=2)
-#test.testO(wins, 3)
-
-# Sur un arbre
 b = G.cartNGon((1., 0.2, 0.), (0.1, 0.1, 0.1), (11, 21, 1))
-#b = C.addBC2Zone(b, 'wall1', 'BCWall', 'imax')
+wins = C.getEmptyBC([a,b], dim=2)
+test.testO(wins, 3)
+
+# Sur un arbre avec _addBC2Zone
 t = C.newPyTree(['Base']); t[2][1][2] += [a,b]
 t = C.initVars(t,'F',1.); t = C.initVars(t,'centers:G',2.)
 t[2][1] = C.addState(t[2][1], 'Mach', 0.6)
-t = C.fillEmptyBCWith(t, 'ov', 'BCOverlap', dim=2)
+wins = C.getEmptyBC(t, dim=2)[0]
+test.testO(wins, 4)
+zones = Internal.getZones(t)
+for i, z in enumerate(zones):
+  if wins[i]:
+    C._addBC2Zone(z, f'inlet{i+1:d}', 'BCFarfield', faceList=wins[i])
+test.testT(t, 41)
+
+# Sur un arbre avec _addBCFaces
+t = C.newPyTree(['Base']); t[2][1][2] += [a,b]
+t = C.initVars(t,'F',1.); t = C.initVars(t,'centers:G',2.)
+t[2][1] = C.addState(t[2][1], 'Mach', 0.6)
+wins = C.getEmptyBC(t, dim=2)[0]
+BCNames = [f'inlet{i+1:d}' for i in range(len(wins))]
+BCFaces = [[n, f] for n, f in zip(BCNames, wins)]
+C._addBCFaces(t, BCFaces)
+test.testT(t, 42)
+#C.convertPyTree2File(t, "gg.cgns")
+#exit()
+
+# Sur un arbre apres appel a fillEmptyBCWith
+b = G.cartNGon((1., 0.2, 0.), (0.1, 0.1, 0.1), (11, 21, 1))
+t = C.newPyTree(['Base']); t[2][1][2] += [a,b]
+t = C.initVars(t,'F',1.); t = C.initVars(t,'centers:G',2.)
+t[2][1] = C.addState(t[2][1], 'Mach', 0.6)
+t = C.fillEmptyBCWith(t, 'wall', 'BCWall', dim=2)
 wins = C.getEmptyBC(t, dim=2)
-#test.testO(wins, 4)
+test.testO(wins, 5)

@@ -1,12 +1,12 @@
 # - getEmptyBC (pyTree) -
-# 3D NGon
+# 3D BE
 import Converter.PyTree as C
 import Converter.Internal as Internal
 import Generator.PyTree as G
 import KCore.test as test
 
 # Sur une zone
-a = G.cartNGon((0.,0.,0.), (0.1, 0.1, 0.1), (11, 21, 21))
+a = G.cartHexa((0.,0.,0.), (0.1, 0.1, 0.1), (11, 21, 21))
 a = C.initVars(a,'F',1.); a = C.initVars(a,'centers:G',2.)
 wins = C.getEmptyBC(a)
 test.testO(wins, 1)
@@ -14,7 +14,7 @@ a = C.addBC2Zone(a, 'wall1', 'BCWall', faceList=wins)
 test.testT(a, 11)
 
 # Sur une liste de zones
-b = G.cartNGon((1., 0.2, 0.), (0.1, 0.1, 0.1), (11, 21, 21))
+b = G.cartTetra((1., 0.2, 0.), (0.1, 0.1, 0.1), (11, 21, 21))
 wins = C.getEmptyBC([a,b])
 test.testO(wins, 2)
 
@@ -31,7 +31,7 @@ for i, z in enumerate(zones):
 test.testT(t, 31)
 
 # Sur un arbre apres appel a fillEmptyBCWith
-b = G.cartNGon((1., 0.2, 0.), (0.1, 0.1, 0.1), (11, 21, 21))
+b = G.cartTetra((1., 0.2, 0.), (0.1, 0.1, 0.1), (11, 21, 21))
 t = C.newPyTree(['Base']); t[2][1][2] += [a,b]
 t = C.initVars(t,'F',1.); t = C.initVars(t,'centers:G',21.)
 t[2][1] = C.addState(t[2][1], 'Mach', 0.6)
