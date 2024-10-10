@@ -1,7 +1,7 @@
 NUGA = True
 METIS = True
 PNG = True
-JPEG = True
+JPEG = False
 
 #==============================================================================
 # Fichiers sources c++ (sauf le module)
