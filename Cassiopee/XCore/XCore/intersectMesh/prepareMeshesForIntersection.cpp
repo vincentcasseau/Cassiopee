@@ -17,7 +17,7 @@
     along with Cassiopee.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "xcore.h"
-#include "karray.h"
+#include "common/Karray.h"
 #include "common/common.h"
 #include "mesh.h"
 #include "smesh.h"

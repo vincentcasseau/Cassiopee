@@ -17,7 +17,7 @@
     along with Cassiopee.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "mesh.h"
-#include "karray.h"
+#include "common/Karray.h"
 //#include "BVH.h"
 
 PyObject *K_XCORE::IntersectMesh_Init(PyObject *self, PyObject *args)

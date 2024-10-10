@@ -1,5 +1,5 @@
 #include "mesh.h"
-#include "karray.h"
+#include "common/Karray.h"
 
 PyObject *K_XCORE::extractCell(PyObject *self, PyObject *args)
 {
