@@ -50,7 +50,7 @@ struct Karray {
     { return cn->getElt(cell, nf, nface(), indph()); }
 
     inline E_Int orient_boundary()
-    { return K_CONNECT::orient_boundary_ngon(*x, *y, *z, *cn); }
+    { return K_CONNECT::orient_boundary_ngon(x, y, z, *cn); }
 
     inline E_Int build_parent_elements(E_Int *owner, E_Int *neigh)
     { return K_CONNECT::build_parent_elements_ngon(*cn, owner, neigh); }
