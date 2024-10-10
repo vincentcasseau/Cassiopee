@@ -43,9 +43,9 @@ struct Karray {
     inline E_Int *ngon() const { return cn->getNGon(); }
     inline E_Int *nface() const { return cn->getNFace(); }
 
-    inline E_Float *X() const { return x; }
+    /*inline E_Float *X() const { return x; }
     inline E_Float *Y() const { return y; }
-    inline E_Float *Z() const { return z; }
+    inline E_Float *Z() const { return z; }*/
 
     inline E_Int *get_face(E_Int face, E_Int &np) const
     { return cn->getFace(face, np, ngon(), indpg()); }
