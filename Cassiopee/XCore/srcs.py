@@ -19,7 +19,7 @@ cpp_srcs = ['XCore/CMP/src/recv_buffer.cpp',
             
             'XCore/common/mem.cpp',
             'XCore/common/common.cpp',
-            'XCore/common/Karray.cpp'
+            'XCore/common/Karray.cpp',
 
             'XCore/intersectMesh/BVH.cpp',
             'XCore/intersectMesh/AABB.cpp',
