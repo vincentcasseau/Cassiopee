@@ -9,6 +9,23 @@ EDOUBLEINT = False
 # Toggle to True for compiling pypart/paradigma in i8/i4
 GDOUBLEINT = False
 
+# Toggle to True for memory profiling with the memory_profiler package
+MEMPROF = True
+def profile(*args, **kwargs):
+    def wrapper(func):
+        return func
+    return wrapper
+try:
+    # Comment out this module import statement to get extra info such as pie
+    # charts (fail warnings can be ignored during the installation)
+    from memory_profiler import profile
+except:  
+    MEMPROF = False
+
+def mem_prof(func):
+    if MEMPROF: return profile(precision=2)(func)
+    else: return func
+
 #==============================================================================
 # Check module import
 # Write SUCCESS or FAILED (with colored output)
