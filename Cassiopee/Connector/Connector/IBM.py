@@ -156,14 +156,14 @@ def _computeMeshInfo(t):
 
     NPTS     = Cmpi.allreduce(NPTS  ,op=Cmpi.SUM)
     NCELLS   = Cmpi.allreduce(NCELLS,op=Cmpi.SUM)
-    print("Info: mesh info for rank {}: number of points: {:.2f}M / number of cells: {:.2f}M".format(rank, np_total/1.e6, nc_total/1.e6),flush=True)
+    print("Info: mesh info for rank {}: number of points: {:.2f}M / number of cells: {:.2f}M".format(rank, np_total/1.e6, nc_total/1.e6))
     if rank == 0:
         NcellsTot     = numpy.sum(NCELLS)
         ncells_percent= []
         for i in range(NP):
             ncells_percent.append(NCELLS[i]/NcellsTot*100)
-            print('Info: Rank {} has {:.3f}e06 points & {:.3f}e06 cells & {} % of cells - no ghost cells'.format(i,int(NPTS[i])/1e06,int(NCELLS[i])/1e06,round(ncells_percent[i],2)),flush=True)
-        print('Info: Range of % of cells: {} - {}'.format(round(min(ncells_percent),2),round(max(ncells_percent),2)),flush=True)    
+            print('Info: Rank {} has {:.3f}e06 points & {:.3f}e06 cells & {} % of cells - no ghost cells'.format(i,int(NPTS[i])/1e06,int(NCELLS[i])/1e06,round(ncells_percent[i],2)))
+        print('Info: Range of % of cells: {} - {}'.format(round(min(ncells_percent),2),round(max(ncells_percent),2)))    
     Cmpi.barrier()
 
     np_total = Cmpi.allreduce(np_total, op=Cmpi.SUM)
@@ -175,8 +175,8 @@ def _computeMeshInfo(t):
     natures = [ncx/float(nc_total)*100. for ncx in [nc2, nc1, nc0]]
 
     if Cmpi.rank == 0:
-        print("Info: global mesh info: Interpolated cells (cellN 2): {:.2f}%, Computed cells (cellN 1): {:.2f}%, Blanked cells (cellN 0): {:.2f}%".format(*natures),flush=True)
-        print("Info: global mesh info: total number of points: {:.2f}M / total number of cells: {:.2f}M".format(np_total/1.e6, nc_total/1.e6),flush=True)
+        print("Info: global mesh info: Interpolated cells (cellN 2): {:.2f}%, Computed cells (cellN 1): {:.2f}%, Blanked cells (cellN 0): {:.2f}%".format(*natures))
+        print("Info: global mesh info: total number of points: {:.2f}M / total number of cells: {:.2f}M".format(np_total/1.e6, nc_total/1.e6))
     Cmpi.barrier()
 
     return None
@@ -303,7 +303,6 @@ def prepareIBMData(t_case, t_out, tc_out, t_in=None, to=None, tbox=None, tinit=N
     Cmpi.barrier()
     _redispatch__(t=t)
     if verbose: printTimeAndMemory__('blank by IBC bodies', time=python_time.time()-pt0)
-
     #===================
     # STEP 4 : INTERP DATA CHIM
     #===================
@@ -333,7 +332,6 @@ def prepareIBMData(t_case, t_out, tc_out, t_in=None, to=None, tbox=None, tinit=N
                       cartesian=cartesian, twoFronts=twoFronts, check=check,
                       tbFilament=tbFilament, frontWMM=frontWMM)
     if verbose: printTimeAndMemory__('compute interpolation data (IBM)', time=python_time.time()-pt0)
-
     #===================
     # STEP 6 : INIT IBM
     #===================
@@ -343,6 +341,8 @@ def prepareIBMData(t_case, t_out, tc_out, t_in=None, to=None, tbox=None, tinit=N
                                tbFilament=tbFilament)
 
     _redispatch__(t=t, tc=tc, tc2=tc2)
+   
+    _setInjOutlet__(tc, tb)
     
     if isinstance(tc_out, str):
         if cartesian: tcp = Compressor.compressCartesian(tc)
@@ -456,7 +456,7 @@ def prepareIBMDataExtrude(t_case, t_out, tc_out, t, to=None,
                  heightMaxF42=heightMaxF42, correctionMultiCorpsF42=correctionMultiCorpsF42, 
                  wallAdaptF42=wallAdaptF42, blankingF42=blankingF42,
                  tbFilament=tbFilament)
-
+    
     ##set the kmin et kmax Ghost cells are potential donors                                          #__
     listvars_local =['cellNChim','cellNIBC']                                                         #  |
     for z in Internal.getZones(t):                                                                   #  |
@@ -1273,10 +1273,10 @@ def _setInterpDataIBM(t, tc, tb, front, front2=None, dimPb=3, frontType=1, IBCTy
             else:             tb_local= Internal.merge([tb,tbFilament])
         res = getAllIBMPoints(zonesRIBC, loc='centers',tb=tb_local, tfront=front, frontType=frontType,
                               cellNName='cellNIBC', depth=depth, IBCType=IBCType, Reynolds=Reynolds, yplus=yplus, Lref=Lref,
-                              isOrthoFirst=isFilamentOnly)
+                              isOrthoFirst=isFilamentOnly, check=check)
         if twoFronts:
             res2 = getAllIBMPoints(zonesRIBC, loc='centers',tb=tb, tfront=front2, frontType=frontType,
-                                   cellNName='cellNIBC', depth=depth, IBCType=IBCType, Reynolds=Reynolds, yplus=yplus, Lref=Lref)
+                                   cellNName='cellNIBC', depth=depth, IBCType=IBCType, Reynolds=Reynolds, yplus=yplus, Lref=Lref, check=check)
         if isWireModel:
             tb_filament_localWMM=Internal.copyTree(tbFilament)
             for z in Internal.getZones(tbFilament):
@@ -1286,11 +1286,11 @@ def _setInterpDataIBM(t, tc, tb, front, front2=None, dimPb=3, frontType=1, IBCTy
                     Internal._rmNode(tb_filament_localWMM,zlocal)
             res2 = getAllIBMPoints(zonesRIBC, loc='centers',tb=tb_filament_localWMM, tfront=frontWMM, frontType=frontType,
                                    cellNName='cellNFilWMM', depth=depth, IBCType=IBCType, Reynolds=Reynolds, yplus=yplus, Lref=Lref,
-                                   isWireModel=isWireModel, isOrthoFirst=isFilamentOnly)
+                                   isWireModel=isWireModel, isOrthoFirst=isFilamentOnly, check=check)
 
             restmp = getAllIBMPoints(zonesRIBC, loc='centers',tb=tb_filament_localWMM, tfront=frontWMM, frontType=frontType,
                                      cellNName='cellNFilWMM', depth=depth, IBCType=IBCType, Reynolds=Reynolds,
-                                     yplus=yplus, Lref=Lref, isOrthoFirst=isFilamentOnly)
+                                     yplus=yplus, Lref=Lref, isOrthoFirst=isFilamentOnly, check=check)
             
             for j in range(3):
                 ##delete in res
@@ -2113,65 +2113,41 @@ def extractIBMInfo(tc_in, IBCNames="IBCD_*", fileout=None):
     for zname in Zones:
         xPC = XPC[zname]; yPC = YPC[zname]; zPC = ZPC[zname]
         size = xPC[0].shape[0]
-        coordxPC = ['CoordinateX',xPC[0],[],'DataArray_t']
-        coordyPC = ['CoordinateY',yPC[0],[],'DataArray_t']
-        coordzPC = ['CoordinateZ',zPC[0],[],'DataArray_t']
         zone = G.cart((0,0,0),(1,1,1),(size,1,1))
         zone[0] = 'correctedPts_'+zname
 
-        XPC0 = Internal.getNodeFromName(zone,'CoordinateX')
-        parent,d = Internal.getParentOfNode(zone, XPC0)
-        parent[2][d] = coordxPC
-
-        YPC0 = Internal.getNodeFromName(zone,'CoordinateY')
-        parent,d = Internal.getParentOfNode(zone, YPC0)
-        parent[2][d] = coordyPC
-
-        ZPC0 = Internal.getNodeFromName(zone,'CoordinateZ')
-        parent,d = Internal.getParentOfNode(zone, ZPC0)
-        parent[2][d] = coordzPC
+        XPC0 = Internal.getNodeFromName2(zone, 'CoordinateX')
+        XPC0[1] = xPC[0]
+        YPC0 = Internal.getNodeFromName2(zone, 'CoordinateY')
+        YPC0[1] = yPC[0]
+        ZPC0 = Internal.getNodeFromName2(zone, 'CoordinateZ')
+        ZPC0[1] = zPC[0]
         corrected.append(zone)
         #
         xPI = XPI[zname]; yPI = YPI[zname]; zPI = ZPI[zname]
         size = xPI[0].shape[0]
-        coordxPI = ['CoordinateX',xPI[0],[],'DataArray_t']
-        coordyPI = ['CoordinateY',yPI[0],[],'DataArray_t']
-        coordzPI = ['CoordinateZ',zPI[0],[],'DataArray_t']
         zone = G.cart((0,0,0),(1,1,1),(size,1,1))
         zone[0] = 'interpPts_'+zname
 
-        XPI0 = Internal.getNodeFromName(zone,'CoordinateX')
-        parent,d = Internal.getParentOfNode(zone, XPI0)
-        parent[2][d] = coordxPI
-
-        YPI0 = Internal.getNodeFromName(zone,'CoordinateY')
-        parent,d = Internal.getParentOfNode(zone, YPI0)
-        parent[2][d] = coordyPI
-
-        ZPI0 = Internal.getNodeFromName(zone,'CoordinateZ')
-        parent,d = Internal.getParentOfNode(zone, ZPI0)
-        parent[2][d] = coordzPI
+        XPI0 = Internal.getNodeFromName2(zone, 'CoordinateX')
+        XPI0[1] = xPI[0]
+        YPI0 = Internal.getNodeFromName2(zone, 'CoordinateY')
+        YPI0[1] = yPI[0]
+        ZPI0 = Internal.getNodeFromName2(zone,'CoordinateZ')
+        ZPI0[1] = zPI[0]
         interp.append(zone)
 
-        xPW = XPW[zname];yPW = YPW[zname];zPW = ZPW[zname]
+        xPW = XPW[zname]; yPW = YPW[zname]; zPW = ZPW[zname]
         size = xPW[0].shape[0]
-        coordxPW = ['CoordinateX',xPW[0],[],'DataArray_t']
-        coordyPW = ['CoordinateY',yPW[0],[],'DataArray_t']
-        coordzPW = ['CoordinateZ',zPW[0],[],'DataArray_t']
         zone = G.cart((0,0,0),(1,1,1),(size,1,1))
         zone[0] = 'wallPts_'+zname
 
-        XPW0 = Internal.getNodeFromName(zone,'CoordinateX')
-        parent,d = Internal.getParentOfNode(zone, XPW0)
-        parent[2][d] = coordxPW
-
-        YPW0 = Internal.getNodeFromName(zone,'CoordinateY')
-        parent,d = Internal.getParentOfNode(zone, YPW0)
-        parent[2][d] = coordyPW
-
-        ZPW0 = Internal.getNodeFromName(zone,'CoordinateZ')
-        parent,d = Internal.getParentOfNode(zone, ZPW0)
-        parent[2][d] = coordzPW
+        XPW0 = Internal.getNodeFromName2(zone, 'CoordinateX')
+        XPW0[1] = xPW[0]
+        YPW0 = Internal.getNodeFromName2(zone, 'CoordinateY')
+        YPW0[1] = yPW[0]
+        ZPW0 = Internal.getNodeFromName2(zone, 'CoordinateZ')
+        ZPW0[1] = zPW[0]
         wall.append(zone)
 
     t[2][1][2] = corrected; t[2][2][2] = wall; t[2][3][2] = interp
@@ -2209,7 +2185,7 @@ def extractIBMInfo(tc_in, IBCNames="IBCD_*", fileout=None):
 # =============================================================================
 def getAllIBMPoints(t, loc='nodes', hi=0., he=0., tb=None, tfront=None, tfront2=None, frontType=0, cellNName='cellN', 
                     IBCType=1, depth=2, Reynolds=6.e6, yplus=100., Lref=1.,
-                    hmod=0.1, isLBM=False, isWireModel=False, isOrthoFirst=False):
+                    hmod=0.1, isLBM=False, isWireModel=False, isOrthoFirst=False, check=False):
     """Returns the dictionary of IBM points."""
     if IBCType == -1: signOfDistCorrected = -1
     else: signOfDistCorrected=1 # signe de la distance aux points corriges
@@ -2353,11 +2329,30 @@ def getAllIBMPoints(t, loc='nodes', hi=0., he=0., tb=None, tfront=None, tfront2=
     allInterpPts = Converter.extractVars(allInterpPts,['CoordinateX','CoordinateY','CoordinateZ'])
     allInterpPts = Converter.addVars([allInterpPts,indcell])
     allCorrectedPts = Converter.extractVars(allCorrectedPts,['CoordinateX','CoordinateY','CoordinateZ'])
+    
     dictOfInterpPtsByIBCType={}
     dictOfCorrectedPtsByIBCType={}
     dictOfWallPtsByIBCType={}
     nzonesR = len(allInterpPts)
-    if len(res)==3:
+
+    ## Ouput the IBM points that have a type 3 and type 4 projection			    
+    if len(res)>3:
+        allProjectPts = res[3]
+        allProjectPts = Converter.extractVars(allProjectPts,['ProjectionType'])
+        outputProjection3 = [[],[],[],[],[],[],[],[],[]]
+        outputProjection4 = [[],[],[],[],[],[],[],[],[]]
+        for noz in range(nzonesR):
+            arrayLocal = allProjectPts[noz][1][0]
+            type_3     = numpy.count_nonzero(arrayLocal==3)
+            type_4     = numpy.count_nonzero(arrayLocal==4)
+            if type_3>0: _prepOutputProject__(outputProjection3, 3, arrayLocal, allCorrectedPts[noz][1], allWallPts[noz][1], allInterpPts[noz][1])
+            if type_4>0: _prepOutputProject__(outputProjection4, 4, arrayLocal, allCorrectedPts[noz][1], allWallPts[noz][1], allInterpPts[noz][1])
+        
+        if outputProjection3[0] and check: _writeOutputProject__(outputProjection3, 'projection3.cgns')
+        if outputProjection4[0] and check: _writeOutputProject__(outputProjection4, 'projection4.cgns')
+
+
+    if len(res)>=3:
         allIndicesByIBCType = res[2]
         for noz in range(nzonesR):
             indicesByTypeForZone = res[2][noz]
@@ -2876,7 +2871,7 @@ def _pushBackImageFront2(t, tc, tbb, interpDataType=1):
 # IN: Lref: reference length: Need as this will be used to get the modelisation height for frontType 42
 # IN: isLBM: is the case LBM?
 #=============================================================================
-def doInterp(t, tc, tbb, tb=None, typeI='ID', dim=3, dictOfADT=None, front=None, frontType=0, depth=2, IBCType=1, interpDataType=1, Reynolds=6.e6, yplus=100., Lref=1., isLBM=False):
+def doInterp(t, tc, tbb, tb=None, typeI='ID', dim=3, dictOfADT=None, front=None, frontType=0, depth=2, IBCType=1, interpDataType=1, Reynolds=6.e6, yplus=100., Lref=1., isLBM=False, check=False):
     ReferenceState = Internal.getNodeFromType2(t, 'ReferenceState_t')
     model = Internal.getNodeFromName(t, 'GoverningEquations')
     if model is not None: model = Internal.getValue(model)
@@ -2926,7 +2921,7 @@ def doInterp(t, tc, tbb, tb=None, typeI='ID', dim=3, dictOfADT=None, front=None,
         if zonesRIBC == []: return tc
 
         res = getAllIBMPoints(zonesRIBC, loc='centers', tb=tb, tfront=front, frontType=frontType, \
-                              cellNName='cellNIBC', depth=depth, IBCType=IBCType, Reynolds=Reynolds, yplus=yplus, Lref=Lref, isLBM=isLBM)
+                              cellNName='cellNIBC', depth=depth, IBCType=IBCType, Reynolds=Reynolds, yplus=yplus, Lref=Lref, isLBM=isLBM, check=check)
         nbZonesIBC = len(zonesRIBC)
         dictOfADT = {}
         dictOfCorrectedPtsByIBCType = res[0]
@@ -3242,7 +3237,7 @@ def prepareIBMData_legacy(t, tbody, DEPTH=2, loc='centers', frontType=1, interpD
 #=============================================================================
 # Version local explicit [GJ]
 #=============================================================================
-def doInterp2(t, tc, tbb, tb=None, typeI='ID', dim=3, dictOfADT=None, front=None, frontType=0, depth=2, IBCType=1, interpDataType=1, Reynolds=6.e6, yplus=100., Lref=1.):
+def doInterp2(t, tc, tbb, tb=None, typeI='ID', dim=3, dictOfADT=None, front=None, frontType=0, depth=2, IBCType=1, interpDataType=1, Reynolds=6.e6, yplus=100., Lref=1., check=False):
     ReferenceState = Internal.getNodeFromType2(t, 'ReferenceState_t')
     model = Internal.getNodeFromName(t, 'GoverningEquations')
     if model is not None: model = Internal.getValue(model)
@@ -3412,7 +3407,7 @@ def doInterp2(t, tc, tbb, tb=None, typeI='ID', dim=3, dictOfADT=None, front=None
         if zonesRIBC == []: return tc
 
         res = getAllIBMPoints(zonesRIBC, loc='centers',tb=tb, tfront=front, frontType=frontType, \
-                              cellNName='cellNIBC', depth=depth, IBCType=IBCType, Reynolds=Reynolds, yplus=yplus, Lref=Lref)
+                              cellNName='cellNIBC', depth=depth, IBCType=IBCType, Reynolds=Reynolds, yplus=yplus, Lref=Lref, check=check)
         nbZonesIBC = len(zonesRIBC)
         dictOfADT = {}
         dictOfCorrectedPtsByIBCType = res[0]
@@ -3702,7 +3697,7 @@ def prepareIBMData2(t, tbody, DEPTH=2, loc='centers', frontType=1, inv=False, in
 #=============================================================================
 # never called ?
 #=============================================================================
-def doInterp3(t, tc, tbb, tb=None, typeI='ID', dim=3, dictOfADT=None, frontType=0, depth=2, IBCType=1, interpDataType=1, Reynolds=6.e6, yplus=100., Lref=1.):
+def doInterp3(t, tc, tbb, tb=None, typeI='ID', dim=3, dictOfADT=None, frontType=0, depth=2, IBCType=1, interpDataType=1, Reynolds=6.e6, yplus=100., Lref=1., check=False):
 
 
     ReferenceState = Internal.getNodeFromType2(t, 'ReferenceState_t')
@@ -3904,7 +3899,7 @@ def doInterp3(t, tc, tbb, tb=None, typeI='ID', dim=3, dictOfADT=None, frontType=
         C.convertPyTree2File(front, 'front.cgns')
 
         res = getAllIBMPoints(zonesRIBC, loc='centers',tb=tb, tfront=front, frontType=frontType, \
-                              cellNName='cellNIBC', depth=depth, IBCType=IBCType, Reynolds=Reynolds, yplus=yplus, Lref=Lref)
+                              cellNName='cellNIBC', depth=depth, IBCType=IBCType, Reynolds=Reynolds, yplus=yplus, Lref=Lref, check=check)
         nbZonesIBC = len(zonesRIBC)
         dictOfADT = {}
         dictOfCorrectedPtsByIBCType = res[0]
@@ -3995,9 +3990,88 @@ def doInterp3(t, tc, tbb, tb=None, typeI='ID', dim=3, dictOfADT=None, frontType=
                         print('LEVELS= ', levelrcv, leveldnr)
 
 
-
         for dnrname in dictOfADT.keys(): C.freeHook(dictOfADT[dnrname])
 
         for dnrname in dictOfADT: C.freeHook(dictOfADT[dnrname])
 
     return tc
+
+
+def _setInjOutlet__(tc, tb):
+    DicInj  = {}; DicOutP = {}
+    for z in Internal.getZones(tb):
+        sol = Internal.getNodeFromName(z, '.Solver#define')
+        if sol:
+            ibctype = Internal.getValue(Internal.getNodeFromName(sol, 'ibctype'))
+            if ibctype == 'outpress':
+                famName = Internal.getValue(Internal.getNodeFromName(z, 'FamilyName'));
+                if Internal.getNodeFromName(sol, 'pStatic'):
+                    pStatic  = Internal.getValue(Internal.getNodeFromName(sol, 'pStatic'));
+                    isDensity = Internal.getValue(Internal.getNodeFromName(sol, 'isDensityConstant'));
+                    DicOutP[famName] = str(pStatic)+'|'+str(isDensity)
+            if ibctype == 'inj':
+                famName = Internal.getValue(Internal.getNodeFromName(z, 'FamilyName'));
+                if Internal.getNodeFromName(sol,'StagnationPressure'):
+                    pStag    = Internal.getValue(Internal.getNodeFromName(sol, 'StagnationPressure'));
+                    hStag    = Internal.getValue(Internal.getNodeFromName(sol, 'StagnationEnthalpy'));
+                    dirx     = Internal.getValue(Internal.getNodeFromName(sol, 'dirx'));
+                    diry     = Internal.getValue(Internal.getNodeFromName(sol, 'diry'));
+                    dirz     = Internal.getValue(Internal.getNodeFromName(sol, 'dirz'));    
+                    DicInj[famName] = str(pStag)+'|'+str(hStag)+'|'+str(dirx)+'|'+str(diry)+'|'+str(dirz)
+            
+    for dic in DicOutP:
+        PStatic   = float(DicOutP[dic].split('|')[0])
+        isDensity = float(DicOutP[dic].split('|')[-1])
+        isDensityConstant=False
+        if isDensity>0: isDensityConstant=True
+        D_IBM._initOutflow(tc, dic, PStatic, InterpolPlane=None, PressureVar=0, isDensityConstant=isDensityConstant)
+        
+    for dic in DicInj:
+        PTot = float(DicInj[dic].split('|')[0])
+        HTot = float(DicInj[dic].split('|')[1])
+        dirx = float(DicInj[dic].split('|')[2])
+        diry = float(DicInj[dic].split('|')[3])
+        dirz = float(DicInj[dic].split('|')[4])
+        D_IBM._initInj(tc, dic, PTot, HTot, injDir=[dirx,diry,dirz], InterpolPlane=None, PressureVar=0, EnthalpyVar=0)
+        
+    return None
+
+## Separate IBM points that have a type 3 and type 4 projection
+def _prepOutputProject__(outputProjection, typeValue, arrayLocal, allCorrectedPts, allWallPts, allInterpPts):
+    indicesSave = numpy.argwhere(arrayLocal==typeValue)
+    for i in indicesSave:
+        outputProjection[0].append(allCorrectedPts[0][i][0])
+        outputProjection[1].append(allCorrectedPts[1][i][0])
+        outputProjection[2].append(allCorrectedPts[2][i][0])
+        
+        outputProjection[3].append(allWallPts[0][i][0])
+        outputProjection[4].append(allWallPts[1][i][0])
+        outputProjection[5].append(allWallPts[2][i][0])
+        
+        outputProjection[6].append(allInterpPts[0][i][0])
+        outputProjection[7].append(allInterpPts[1][i][0])
+        outputProjection[8].append(allInterpPts[2][i][0])
+    return None
+
+## Write CGNS file with the IBM points that have a type 3 and type 4 projection
+def _writeOutputProject__(outputProjection, fileName):
+    nameZone = ['IBM', 'Wall', 'Image']
+    tLocal = C.newPyTree(nameZone)
+    for i in range(3):
+        size     = len(outputProjection[i*3])
+        coordxPC = numpy.array(outputProjection[i*3  ])
+        coordyPC = numpy.array(outputProjection[i*3+1])
+        coordzPC = numpy.array(outputProjection[i*3+2])        
+        zone = G.cart((0,0,0),(1,1,1),(size,1,1))
+        zone[0] = nameZone[i]
+        cont = Internal.getNodeFromName1(zone, Internal.__GridCoordinates__)
+        XPC0 = Internal.getNodeFromName1(cont, 'CoordinateX')
+        XPC0[1] = coordxPC        
+        YPC0 = Internal.getNodeFromName1(cont, 'CoordinateY')
+        YPC0[1] = coordyPC
+        ZPC0 = Internal.getNodeFromName1(cont, 'CoordinateZ')
+        ZPC0[1] = coordzPC
+        Internal.addChild(Internal.getNodeFromName(tLocal,nameZone[i]), zone, pos=-1) # at the end
+    tLocal = C.convertArray2Node(tLocal)
+    Cmpi.convertPyTree2File(tLocal, fileName)
+    return None

@@ -17,7 +17,8 @@
     along with Cassiopee.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "mesh.h"
-#include "karray.h"
+#include "common/Karray.h"
+//#include "BVH.h"
 
 PyObject *K_XCORE::IntersectMesh_Init(PyObject *self, PyObject *args)
 {
@@ -38,7 +39,14 @@ PyObject *K_XCORE::IntersectMesh_Init(PyObject *self, PyObject *args)
 
     // Init mesh
 
-    IMesh *M = new IMesh(*karray.cn, karray.X, karray.Y, karray.Z, karray.npts);
+    IMesh *M = new IMesh(*karray.cn, karray.x, karray.y, karray.z, karray.npts);
+    /*
+    M->make_skin();
+    puts("Making BVH");
+    BVH bvh(*M);
+    puts("Done");
+    bvh.arena.drop();
+    */
 
     if (TAGS != Py_None) {
         E_Int size, nfld;

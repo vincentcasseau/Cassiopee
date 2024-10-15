@@ -19,6 +19,10 @@ cpp_srcs = ['XCore/CMP/src/recv_buffer.cpp',
             
             'XCore/common/mem.cpp',
             'XCore/common/common.cpp',
+            'XCore/common/Karray.cpp',
+
+            'XCore/intersectMesh/BVH.cpp',
+            'XCore/intersectMesh/AABB.cpp',
 
             'XCore/intersectMesh/extract.cpp',
 
@@ -37,7 +41,6 @@ cpp_srcs = ['XCore/CMP/src/recv_buffer.cpp',
             'XCore/intersectMesh/hedge.cpp',
             'XCore/intersectMesh/face.cpp',
             'XCore/intersectMesh/vertex.cpp',
-            'XCore/intersectMesh/event.cpp',
             'XCore/intersectMesh/status.cpp',
             'XCore/intersectMesh/snode.cpp',
             'XCore/intersectMesh/queue.cpp',
@@ -53,7 +56,6 @@ cpp_srcs = ['XCore/CMP/src/recv_buffer.cpp',
             'XCore/intersectMesh/triangle.cpp',
             'XCore/intersectMesh/point.cpp',
             'XCore/intersectMesh/ray.cpp',
-            'XCore/intersectMesh/karray.cpp',
             'XCore/intersectMesh/meshExport.cpp',
 
 
@@ -90,8 +92,6 @@ cpp_srcs = ['XCore/CMP/src/recv_buffer.cpp',
             'XCore/AdaptMesh/Tri.cpp',
 
             'XCore/AdaptMesh/Edge.cpp',
-            
-            'XCore/AdaptMesh/Karray.cpp'
             ]
 if mpi: # source that requires mpi
     cpp_srcs += [
