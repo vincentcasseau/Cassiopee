@@ -713,6 +713,21 @@ True, # useCuda
 [] # NvccAdditionalOptions
 ],
 ###############################################################################
+'adastra_cpu': [ 'Machine CINES Cray',
+'crayftn', # f77compiler
+'crayftn', # f90compiler
+'craycc', # Cppcompiler
+[], # CppAdditionalOptions
+[], # f77AdditionalOptions
+False, # useOMP
+False, # static
+[], # additionalIncludePaths
+[], # additionalLibs
+[],  # additionalLibPaths
+False, # useCuda
+[]  # NvccAdditionalOptions
+],
+###############################################################################
 'ubuntu': [ 'Linux ubuntu 24.04',
 'gfortran', # f77compiler
 'gfortran', # f90compiler

@@ -583,6 +583,7 @@ elif [ "$MAC" = "juno" ]; then
     unset I_MPI_FABRICS
     unset I_MPI_TCP_NETMASK
     unset I_MPI_PMI_LIBRARY
+    unset I_MPI_HYDRA_BOOTSTRAP_EXEC_EXTRA_ARGS I_MPI_HYDRA_BOOTSTRAP HYDRA_BOOTSTRAP
     unset $(env | grep SLURM | cut -d'=' -f 1)
     export OMP_PLACES=cores
 
@@ -758,6 +759,40 @@ elif [ "$MAC" = "jean-zay" ]; then
     module load hdf5/1.12.0
     export PYTHONEXE=python3
 
+elif [ "$MAC" = "adastra_cpu" ]; then
+#----------------------------- adastra cpu  ---------------------------------------
+    export ELSAPROD=adastra_cpu
+    export ELSAPROD=$ELSAPROD$EXT
+    export OMP_NUM_THREADS=48
+    export PRODMODE=1
+    module purge
+    #module load craype-x86-genoa
+    #module load PrgEnv-cray
+    #module load cray-mpich/8.1.28
+    #module load cray-libsci/23.05.1.4
+    
+    module load CCE-CPU-3.1.0
+    module load cray-python/3.11.5
+    module load cray-hdf5-parallel/1.12.2.5
+    
+    export LD_LIBRARY_PATH="$CRAY_LD_LIBRARY_PATH":"$LD_LIBRARY_PATH"
+    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH":"/opt/cray/pe/python/3.11.5/lib"
+    export PYTHONEXE=python3
+
+elif [ "$MAC" = "adastra_gpu" ]; then
+#----------------------------- adastra gpu  ---------------------------------------
+    export ELSAPROD=adastra_gpu
+    export ELSAPROD=$ELSAPROD$EXT
+    export OMP_NUM_THREADS=48
+    export PRODMODE=1
+    module load PrgEnv-cray
+    craype-accel-amd-gfx90
+    module load cray-python/3.11.5
+    module load cray-mpich/8.1.28
+    module load cray-hdf5-parallel/1.12.2.5
+    module load cray-libsci/23.05.1.4
+    export PYTHONEXE=python3
+    
 elif [ "$MAC" = "aryen" ]; then
 #----------------------------- Aryen msys2  ---------------------------------------
     export ELSAPROD=win64
