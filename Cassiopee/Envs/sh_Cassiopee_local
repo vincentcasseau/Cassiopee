@@ -2,6 +2,7 @@
 # *Cassiopee* machine specific (local) variables
 
 # Preliminary checks
+unset ELSAPROD
 if [ "$CASSIOPEE" = "" ]; then
     echo "You must specify a CASSIOPEE variable in your environment."
     echo "This variable specifies the installation path of *Cassiopee*."
@@ -43,39 +44,40 @@ if echo "$KC" | grep -q 'Aryen'; then export MAC="aryen"; fi
 if echo "$KC" | grep -q 'WDAAA161Z'; then export MAC="WDAAA161Z"; fi
 
 # Detect MAC environement from MACHINE
-INTTYPE=""
-DBGMODE=""
-case $MACHINE in
-    *_DBG)
-        MACHINETMP=${MACHINE%"_DBG"}
+EXT=""
+if [ -n "$MACHINE" ]; then
+    INTTYPE=""
+    DBGMODE=""
+    BRANCHNAME=""
+    MACHINETMP=$MACHINE
+    if [ "${MACHINETMP#*_DBG*}" != "$MACHINETMP" ]; then
+        MACHINETMP="${MACHINETMP//_DBG/}"
         DBGMODE="_DBG"
-        ;;
-    DBG)
-        DBGMODE="_DBG"
-        ;;
-    *)
-        MACHINETMP=$MACHINE
-        ;;
-esac
-case $MACHINETMP in
-    *_i8*)
-        export MAC=${MACHINETMP%"_i8"}
+    fi
+
+    if [ "${MACHINETMP#*_i8*}" != "$MACHINETMP" ]; then
+        MACHINETMP="${MACHINETMP//_i8/}"
         INTTYPE="_i8"
-        ;;
-    i8*)
-        INTTYPE="_i8"
-        ;;
-    "")
-        if [ -z "$MAC" ]; then
-            echo 'Your machine is not known by uname. Try to set MACHINE.'
-        fi
-        ;;
-    *)
-        export MAC=$MACHINETMP
-        ;;
-esac
-unset MACHINETMP
-EXT=$INTTYPE$DBGMODE
+    fi
+    
+    if [ "${MACHINETMP#*_b-*}" != "$MACHINETMP" ]; then
+        BRANCHNAME=${MACHINETMP#*_b-$BRANCHNAME}
+        BRANCHNAME=${BRANCHNAME%_*}
+        MACHINETMP="${MACHINETMP//_b-$BRANCHNAME/}"
+        MACHINETMP=${MACHINETMP%_}
+        BRANCHNAME="_$BRANCHNAME"
+    fi
+    
+    export MAC=$MACHINETMP
+    EXT=$BRANCHNAME$INTTYPE$DBGMODE
+    unset MACHINETMP BRANCHNAME INTTYPE DBGMODE
+fi
+
+if [ -z "$MAC" ]; then
+    echo 'Your machine is not known by uname. Try to set MACHINE.'
+    return 1
+fi
+
 
 # ----------------------------- Prods ------------------------------------------
 if [ "$MAC" = "ld_eos8" ]; then
@@ -162,7 +164,7 @@ elif [ "$MAC" = "ubuntu" ]; then
     export ASAN_LIB=/usr/lib/gcc/x86_64-linux-gnu/13/libasan.so
     
 elif [ "$MAC" = "azure" ]; then
-#------------------------ azure: ubuntu - github actions ----------------------
+#------------------------ azure: Centos7 - github actions ----------------------
     export ELSAPROD=azure
     export ELSAPROD=$ELSAPROD$EXT
     export OMP_NUM_THREADS=4
@@ -764,33 +766,53 @@ elif [ "$MAC" = "adastra_cpu" ]; then
     export ELSAPROD=adastra_cpu
     export ELSAPROD=$ELSAPROD$EXT
     export OMP_NUM_THREADS=48
+    export OMP_PLACES=cores
     export PRODMODE=1
     module purge
+
+    # CPU craycc
     #module load craype-x86-genoa
     #module load PrgEnv-cray
     #module load cray-mpich/8.1.28
     #module load cray-libsci/23.05.1.4
+
+    #module load CCE-CPU-3.1.0
+
+    # CPU GCC
+    module load PrgEnv-gnu
+    export LD_LIBRARY_PATH="/opt/rh/gcc-toolset-12/root/usr/lib/gcc/x86_64-redhat-linux/12":$LD_LIBRARY_PATH
     
-    module load CCE-CPU-3.1.0
     module load cray-python/3.11.5
     module load cray-hdf5-parallel/1.12.2.5
-    
     export LD_LIBRARY_PATH="$CRAY_LD_LIBRARY_PATH":"$LD_LIBRARY_PATH"
     export LD_LIBRARY_PATH="$LD_LIBRARY_PATH":"/opt/cray/pe/python/3.11.5/lib"
+
     export PYTHONEXE=python3
 
 elif [ "$MAC" = "adastra_gpu" ]; then
 #----------------------------- adastra gpu  ---------------------------------------
     export ELSAPROD=adastra_gpu
     export ELSAPROD=$ELSAPROD$EXT
-    export OMP_NUM_THREADS=48
+    export OMP_NUM_THREADS=12
+    export OMP_PLACES=cores
     export PRODMODE=1
+
+    #module purge
+    #module load CCE-GPU-3.1.0
+    #module load rocm
+    #module load cray-python/3.11.5
+    #module load cray-hdf5-parallel/1.12.2.5
+
+    module purge
+    module load cpe/23.12
+    module load craype-accel-amd-gfx90a craype-x86-trento
     module load PrgEnv-cray
-    craype-accel-amd-gfx90
+    module load rocm
     module load cray-python/3.11.5
-    module load cray-mpich/8.1.28
     module load cray-hdf5-parallel/1.12.2.5
-    module load cray-libsci/23.05.1.4
+
+    #export LD_LIBRARY_PATH="$CRAY_LD_LIBRARY_PATH":"$LD_LIBRARY_PATH"
+    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH":"/opt/cray/pe/python/3.11.5/lib"
     export PYTHONEXE=python3
     
 elif [ "$MAC" = "aryen" ]; then

@@ -714,12 +714,12 @@ True, # useCuda
 ],
 ###############################################################################
 'adastra_cpu': [ 'Machine CINES Cray',
-'crayftn', # f77compiler
-'crayftn', # f90compiler
-'craycc', # Cppcompiler
+'gfortran', # f77compiler
+'gfortran', # f90compiler
+'gcc', # Cppcompiler
 [], # CppAdditionalOptions
 [], # f77AdditionalOptions
-False, # useOMP
+True, # useOMP
 False, # static
 [], # additionalIncludePaths
 [], # additionalLibs
@@ -727,6 +727,21 @@ False, # static
 False, # useCuda
 []  # NvccAdditionalOptions
 ],
+###############################################################################
+'adastra_gpu': [ 'Machine CINES Cray',
+'ftn', # f77compiler
+'ftn', # f90compiler
+'cc', # Cppcompiler
+[], # CppAdditionalOptions
+[], # f77AdditionalOptions
+True, # useOMP
+False, # static
+[], # additionalIncludePaths
+[], # additionalLibs
+[],  # additionalLibPaths
+False, # useCuda
+[]  # NvccAdditionalOptions
+],   
 ###############################################################################
 'ubuntu': [ 'Linux ubuntu 24.04',
 'gfortran', # f77compiler
@@ -743,7 +758,7 @@ False, # useCuda
 [] # NvccAdditionalOptions
 ],
 ###############################################################################
-'azure': [ 'Linux ubuntu 20.04 - Github Actions',
+'azure': [ 'Linux Centos7 - Github Actions',
 'gfortran', # f77compiler
 'gfortran', # f90compiler
 'gcc', # Cppcompiler

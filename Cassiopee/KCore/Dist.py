@@ -103,7 +103,7 @@ def getDataFolderName(name='Data'):
         if not '_i8' in elsaprod and EDOUBLEINT:
             print("Warning: ELSAPROD {} compiled in i8 but recommended suffix "
                   "'_i8' is missing".format(elsaprod))
-        if not elsaprod.endswith('_DBG') and DEBUG:
+        if not '_DBG' in elsaprod and DEBUG:
             print("Warning: ELSAPROD {} compiled in DEBUG but recommended "
                   "suffix '_DBG' is missing".format(elsaprod))
         name += '_' + elsaprod
@@ -337,7 +337,14 @@ def writeInstallPath():
         p.write('libPath = \'%s/local/%s\'\n'%(prefix,Lib))
     else:
         p.write('libPath = \'%s/%s\'\n'%(prefix,Lib))
-    p.write('includePath = \'%s\'\n'%(os.getcwd()))
+    cwd = os.getcwd()
+    p.write('includePath = \'%s\'\n'%(cwd))
+    gitOrigin = getGitOrigin(cwd)
+    gitBranch = getGitBranch(cwd)
+    gitHash = getGitHash(cwd)[:7]
+    p.write('gitOrigin = \'%s\'\n'%(gitOrigin))
+    p.write('gitBranch = \'%s\'\n'%(gitBranch))
+    p.write('gitHash = \'%s\'\n'%(gitHash))
     p.close()
     
 #==============================================================================
@@ -489,7 +496,11 @@ def writeSetupCfg():
     elif Cppcompiler == 'craycc' or Cppcompiler == 'craycxx':
         p = open("./setup.cfg", 'w')
         p.write('[build_ext]\ncompiler=unix\n')
-        p.close()   
+        p.close()
+    elif Cppcompiler == 'cc' or Cppcompiler == 'cc':
+        p = open("./setup.cfg", 'w')
+        p.write('[build_ext]\ncompiler=unix\n')
+        p.close()     
     else:
         p = open("./setup.cfg", 'w')
         p.write('[build_ext]\ncompiler=%s\n'%Cppcompiler)
@@ -523,6 +534,9 @@ def getDistUtilsCompilers():
             vars[0] = Cppcompiler; vars[1] = Cppcompiler.replace('craycc', 'craycxx')
         elif Cppcompiler == 'craycxx':
             vars[0] = Cppcompiler.replace('craycxx', 'craycc'); vars[1] = Cppcompiler
+            
+        elif Cppcompiler == 'cc':
+            vars[0] = Cppcompiler; vars[1] = Cppcompiler
             
         elif Cppcompiler == 'nvc':
             vars[0] = Cppcompiler; vars[1] = Cppcompiler.replace('nvc', 'nvc++')
@@ -967,6 +981,14 @@ def getCArgs():
         else: options += ['-fPIC']
         options += getSimdOptions()
         return options
+    elif Cppcompiler == "cc":
+        if DEBUG: options += ['-g', '-O0', '-Wall', '-D_GLIBCXX_DEBUG_PEDANTIC']
+        else: options += ['-DNDEBUG', '-O3', '-Wall']
+        if useOMP() == 1: options += ['-fopenmp']
+        if useStatic() == 1: options += ['--static', '-static-libstdc++', '-static-libgcc']
+        else: options += ['-fPIC']
+        options += getSimdOptions()
+        return options
     else: return options
 
 # Options pour le compilateur C++
@@ -1085,6 +1107,15 @@ def getForArgs():
         options += getSimdOptions()
         if EDOUBLEINT: options += ['-i8']
         return options
+    elif f77compiler == "ftn":
+        if useStatic() == 1: options += ['-static']
+        else: options += ['-fPIC']
+        if DEBUG: options += ['-g', '-O0']
+        else: options += ['-O3']
+        if useOMP() == 1: options += ['-fopenmp']
+        options += getSimdOptions()
+        if EDOUBLEINT: options += ['-i8']
+        return options
     else: return options
 
 #==============================================================================
@@ -1118,6 +1149,10 @@ def getLinkArgs():
          if useStatic() == 1: out += ['-static']
          else: out += ['-shared']
          if useOMP() == 1: out += ['-fopenmp']
+    elif Cppcompiler == 'cc':
+         if useStatic() == 1: out += ['-static']
+         else: out += ['-shared']
+         if useOMP() == 1: out += ['-fopenmp']    
     mySystem = getSystem()[0]
     if mySystem == 'Darwin':
         if useStatic() == 0: out += ['-dynamiclib']
@@ -2280,7 +2315,22 @@ def checkCppLibs(additionalLibs=[], additionalLibPaths=[], Cppcompiler=None,
         #    if l is not None:
         #        libs += ['omp']; paths += [l]
         #    else: ret = False
-            
+        # craycc
+        
+    if Cppcompiler == 'cc':
+        os.environ['CC'] = 'cc' # forced to overide setup.cfg
+        os.environ['CXX'] = 'cc'
+        os.environ['LDSHARED'] = 'ftn'
+        from distutils import sysconfig
+        cflags = sysconfig.get_config_var('CFLAGS')
+        sysconfig._config_vars['CFLAGS'] = '' # kill setup flags for CC
+        sysconfig._config_vars['LDFLAGS'] = '' # kill setup flags for LD
+        l = checkLibFile__('libsci_cray.so*', additionalLibPaths)
+        if l is None:
+            l = checkLibFile__('libsci_cray.a', additionalLibPaths)
+        if l is not None:
+            libs += ['sci_cray']; paths += [l]
+    
     return (ret, libs, paths)
 
 #==============================================================================
@@ -2530,6 +2580,7 @@ def createExtensions(module, srcs, includeDirs, libraryDirs, libraries,
 # doit voir
 #==============================================================================
 def getEnvForScons():
+    #return dict(os.environ) # for adastra
     return {'PATH': getenv('PATH'),
             'LD_LIBRARY_PATH': getenv('LD_LIBRARY_PATH'),
             'LM_LICENSE_FILE': getenv('LM_LICENSE_FILE'),
@@ -2574,21 +2625,83 @@ def createFortranBuilder(env, dirs=[], additionalPPArgs='', additionalFortranArg
     env.Replace(FORTRANFLAGS=args)
     return env
 
+# Scan des fichiers (fortran par defaut) et retourne un dict de dependances de
+# premier niveau
+def findImmediateDeps(parentFolder, searchFolder,
+                      depPattern=r'^#include\s*["\'](.+?)["\']',
+                      fileExtensions=['.f', '.f90', '.for']):
+    import re
+    searchFolder = os.path.join(parentFolder, searchFolder)
+    # Fortran dependency dict mapping a source file to a list of includes
+    deps = {"parentFolder": parentFolder}
+    # Regexpr to find include statements
+    regInclude = re.compile(depPattern, re.IGNORECASE)
+    # Find all fortran files in root directory
+    for root, _, files in os.walk(searchFolder):
+        for infile in files:
+            fileExt = os.path.splitext(infile)[1]
+            if fileExt.lower() not in fileExtensions: continue
+            filePath = os.path.join(root, infile)
+            filePathRel = filePath.replace(parentFolder, "")
+            if not filePathRel[0].isalpha(): filePathRel = filePathRel[1:]
+            deps[filePathRel] = []
+            # Search for include statements and add dependence to dict
+            with open(filePath, 'r') as f:
+                for line in f:
+                    incFound = regInclude.search(line)
+                    if incFound is not None:
+                        includeFile = incFound.group(1)
+                        includePath = os.path.join(parentFolder, includeFile)
+                        if os.path.exists(includePath):
+                            deps[filePathRel].append(includePath)
+    return deps
+
+# Find all dependencies (include) of a file recursively
+def findAllDeps(filename, deps={}, cache=None):
+    if cache is None: cache = {}
+    # Use memoization for dependencies that have already been established
+    if filename in cache: return cache[filename]
+    includes = deps.get(filename, [])
+    # Store all dependencies in a set for unicity
+    allIncludes = set()
+    for inc in includes:
+        allIncludes.add(inc)
+        relInc = inc.replace(deps["parentFolder"], "")
+        if not relInc[0].isalpha(): relInc = relInc[1:]
+        nestedDeps = findAllDeps(relInc, deps, cache)
+        allIncludes.update(nestedDeps)
+    cache[filename] = allIncludes
+    return sorted(allIncludes) # sorting is important, recompiles all otherwise
+    
+# Ajoute les dependances au Fortran builder
+def envFortranWithDeps(env, filename, deps={}):
+    if filename.endswith('90'): target = filename
+    else: target = env.FPROC(target=filename)
+    includes = findAllDeps(filename, deps=deps)
+    for inc in includes: env.Depends(target, env.File(inc))
+    return env.Fortran(target=target)
+
 # Cree les noms des fichiers
-def createFortranFiles(env, srcs):
+def createFortranFiles(env, srcs, deps={}):
+    for_srcs = []
+    try:
+        for_srcs.extend(srcs.for_srcs[:])
+    except: pass
+    try:
+        for_srcs.extend(srcs.f90_srcs[:])
+    except: pass
     ppf = []
-    try:
-        for f in srcs.for_srcs:
-            ffile = env.FPROC(target=f)
-            ofile = env.Fortran(target=ffile)
-            ppf.append(ofile[0])
-    except: pass
-    try:
-        for f in srcs.f90_srcs:
-            ofile = env.Fortran(target=f)
-            ppf.append(ofile[0])
-    except: pass
+    for f in for_srcs:
+        ofile = envFortranWithDeps(env=env, filename=f, deps=deps)
+        ppf.append(ofile[0])
     return ppf
+
+# Decoupe une liste de fichiers object en morceaux de taille egale a chunkSize
+def chunkObjectFiles(ppf, chunkSize=100):
+    chunked_ppf = []
+    for i in range(0, len(ppf), chunkSize):
+        chunked_ppf.append(ppf[i:i+chunkSize])
+    return chunked_ppf
 
 # Scan les .f pour faire les dependences (include)
 def fortranScan(node, env, path, arg=None):
