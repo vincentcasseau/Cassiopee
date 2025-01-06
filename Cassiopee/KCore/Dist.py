@@ -1,7 +1,7 @@
 # Functions used in *Cassiopee* modules setup.py
 import os, sys, distutils.sysconfig, platform, glob, subprocess
 
-# Toggle to True for compiling for debug (valgrind, inspector)
+# Toggle to True for compiling for debug (valgrind, inspector, sanitizer)
 DEBUG = False
 
 # Toggle to True for compiling Cassiopee in i8
@@ -57,7 +57,7 @@ def checkModuleImport(moduleName, raiseOnError=True):
         else:
             print("FAILED: %s"%inst)
             print("FAILED: %s badly installed."%moduleName)
-        
+
 #==============================================================================
 # Return informations on the current operating system
 # Return: Unix, Windows, Darwin, Java, mingw + bits of the system ('32', '64')
@@ -91,8 +91,8 @@ def getSystem():
 # Return '' if name is not in environ
 #==============================================================================
 def getenv(name):
-     if name in os.environ: return os.environ[name]
-     else: return ''
+    if name in os.environ: return os.environ[name]
+    else: return ''
 
 #==============================================================================
 # Get name of the Data folder
@@ -153,7 +153,7 @@ def checkAll(summary=True):
     else: out += ['mpi4py: missing (%s).'%(mpi4pyIncDir)]
 
     if useCuda:
-        (ok, cudaIncDir, cudaLib, cudaBin) = checkCuda(additionalLibPaths, additionalIncludePaths) 
+        (ok, cudaIncDir, cudaLib, cudaBin) = checkCuda(additionalLibPaths, additionalIncludePaths)
         if ok: out += ['cuda: used (%s)'%(cudaIncDir)]
         else: out += ['cuda: missing. Not used (%s).'%(cudaIncDir)]
     if summary:
@@ -217,9 +217,9 @@ def getInstallPath(prefix):
     #pythonLib = paths.split('/')
     #pythonVersion = pythonLib[-2]
     #Site = pythonLib[-1]
-    #Lib = pythonLib[-3]    
+    #Lib = pythonLib[-3]
     #installPath = '%s/%s/%s/%s'%(prefix, Lib, pythonVersion, Site)
-    
+
     # Based on distutils (to be su)
     if os.environ['ELSAPROD'][0:6] == 'msys64' or os.environ['ELSAPROD'] == 'win64':
         pythonLib = distutils.sysconfig.get_python_lib()
@@ -242,7 +242,7 @@ def getInstallPath(prefix):
         pythonLib = distutils.sysconfig.get_python_lib()
         pythonLib = pythonLib.split('/')
         pythonVersion = pythonLib[-2]
-        installPath = prefix + '/lib/python'+pythonVersion+'/site-packages'        
+        installPath = prefix + '/lib/python'+pythonVersion+'/site-packages'
     else: # standard unix
         pythonLib = distutils.sysconfig.get_python_lib()
         pythonLib = pythonLib.split('/')
@@ -255,17 +255,17 @@ def getInstallPath(prefix):
         Lib = pythonLib[-3]
         installPath = '%s/%s/%s/site-packages'%(prefix, Lib, pythonVersion)
     return installPath
-    
+
 #==============================================================================
 # Functions returning the names of the remote repo & branch and the commit hash
-#==============================================================================    
-def getGitOrigin(cassiopeeIncDir):    
+#==============================================================================
+def getGitOrigin(cassiopeeIncDir):
     mySystem = getSystem()[0]
     if mySystem == 'mingw' or mySystem == 'Windows':
         lpath = cassiopeeIncDir.replace('/', '\\')
         cmd = "cd {} && git config --get remote.origin.url".format(lpath)
-    else: # unix 
-        lpath = cassiopeeIncDir    
+    else: # unix
+        lpath = cassiopeeIncDir
         cmd = "cd {}; git config --get remote.origin.url 2>/dev/null".format(lpath)
     try:
         origin = subprocess.check_output(cmd, shell=True)
@@ -278,7 +278,7 @@ def getGitBranch(cassiopeeIncDir):
         lpath = cassiopeeIncDir.replace('/', '\\')
         cmd = "cd {} && git rev-parse --abbrev-ref HEAD".format(lpath)
     else: # unix
-        lpath = cassiopeeIncDir    
+        lpath = cassiopeeIncDir
         cmd = "cd {}; git rev-parse --abbrev-ref HEAD 2>/dev/null".format(lpath)
     try:
         branchName = subprocess.check_output(cmd, shell=True)
@@ -290,8 +290,8 @@ def getGitHash(cassiopeeIncDir):
     if mySystem == 'mingw' or mySystem == 'Windows':
         lpath = cassiopeeIncDir.replace('/', '\\')
         cmd = "cd {} && git rev-parse --short HEAD".format(lpath)
-    else: # unix 
-        lpath = cassiopeeIncDir    
+    else: # unix
+        lpath = cassiopeeIncDir
         cmd = "cd {}; git rev-parse --short HEAD 2>/dev/null".format(lpath)
     try:
         sha = subprocess.check_output(cmd, shell=True)
@@ -319,9 +319,9 @@ def writeInstallPath():
         if re.compile('--prefix=').search(i) is not None: prefix = i[9:] # setup
         elif re.compile('prefix=').search(i) is not None: prefix = i[7:] # setup
         elif re.compile('--prefix').search(i) is not None: prefix = a[c+1] # pip
-        
+
     installPath = getInstallPath(prefix)
-    
+
     p = open('installPath.py', 'w')
     if p is None:
         raise SystemError("Error: can not open file installPath.py for writing.")
@@ -330,9 +330,9 @@ def writeInstallPath():
     if mySystem == 'Windows' or mySystem == 'mingw': Lib = 'Lib'
     elif mySystem == 'Darwin': Lib = 'lib'
     else:
-         pythonLib = distutils.sysconfig.get_python_lib()
-         pythonLib = pythonLib.split('/')
-         Lib = pythonLib[-3]
+        pythonLib = distutils.sysconfig.get_python_lib()
+        pythonLib = pythonLib.split('/')
+        Lib = pythonLib[-3]
     if os.environ['ELSAPROD'][0:6] == 'ubuntu': # debian style
         p.write('libPath = \'%s/local/%s\'\n'%(prefix,Lib))
     else:
@@ -346,7 +346,7 @@ def writeInstallPath():
     p.write('gitBranch = \'%s\'\n'%(gitBranch))
     p.write('gitHash = \'%s\'\n'%(gitHash))
     p.close()
-    
+
 #==============================================================================
 # Write env files
 # Directement dans le repertoire d'installation
@@ -372,83 +372,80 @@ def writeEnvs():
 
     # sh ou bash
     # usage: source $CASSIOPEE/Dist/env_Cassiopee.sh
-    p = open(envPath+"env_Cassiopee.sh", 'w')
-    p.write("ulimit -s unlimited\n")
-    if cassiopee != '': p.write("export CASSIOPEE=%s\n"%cassiopee)
-    if elsaprod != '': p.write("export ELSAPROD=%s\n"%elsaprod)
-    p.write("export OMP_NUM_THREADS=%d\n"%mt)
-    p.write("export PATH=%s:%s/bin:$PATH\n"%(cmdPath,cmdPath))
-    p.write("if [ \"$PYTHONPATH\" = \"\" ]; then\n")
-    p.write("      export PYTHONPATH=%s\n"%installPathLocal)
-    p.write("else\n")
-    p.write("      export PYTHONPATH=%s:$PYTHONPATH\n"%installPathLocal)
-    p.write("fi\n")
-    if installLD is None:
-        p.write("if [ \"$LD_LIBRARY_PATH\" = \"\" ]; then\n")
-        p.write("      export LD_LIBRARY_PATH=%s\n"%libPath)
+    with open(envPath+"env_Cassiopee.sh", 'w') as p:
+        p.write("ulimit -s unlimited\n")
+        if cassiopee != '': p.write("export CASSIOPEE=%s\n"%cassiopee)
+        if elsaprod != '': p.write("export ELSAPROD=%s\n"%elsaprod)
+        p.write("export OMP_NUM_THREADS=%d\n"%mt)
+        p.write("export PATH=%s:%s/bin:$PATH\n"%(cmdPath,cmdPath))
+        p.write("if [ \"$PYTHONPATH\" = \"\" ]; then\n")
+        p.write("      export PYTHONPATH=%s\n"%installPathLocal)
         p.write("else\n")
-        p.write("      export LD_LIBRARY_PATH=%s:$LD_LIBRARY_PATH\n"%libPath)
+        p.write("      export PYTHONPATH=%s:$PYTHONPATH\n"%installPathLocal)
         p.write("fi\n")
-    else:
-        p.write("if [ \"$LD_LIBRARY_PATH\" = \"\" ]; then\n")
-        p.write("      export LD_LIBRARY_PATH=%s:%s\n"%(libPath,installLD))
-        p.write("else\n")
-        p.write("      export LD_LIBRARY_PATH=%s:%s:$LD_LIBRARY_PATH\n"%(libPath,installLD))
-        p.write("fi\n")
-    p.close()
+        if installLD is None:
+            p.write("if [ \"$LD_LIBRARY_PATH\" = \"\" ]; then\n")
+            p.write("      export LD_LIBRARY_PATH=%s\n"%libPath)
+            p.write("else\n")
+            p.write("      export LD_LIBRARY_PATH=%s:$LD_LIBRARY_PATH\n"%libPath)
+            p.write("fi\n")
+        else:
+            p.write("if [ \"$LD_LIBRARY_PATH\" = \"\" ]; then\n")
+            p.write("      export LD_LIBRARY_PATH=%s:%s\n"%(libPath,installLD))
+            p.write("else\n")
+            p.write("      export LD_LIBRARY_PATH=%s:%s:$LD_LIBRARY_PATH\n"%(libPath,installLD))
+            p.write("fi\n")
 
     # csh ou tcsh
     # usage: source $CASSIOPEE/Dist/env_Cassiopee.csh
-    p = open(envPath+"env_Cassiopee.csh", 'w')
-    p.write("limit stacksize unlimited\n")
-    if cassiopee != '': p.write("setenv CASSIOPEE %s\n"%cassiopee)
-    if elsaprod != '': p.write("setenv ELSAPROD %s\n"%elsaprod)
-    p.write("setenv OMP_NUM_THREADS %d\n"%mt)
-    p.write("set path=(%s %s/bin $path)\n"%(cmdPath,cmdPath))
-    p.write("if ($?PYTHONPATH == 0) then\n")
-    p.write("     setenv PYTHONPATH %s\n"%installPathLocal)
-    p.write("else\n")
-    p.write("     setenv PYTHONPATH %s:$PYTHONPATH\n"%installPathLocal)
-    p.write("endif\n")
-    if installLD is None:
-        p.write("if ($?LD_LIBRARY_PATH == 0) then\n")
-        p.write("     setenv LD_LIBRARY_PATH %s\n"%libPath)
+    with open(envPath+"env_Cassiopee.csh", 'w') as p:
+        p.write("limit stacksize unlimited\n")
+        if cassiopee != '': p.write("setenv CASSIOPEE %s\n"%cassiopee)
+        if elsaprod != '': p.write("setenv ELSAPROD %s\n"%elsaprod)
+        p.write("setenv OMP_NUM_THREADS %d\n"%mt)
+        p.write("set path=(%s %s/bin $path)\n"%(cmdPath,cmdPath))
+        p.write("if ($?PYTHONPATH == 0) then\n")
+        p.write("     setenv PYTHONPATH %s\n"%installPathLocal)
         p.write("else\n")
-        p.write("     setenv LD_LIBRARY_PATH %s:$LD_LIBRARY_PATH\n"%libPath)
+        p.write("     setenv PYTHONPATH %s:$PYTHONPATH\n"%installPathLocal)
         p.write("endif\n")
-    else:
-        p.write("if ($?LD_LIBRARY_PATH == 0) then\n")
-        p.write("     setenv LD_LIBRARY_PATH %s:%s\n"%(libPath,installLD))
-        p.write("else\n")
-        p.write("     setenv LD_LIBRARY_PATH %s:%s:$LD_LIBRARY_PATH\n"%(libPath,installLD))
-        p.write("endif\n")
-    p.close()
+        if installLD is None:
+            p.write("if ($?LD_LIBRARY_PATH == 0) then\n")
+            p.write("     setenv LD_LIBRARY_PATH %s\n"%libPath)
+            p.write("else\n")
+            p.write("     setenv LD_LIBRARY_PATH %s:$LD_LIBRARY_PATH\n"%libPath)
+            p.write("endif\n")
+        else:
+            p.write("if ($?LD_LIBRARY_PATH == 0) then\n")
+            p.write("     setenv LD_LIBRARY_PATH %s:%s\n"%(libPath,installLD))
+            p.write("else\n")
+            p.write("     setenv LD_LIBRARY_PATH %s:%s:$LD_LIBRARY_PATH\n"%(libPath,installLD))
+            p.write("endif\n")
 
     # bat
-    p = open(envPath+"env_Cassiopee.bat", 'w')
-    p.write("path = "+libPath+";"+cmdPath+"%PATH%\n")
-    p.write("set PYTHONPATH="+installPathLocal+";%PYTHONPATH%\n")
-    p.write("set OMP_NUM_THREADS=%NUMBER_OF_PROCESSORS%\n")
-    p.close()
+    with open(envPath+"env_Cassiopee.bat", 'w') as p:
+        p.write("path = "+libPath+";"+cmdPath+"%PATH%\n")
+        p.write("set PYTHONPATH="+installPathLocal+";%PYTHONPATH%\n")
+        p.write("set OMP_NUM_THREADS=%NUMBER_OF_PROCESSORS%\n")
 
     # module
     # usage: module use $CASSIOPEE/Dist
     # module load cassiopee
-    p = open(envPath+"cassiopee", 'w')
-    p.write("#%Module1.0#####################################################################\n")
-    p.write("##\n")
-    p.write("## CASSIOPEE\n")
-    p.write("##\n")
-    p.write("module-whatis   \"Set the environment for using Cassiopee\"\n")
-    if cassiopee != '': p.write("setenv CASSIOPEE %s\n"%cassiopee)
-    if elsaprod != '': p.write("setenv ELSAPROD %s\n"%elsaprod)
-    p.write("setenv OMP_NUM_THREADS %d\n"%mt)
-    p.write("prepend-path PATH %s\n"%cmdPath)
-    p.write("prepend-path PATH %s/bin\n"%cmdPath)
-    p.write("prepend-path PYTHONPATH %s\n"%installPathLocal)
-    if installLD is not None:
-        p.write("prepend-path LD_LIBRARY_PATH %s\n"%installLD)
-    p.write("prepend-path LD_LIBRARY_PATH %s\n"%libPath)
+    with open(envPath+"cassiopee", 'w') as p:
+        p.write("#%Module1.0#####################################################################\n")
+        p.write("##\n")
+        p.write("## CASSIOPEE\n")
+        p.write("##\n")
+        p.write("module-whatis   \"Set the environment for using Cassiopee\"\n")
+        if cassiopee != '': p.write("setenv CASSIOPEE %s\n"%cassiopee)
+        if elsaprod != '': p.write("setenv ELSAPROD %s\n"%elsaprod)
+        p.write("setenv OMP_NUM_THREADS %d\n"%mt)
+        p.write("prepend-path PATH %s\n"%cmdPath)
+        p.write("prepend-path PATH %s/bin\n"%cmdPath)
+        p.write("prepend-path PYTHONPATH %s\n"%installPathLocal)
+        if installLD is not None:
+            p.write("prepend-path LD_LIBRARY_PATH %s\n"%installLD)
+        p.write("prepend-path LD_LIBRARY_PATH %s\n"%libPath)
 
 #==============================================================================
 # Write setup.cfg en fonction du compilateur C++ (si different de None)
@@ -500,7 +497,11 @@ def writeSetupCfg():
     elif Cppcompiler == 'cc' or Cppcompiler == 'cc':
         p = open("./setup.cfg", 'w')
         p.write('[build_ext]\ncompiler=unix\n')
-        p.close()     
+        p.close()
+    elif Cppcompiler == 'clang' or Cppcompiler == 'clang++':
+        p = open("./setup.cfg", 'w')
+        p.write('[build_ext]\ncompiler=unix\n')
+        p.close()
     else:
         p = open("./setup.cfg", 'w')
         p.write('[build_ext]\ncompiler=%s\n'%Cppcompiler)
@@ -515,7 +516,7 @@ def getDistUtilsCompilers():
                                                'BASECFLAGS', 'CCSHARED',
                                                'LDSHARED', 'SO')
     for i, v in enumerate(vars):
-        if v is None: vars[i] = "" 
+        if v is None: vars[i] = ""
 
     try: from KCore.config import Cppcompiler
     except: from config import Cppcompiler
@@ -524,35 +525,35 @@ def getDistUtilsCompilers():
             vars[0] = Cppcompiler; vars[1] = Cppcompiler.replace('clang', 'clang++')
         elif Cppcompiler == 'clang++':
             vars[0] = Cppcompiler.replace('clang++', 'clang'); vars[1] = Cppcompiler
-        
+
         elif Cppcompiler == 'pgcc':
             vars[0] = Cppcompiler; vars[1] = Cppcompiler.replace('pgcc', 'pgc++')
         elif Cppcompiler == 'pgc++':
             vars[0] = Cppcompiler.replace('pgc++', 'pgcc'); vars[1] = Cppcompiler
-            
+
         elif Cppcompiler == 'craycc':
             vars[0] = Cppcompiler; vars[1] = Cppcompiler.replace('craycc', 'craycxx')
         elif Cppcompiler == 'craycxx':
             vars[0] = Cppcompiler.replace('craycxx', 'craycc'); vars[1] = Cppcompiler
-            
+
         elif Cppcompiler == 'cc':
             vars[0] = Cppcompiler; vars[1] = Cppcompiler
-            
+
         elif Cppcompiler == 'nvc':
             vars[0] = Cppcompiler; vars[1] = Cppcompiler.replace('nvc', 'nvc++')
         elif Cppcompiler == 'nvc++':
             vars[0] = Cppcompiler.replace('nvc++', 'nvc'); vars[1] = Cppcompiler
-            
+
         elif Cppcompiler.find('g++') != -1: # g++-version + mingw-g++-version
             vars[0] = Cppcompiler.replace('g++', 'gcc'); vars[1] = Cppcompiler
         elif Cppcompiler.find('gcc') != -1:
             vars[0] = Cppcompiler; vars[1] = Cppcompiler.replace('gcc', 'g++')
-            
+
         elif Cppcompiler == 'icpc':
             vars[0] = Cppcompiler.replace('icpc', 'icc'); vars[1] = Cppcompiler
         elif Cppcompiler == 'icc':
             vars[0] = Cppcompiler; vars[1] = Cppcompiler.replace('icc', 'icpc')
-            
+
         elif Cppcompiler == 'icpx':
             vars[0] = Cppcompiler.replace('icpx', 'icx'); vars[1] = Cppcompiler
         elif Cppcompiler == 'icx':
@@ -892,25 +893,25 @@ def getCArgs():
         if DEBUG:
             options += ['-g', '-O0', '-wd47', '-wd1224', '-fp-trap=divzero,overflow,invalid']
         else: options += ['-DNDEBUG', '-O2', '-wd47', '-wd1224']
-         
+
         # hack pour intel 19
         if v[0] == 19:
             for c, o in enumerate(options):
                 if o == '-O2': options[c] = '-O1'
-             
+
         if v[0] < 15:
-           options += ['-fp-speculation=strict']
+            options += ['-fp-speculation=strict']
         else:
-           options += ['-fp-model=precise'] # modif 2.6
+            options += ['-fp-model=precise'] # modif 2.6
         if useOMP() == 1:
-           if v[0] < 15: options += ['-openmp']
-           else: options += ['-qopenmp']
+            if v[0] < 15: options += ['-openmp']
+            else: options += ['-qopenmp']
         if useStatic() == 1: options += ['-static']
         else: options += ['-fPIC']
         options += getSimdOptions()
         return options
     elif Cppcompiler.find("gcc") == 0 or Cppcompiler.find("g++") == 0:
-        if DEBUG: 
+        if DEBUG:
             options += ['-g', '-O0', '-Wall', '-pedantic', '-D_GLIBCXX_DEBUG_PEDANTIC']
             options += ['-ggdb', '-fsanitize=address']
             if mySystem[0] == 'mingw': options.remove('-fsanitize=address') # no asan on mingw
@@ -919,8 +920,8 @@ def getCArgs():
         if useStatic() == 1: options += ['--static', '-static-libstdc++', '-static-libgcc']
         else: options += ['-fPIC']
         if mySystem[0] == 'mingw' and mySystem[1] == '32':
-             options.remove('-fPIC')
-             options += ['-large-address-aware']
+            options.remove('-fPIC')
+            options += ['-large-address-aware']
         options += getSimdOptions()
         return options
     elif Cppcompiler == "icl.exe":
@@ -1039,16 +1040,14 @@ def getForArgs():
             options += ['-large-address-aware']
         options += getSimdOptions()
         if EDOUBLEINT: options += ['-fdefault-integer-8']
+        options += ['-fdefault-real-8', '-fdefault-double-8']
         return options
     elif f77compiler == "ifort":
-        if DEBUG:
-            options += ['-g', '-O0', '-CB', '-traceback', '-fpe0']
+        if DEBUG: options += ['-g', '-O0', '-CB', '-traceback', '-fpe0']
         else: options += ['-O3']
         v = getForVersion()
-        if v[0] < 15:
-            options += ['-fp-speculation=strict']
-        else:
-            options += ['-fp-model=precise']
+        if v[0] < 15: options += ['-fp-speculation=strict']
+        else: options += ['-fp-model=precise']
         if useOMP() == 1:
             v = getForVersion()
             if v[0] < 15: options += ['-openmp']
@@ -1057,6 +1056,7 @@ def getForArgs():
         else: options += ['-fPIC']
         options += getSimdOptions()
         if EDOUBLEINT: options += ['-i8']
+        options += ['-r8']
         return options
     elif f77compiler == "ifx":
         if DEBUG: options += ['-g', '-O0', '-CB', '-fpe0']
@@ -1067,6 +1067,7 @@ def getForArgs():
         else: options += ['-fPIC']
         options += getSimdOptions()
         if EDOUBLEINT: options += ['-i8']
+        options += ['-r8']
         return options
     elif f77compiler == "pgfortran":
         if useStatic() == 1: options += ['-static']
@@ -1076,6 +1077,7 @@ def getForArgs():
         if useOMP() == 1: options += ['-mp=multicore']
         options += getSimdOptions()
         if EDOUBLEINT: options += ['-i8']
+        options += ['-r8']
         return options
     elif f77compiler == "nvfortran":
         if useStatic() == 1: options += ['-static']
@@ -1085,6 +1087,7 @@ def getForArgs():
         if useOMP() == 1: options += ['-mp=multicore']
         options += getSimdOptions()
         if EDOUBLEINT: options += ['-i8']
+        options += ['-r8']
         return options
     elif f77compiler == "x86_64-w64-mingw32-gfortran":
         if DEBUG: options += ['-g', '-O0']
@@ -1094,6 +1097,7 @@ def getForArgs():
         else: options += ['-fPIC']
         options += getSimdOptions()
         if EDOUBLEINT: options += ['-fdefault-integer-8']
+        options += ['-fdefault-real-8', '-fdefault-double-8']
         return options
     elif f77compiler == "ifort.exe":
         if useOMP() == 1: return ['/names:lowercase', '/assume:underscore', '/Qopenmp']
@@ -1106,6 +1110,7 @@ def getForArgs():
         if useOMP() == 1: options += ['-fopenmp']
         options += getSimdOptions()
         if EDOUBLEINT: options += ['-i8']
+        options += ['-r8']
         return options
     elif f77compiler == "ftn":
         if useStatic() == 1: options += ['-static']
@@ -1115,6 +1120,17 @@ def getForArgs():
         if useOMP() == 1: options += ['-fopenmp']
         options += getSimdOptions()
         if EDOUBLEINT: options += ['-i8']
+        options += ['-r8']
+        return options
+    elif f77compiler == "flang":
+        if useStatic() == 1: options += ['-static']
+        else: options += ['-fPIC']
+        if DEBUG: options += ['-g', '-O0']
+        else: options += ['-O3']
+        if useOMP() == 1: options += ['-fopenmp']
+        options += getSimdOptions()
+        if EDOUBLEINT: options += ['-fdefault-integer-8']
+        options += ['-fdefault-real-8', '-fdefault-double-8']
         return options
     else: return options
 
@@ -1129,30 +1145,34 @@ def getLinkArgs():
     if Cppcompiler == 'gcc' or Cppcompiler == 'g++':
         if useStatic() == 1: out += ['--static']
     elif Cppcompiler == 'icc' or Cppcompiler == 'icpc':
-         if useStatic() == 1: out += ['-static']
+        if useStatic() == 1: out += ['-static']
     elif Cppcompiler == 'icx' or Cppcompiler == 'icpx':
-         if useStatic() == 1: out += ['-static']
-         else: out += ['-shared']
+        if useStatic() == 1: out += ['-static']
+        else: out += ['-shared']
     elif Cppcompiler == "x86_64-w64-mingw32-gcc":
-         if useStatic() == 1: out += ['--static']
+        if useStatic() == 1: out += ['--static']
     elif Cppcompiler == 'pgcc' or Cppcompiler == 'pgc++':
-         if useStatic() == 1: out += ['-static']
-         else: out += ['-shared']
-         if useOMP() == 1: out += ['-mp=multicore']
-         if useCuda() == 1: out += ['-acc=gpu', '-Minfo:accel']
+        if useStatic() == 1: out += ['-static']
+        else: out += ['-shared']
+        if useOMP() == 1: out += ['-mp=multicore']
+        if useCuda() == 1: out += ['-acc=gpu', '-Minfo:accel']
     elif Cppcompiler == 'nvc' or Cppcompiler == 'nvc++':
-         if useStatic() == 1: out += ['-static']
-         else: out += ['-shared']
-         if useOMP() == 1: out += ['-mp=multicore']
-         if useCuda() == 1: out += ['-acc=gpu', '-Minfo:accel']
+        if useStatic() == 1: out += ['-static']
+        else: out += ['-shared']
+        if useOMP() == 1: out += ['-mp=multicore']
+        if useCuda() == 1: out += ['-acc=gpu', '-Minfo:accel']
     elif Cppcompiler == 'craycc' or Cppcompiler == 'craycxx':
-         if useStatic() == 1: out += ['-static']
-         else: out += ['-shared']
-         if useOMP() == 1: out += ['-fopenmp']
+        if useStatic() == 1: out += ['-static']
+        else: out += ['-shared']
+        if useOMP() == 1: out += ['-fopenmp']
     elif Cppcompiler == 'cc':
-         if useStatic() == 1: out += ['-static']
-         else: out += ['-shared']
-         if useOMP() == 1: out += ['-fopenmp']    
+        if useStatic() == 1: out += ['-static']
+        else: out += ['-shared']
+        if useOMP() == 1: out += ['-fopenmp']
+    elif Cppcompiler == 'clang' or Cppcompiler == 'clang++':
+        if useStatic() == 1: out += ['-static']
+        else: out += ['-shared']
+        if useOMP() == 1: out += ['-fopenmp']
     mySystem = getSystem()[0]
     if mySystem == 'Darwin':
         if useStatic() == 0: out += ['-dynamiclib']
@@ -1187,9 +1207,9 @@ def checkLdLibraryPath():
     if a is None and b is None:
         print("Warning: to use the module, please add: %s to your LD_LIBRARY_PATH (unix) or PATH (windows)."%libPath)
     else:
-         if a is not None: ret = a
-         else: ret = b
-         if re.compile(libPath).search(ret) is None:
+        if a is not None: ret = a
+        else: ret = b
+        if re.compile(libPath).search(ret) is None:
             print("Warning: to use the module, please add: %s to your LD_LIBRARY_PATH (unix) or PATH (windows)."%libPath)
 
 #=============================================================================
@@ -1521,7 +1541,7 @@ def checkOSMesa(additionalLibPaths=[], additionalIncludePaths=[]):
     if l is None:
         l = checkLibFile__('osmesa.dll.a', additionalLibPaths)
         if l is not None: libname = 'osmesa'
-        
+
     i = checkIncFile__('GL/osmesa.h', additionalIncludePaths)
     if i is not None and l is not None:
         print('Info: libOSmesa detected at %s.'%l)
@@ -1551,12 +1571,12 @@ def checkOCE(additionalLibPaths=[], additionalIncludePaths=[]):
             l = checkLibFile__('libTKernel.dll.a', additionalLibPaths)
     i = checkIncFile__('oce/TopTools.hxx', additionalIncludePaths)
     if i is not None: i = i+'/oce'
-    if i is None: 
+    if i is None:
         i = checkIncFile__('opencascade/TopTools.hxx', additionalIncludePaths)
         if i is not None: i = i+'/opencascade'
     if i is not None and l is not None:
         print('Info: libOCE detected at %s.'%l)
-        return (True, i, l)    
+        return (True, i, l)
     else:
         # On n'affiche pas ici le message, car il peut y avoir un installation locale de OCE
         #print('Info: libOCE or oce/*.hxx was not found on your system. No IGES/STEP support.')
@@ -1638,7 +1658,7 @@ def checkAdf(additionalLibPaths=[], additionalIncludePaths=[]):
 #=============================================================================
 # Check for Hdf
 # additionalPaths: chemins d'installation non standards : ['/home/toto',...]
-# Retourne: (True/False, chemin des includes, chemin de la librairie, 
+# Retourne: (True/False, chemin des includes, chemin de la librairie,
 # liste des noms des libs)
 #=============================================================================
 def checkHdf(additionalLibPaths=[], additionalIncludePaths=[]):
@@ -1681,7 +1701,7 @@ def checkMpi(additionalLibPaths=[], additionalIncludePaths=[]):
     libnames = []
     l = checkLibFile__('libmpi.so', additionalLibPaths)
     if l is not None: libnames.append('mpi')
-    if l is None: 
+    if l is None:
         l = checkLibFile__('libmpi.a', additionalLibPaths)
         if l is not None: libnames.append('mpi')
     if l is None:
@@ -1764,9 +1784,9 @@ def checkCuda(additionalLibPaths=[], additionalIncludePaths=[]):
     has_nvcc     = os.access(cuda_root+"/bin/nvcc", os.F_OK)
     nvcc_exec    = None
     if not has_nvcc and not has_nvcc_exe :
-        print('Info: nvcc not found at %s/bin. No cuda support.'%cuda_root) 
+        print('Info: nvcc not found at %s/bin. No cuda support.'%cuda_root)
         return (False, None, None, None, None)
-    elif has_nvcc: nvcc_exec = cuda_root+"/bin/nvcc" 
+    elif has_nvcc: nvcc_exec = cuda_root+"/bin/nvcc"
     else: nvcc_exec = cuda_root+"/bin/nvcc.exe"
 
     # Check for library :
@@ -1832,11 +1852,11 @@ def checkParadigma(additionalLibPaths=[], additionalIncludePaths=[]):
     else:
         #print('Info: libpdm or pdm.h was not found on your system. No paradigma support.')
         return (False, i, l)
-    
+
 #=============================================================================
 # Check for BLAS
 # additionalPaths: chemins d'installation non standards: ['/home/toto',...]
-# Retourne: (True/False, chemin des includes, chemin de la librairie, 
+# Retourne: (True/False, chemin des includes, chemin de la librairie,
 # option de compile, nom de la librarie)
 #=============================================================================
 def checkBlas(additionalLibPaths=[], additionalIncludePaths=[]):
@@ -1891,7 +1911,7 @@ def checkBlas(additionalLibPaths=[], additionalIncludePaths=[]):
 #=============================================================================
 # Check for LAPACK
 # additionalPaths: chemins d'installation non standards : ['/home/toto',...]
-# Retourne: (True/False, chemin des includes, chemin de la librairie, 
+# Retourne: (True/False, chemin des includes, chemin de la librairie,
 # option de compile, nom de la librarie)
 #=============================================================================
 def checkLapack(additionalLibPaths=[], additionalIncludePaths=[]):
@@ -1923,7 +1943,7 @@ def checkLapack(additionalLibPaths=[], additionalIncludePaths=[]):
         if l is None:
             l = checkLibFile__(libPrefix+'lapacke*.a', additionalLibPaths)
         if l is not None: libnames.append(libname); foundLapacke = l
-    
+
         l = None
         if foundLapack is not None: l = foundLapack
         elif foundLapacke is not None: l = foundLapacke
@@ -2007,7 +2027,7 @@ def checkFortranLibs(additionalLibs=[], additionalLibPaths=[],
             else: ret = False
 
     # ifort (ifcore, svml, irc, guide, iomp5)
-    if f77compiler == 'ifort':
+    elif f77compiler == 'ifort':
         l = checkLibFile__('libifcore.so*', additionalLibPaths)
         if l is None:
             l = checkLibFile__('libifcore.a', additionalLibPaths)
@@ -2044,7 +2064,7 @@ def checkFortranLibs(additionalLibs=[], additionalLibPaths=[],
                 else: ret = False
 
     # ifx (ifcore, svml, irc, guide, iomp5)
-    if f77compiler == 'ifx':
+    elif f77compiler == 'ifx':
         l = checkLibFile__('libifcore.so*', additionalLibPaths)
         if l is None:
             l = checkLibFile__('libifcore.a', additionalLibPaths)
@@ -2081,13 +2101,13 @@ def checkFortranLibs(additionalLibs=[], additionalLibPaths=[],
                 else: ret = False
 
     # pgfortran
-    if f77compiler == 'pgfortran':
+    elif f77compiler == 'pgfortran':
         l = checkLibFile__('libnvf.so*', additionalLibPaths)
         if l is None:
             l = checkLibFile__('libnvf.a', additionalLibPaths)
         if l is not None:
             libs += ['nvf', 'rt']; paths += [l]
-        
+
         if useOMP:
             l = checkLibFile__('libnvomp.so*', additionalLibPaths)
             if l is None:
@@ -2097,13 +2117,13 @@ def checkFortranLibs(additionalLibs=[], additionalLibPaths=[],
             else: ret = False
 
     # nvfortran
-    if f77compiler == 'nvfortran':
+    elif f77compiler == 'nvfortran':
         l = checkLibFile__('libnvf.so*', additionalLibPaths)
         if l is None:
             l = checkLibFile__('libnvf.a', additionalLibPaths)
         if l is not None:
             libs += ['nvf', 'rt']; paths += [l]
-        
+
         if useOMP:
             l = checkLibFile__('libnvomp.so*', additionalLibPaths)
             if l is None:
@@ -2111,15 +2131,15 @@ def checkFortranLibs(additionalLibs=[], additionalLibPaths=[],
             if l is not None:
                 libs += ['nvomp']; paths += [l]
             else: ret = False
-            
+
     # crayftn
-    if f77compiler == 'crayftn':
+    elif f77compiler == 'crayftn':
         l = checkLibFile__('libf.so*', additionalLibPaths)
         if l is None:
             l = checkLibFile__('libf.a', additionalLibPaths)
         if l is not None:
             libs += ['f', 'rt']; paths += [l]
-        
+
         #if useOMP:
         #    l = checkLibFile__('libomp.so*', additionalLibPaths)
         #    if l is None:
@@ -2176,7 +2196,7 @@ def checkCppLibs(additionalLibs=[], additionalLibPaths=[], Cppcompiler=None,
             if l is None:
                 l = checkLibFile__('libasan.a', additionalLibPaths)
             if l is not None: libs += ["asan"]
-            
+
         if useOMP:
             l = checkLibFile__('libgomp.so*', additionalLibPaths)
             if l is None:
@@ -2196,7 +2216,7 @@ def checkCppLibs(additionalLibs=[], additionalLibPaths=[], Cppcompiler=None,
         #    l = checkLibFile__('libchkpwrap.a', additionalLibPaths)
         #    if l is not None:
         #        libs += ['chkpwrap', 'chkp']; paths += [l]
-               
+
         if useOMP:
             l = checkLibFile__('libguide.so*', additionalLibPaths)
             if l is None:
@@ -2225,7 +2245,7 @@ def checkCppLibs(additionalLibs=[], additionalLibPaths=[], Cppcompiler=None,
             l = checkLibFile__('libstdc++.a', additionalLibPaths)
         if l is not None:
             libs += ['stdc++']; paths += [l]
-               
+
         if useOMP:
             l = checkLibFile__('libguide.so*', additionalLibPaths)
             if l is None:
@@ -2316,7 +2336,7 @@ def checkCppLibs(additionalLibs=[], additionalLibPaths=[], Cppcompiler=None,
         #        libs += ['omp']; paths += [l]
         #    else: ret = False
         # craycc
-        
+
     if Cppcompiler == 'cc':
         os.environ['CC'] = 'cc' # forced to overide setup.cfg
         os.environ['CXX'] = 'cc'
@@ -2330,7 +2350,7 @@ def checkCppLibs(additionalLibs=[], additionalLibPaths=[], Cppcompiler=None,
             l = checkLibFile__('libsci_cray.a', additionalLibPaths)
         if l is not None:
             libs += ['sci_cray']; paths += [l]
-    
+
     return (ret, libs, paths)
 
 #==============================================================================
@@ -2379,9 +2399,9 @@ def checkIncFile__(file, additionalIncludePaths):
         if p1 is not None: pp += p1.split(';')
     elif mySystem[0] == 'mingw':
         p1 = env.get('PATH', None)
-        if p1 is not None: 
+        if p1 is not None:
             pp += p1.split(';')
-    else: # unix 
+    else: # unix
         p1 = env.get('LD_LIBRARY_PATH', None)
         if p1 is not None: pp += p1.split(':')
         p1 = env.get('PATH', None)
@@ -2439,7 +2459,7 @@ def writeBuildInfo():
 
     # Check ffmpeg
     (mpeg, mpegIncDir, mpegLib) = checkMpeg(config.additionalLibPaths,
-                                             config.additionalIncludePaths)
+                                            config.additionalIncludePaths)
     if mpeg: dict['mpeg'] = mpegLib
     else: dict['mpeg'] = "None"
 
@@ -2451,15 +2471,15 @@ def writeBuildInfo():
 
     # Check mpi
     (mpi, mpiIncDir, mpiLib, mpiLibs) = checkMpi(config.additionalLibPaths,
-                                                  config.additionalIncludePaths)
+                                                 config.additionalIncludePaths)
     if mpi: dict['mpi'] = mpiLib
     else: dict['mpi'] = "None"
 
     # Check cuda
     (cuda, cudaIndDir, cudaLib, cudalibNames, cudaexec) = checkCuda(config.additionalLibPaths,
-                                                                     config.additionalIncludePaths)
+                                                                    config.additionalIncludePaths)
     if cuda: dict['cuda'] = cudaLib
-    else:    dict['cuda'] = "None" 
+    else:    dict['cuda'] = "None"
 
     # Write dictionnary
     p.write("# This file is generated by Cassiopee installer.\n")
@@ -2474,7 +2494,7 @@ def writeBuildInfo():
 def writeInstallBase(dict):
     p = open("installBase.py", 'w')
     if p is None:
-       raise SystemError("Error: can not open file installBase.py for writing.")
+        raise SystemError("Error: can not open file installBase.py for writing.")
 
     # Write doc
     p.write("# This is the dictionary keeping track of installation.\n# The key is the machine name or ELSAPROD name. For each key a list is stored.\n# [description, \n# f77compiler, libfortdir, libfort, f90compiler, libf90dir, libf90, \n# Cppcompiler, libCpp, useOMP, \n# pngPath, mpegPath, adfPath, hdfPath].\n# Path are list of strings. useOMP, static are booleans. \n# Others are strings.\n")
@@ -2555,12 +2575,12 @@ def createExtensions(module, srcs, includeDirs, libraryDirs, libraries,
     minor = module.lower()
     # C/Api module
     Extension(module+'.'+minor,
-               sources=[module+'/'+minor+'.cpp'],
-               include_dirs=[module]+includeDirs,
-               library_dirs=libraryDirs,
-               libraries=libraries,
-               extra_compile_args=extraCompileArgs,
-               extra_link_args=extraLinkArgs)
+              sources=[module+'/'+minor+'.cpp'],
+              include_dirs=[module]+includeDirs,
+              library_dirs=libraryDirs,
+              libraries=libraries,
+              extra_compile_args=extraCompileArgs,
+              extra_link_args=extraLinkArgs)
     # Cython extensions
     try: pyx_srcs = srcs.pyx_srcs
     except: pyx_srcs = []
@@ -2607,7 +2627,7 @@ def createFortranBuilder(env, dirs=[], additionalPPArgs='', additionalFortranArg
     env.Append(BUILDERS={'FPROC': bld})
     # Fortran compiler
     fortran_builder = Builder(action='$FORTRANCOM',
-                               suffix='.o', src_suffix='.f')
+                              suffix='.o', src_suffix='.f')
     env.Append(BUILDERS={'Fortran': fortran_builder})
     env.Replace(FORTRANCOM='$FORTRAN $FORTRANFLAGS -c -o $TARGET $SOURCE')
     env.Replace(FORTRANSUFFIXES=['.f', '.F', '.f90', '.F90'])
@@ -2672,7 +2692,7 @@ def findAllDeps(filename, deps={}, cache=None):
         allIncludes.update(nestedDeps)
     cache[filename] = allIncludes
     return sorted(allIncludes) # sorting is important, recompiles all otherwise
-    
+
 # Ajoute les dependances au Fortran builder
 def envFortranWithDeps(env, filename, deps={}):
     if filename.endswith('90'): target = filename
@@ -2717,7 +2737,6 @@ def fortranScan(node, env, path, arg=None):
     names = set(names)
     # remove false dep (+in KCore?)
     names = [n for n in names if not 'omp_lib.h' in n]
-    names = [n for n in names if not 'parallelF.h' in n]
     return env.File(list(names))
 
 # Cree le scanner Fortran dans env
@@ -2750,7 +2769,7 @@ def addCommonNvccVariables(env):
         env['_NVCCCOMCOM'] = '$_NVCCWRAPCPPPATH'
     return env
 
-def createCudaBuilders(env, dirs = []):
+def createCudaBuilders(env, dirs=[]):
     import SCons
     # create a builder that makes PTX files from .cu files
     (ok, incCuda, libCude, libNameCuda, binCuda) = checkCuda()
@@ -2762,10 +2781,10 @@ def createCudaBuilders(env, dirs = []):
     #for o in opts :
     #    action_cuda += o + " "
     action_cuda += path + '$NVCCFLAGS $_NVCCCOMCOM $SOURCES -o $TARGET'
-    ptx_builder = SCons.Builder.Builder(action = action_cuda,
-                                        emitter = {},
-                                        suffix = '.ptx',
-                                        src_suffix = ['.cu'])
+    ptx_builder = SCons.Builder.Builder(action=action_cuda,
+                                        emitter={},
+                                        suffix='.ptx',
+                                        src_suffix=['.cu'])
     env['BUILDERS']['PTXFile'] = ptx_builder
 
     # create builders that make static & shared objects from .cu files
@@ -2832,9 +2851,9 @@ def cythonScan(node, env, path, arg=None):
     # scan file to extract all possible cimports.
     contents = node.get_text_contents()
     names = [reo.findall(contents) for reo in [
-               re.compile(r'^\s*from\s+(.+?)\s+cimport\s.*$', re.M),
-               re.compile(r'^\s*cimport\s+(.+?)$', re.M),
-               ]]
+        re.compile(r'^\s*from\s+(.+?)\s+cimport\s.*$', re.M),
+        re.compile(r'^\s*cimport\s+(.+?)$', re.M),
+    ]]
     names = itertools.chain(*names)
     # keep characters before " as ".
     names = [name.split(' as ')[0] for name in names]
@@ -2867,5 +2886,44 @@ def createCythonFiles(env, srcs):
     return deps
 
 #==============================================================================
+# Create static library and copy built files to installPath
+#==============================================================================
+def createStaticLibrary(env, ppf, parentFolder, moduleName):
+    """
+    Create a static library for a list of pre-processed Fortran and cpp files,
+    and return the name of the static library
+    """
+    if isinstance(ppf[0], list):
+        nchunks = len(ppf)
+        elsaprod = os.getenv("ELSAPROD")
+        staticLib = "lib{}.a".format(moduleName.lower())
+        staticLibPath = os.path.join("build", elsaprod, staticLib)
+        chunkedStaticLib = "lib{}{:d}.a"
+        mergeL = "create {}\n".format(staticLibPath)
+        for c in range(nchunks):
+            mergeL += "addlib build/{}/lib{}{:d}.a\n".format(
+                elsaprod, moduleName, c+1)
+        mergeL += "save\nend"
+        filename = os.path.join(parentFolder, 'merge.l')
+        with open(filename, 'w') as f: f.write(mergeL)
+        env.Command(
+            staticLib,
+            [chunkedStaticLib.format(moduleName, c+1) for c in range(nchunks)] + ['merge.l'],
+            "ar -M < merge.l"
+        )
+        for c in range(nchunks):
+            env.StaticLibrary(chunkedStaticLib.format(moduleName, c+1), ppf[c])
+    else:
+        staticLib = env.StaticLibrary(ppf)
+    return staticLib
+
+def copyBuiltFiles(env, staticLib, moduleName, installPath):
+    # Copy built files and python files to the install folder
+    modDir = os.path.join(installPath, moduleName)
+    dp1 = env.Install(modDir, staticLib)
+    dp2 = env.Install(modDir, glob.glob('{}/*.py'.format(moduleName)))
+    env.Alias(target="install", source=[dp1, dp2])
+
+#==============================================================================
 if __name__ == "__main__":
-   checkAll()
+    checkAll()
