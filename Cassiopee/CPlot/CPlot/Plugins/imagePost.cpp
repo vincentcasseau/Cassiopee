@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2024 Onera.
+    Copyright 2013-2025 Onera.
 
     This file is part of Cassiopee.
 
@@ -340,7 +340,7 @@ void Data::specPostProcess(char* in, E_Int ni, E_Int nj, float* depth, char* out
     }*/
 
   // dof
-  E_Float blurSigma = 0.6;
+  E_Float blurSigma = 0.8;
   E_Float sigma, sigma2, c;
   E_Int ind;
   E_Int n = 5; // max coc

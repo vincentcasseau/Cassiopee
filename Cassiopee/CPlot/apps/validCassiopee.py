@@ -1,5 +1,6 @@
 # *Cassiopee* GUI for validation and tests
 import os, sys, re, glob, signal, platform
+import socket
 import json
 import numpy as np
 import subprocess
@@ -10,10 +11,6 @@ import KCore.Dist as Dist
 
 # System
 mySystem = Dist.getSystem()[0]
-
-# Machine name
-import socket
-machine = socket.gethostname()
 
 # Support MPI?
 try:
@@ -167,6 +164,10 @@ class NoDisplayScrollbar:
 #==============================================================================
 # Get installation paths of Cassiopee, Fast and all PModules
 #==============================================================================
+def isDBAdmin():
+    import getpass
+    return getpass.getuser() == "cassiope"
+
 def getInstallPaths():
     try:
         # Check installPath
@@ -844,7 +845,7 @@ def runTests(update=False):
                 testref = 'post.ref*'
             else:
                 pathl = os.path.join(modulesDir, module, 'test')
-                testref = os.path.splitext(test)[0] + '.ref*'  
+                testref = os.path.splitext(test)[0] + '.ref*'
             rmFile(pathl, testref)
         current += 1; displayProgress(current, total, remaining, elapsed)
         remaining -= string2Time(splits[3])
@@ -920,7 +921,7 @@ def fillTestMetadata():
                 refCoverage = '...%'
             if os.access(fileStar, os.R_OK): refTag = readStar(fileStar)
             else: refTag = ' '
-            
+
             testName = module+'/'+test
             TESTMETA[testName] = newMetadata(coverage=refCoverage, tag=refTag,
                                              time=refCPUtime)
@@ -1609,6 +1610,7 @@ def setupLocal(**kwargs):
     loadTestMetadata()
     buildTestList(**kwargs)
     updateDBLabel()
+    setGUITitleBar(loc='LOCAL')
     return 0
 
 def setupGlobal(**kwargs):
@@ -1632,6 +1634,7 @@ def setupGlobal(**kwargs):
     loadTestMetadata()
     buildTestList(**kwargs)
     updateDBLabel()
+    setGUITitleBar(loc='GLOBAL')
     return 0
 
 def getDBInfo():
@@ -1741,6 +1744,21 @@ def updateASANLabel(entry_index):
     toolsTab.entryconfig(entry_index, label=label)
 
 #==============================================================================
+# Set message in the title bar
+#==============================================================================
+def setGUITitleBar(loc='GLOBAL'):
+    if not INTERACTIVE: return
+    # Machine name
+    machine = socket.gethostname()
+    title = '*Cassiopee* valid {} : {} @ {}'.format(loc, os.getenv("ELSAPROD"),
+                                                    machine)
+    cassiopeeIncDir = getInstallPaths()[0]
+    gitBranch = Dist.getGitBranch(cassiopeeIncDir)
+    if gitBranch and gitBranch != "main":
+        title += " (branch {})".format(gitBranch)
+    Master.title(title)
+
+#==============================================================================
 # Main
 #==============================================================================
 
@@ -1762,8 +1780,7 @@ if __name__ == '__main__':
         from functools import partial
         # Main window
         Master = TK.Tk()
-        Master.title('*Cassiopee* valid : {} @ {}'.format(
-            os.getenv("ELSAPROD"), machine))
+        setGUITitleBar()
         Master.columnconfigure(0, weight=1)
         Master.rowconfigure(0, weight=1)
         #GENERALFONT = ('Courier', 9)
@@ -1904,8 +1921,10 @@ if __name__ == '__main__':
         CTK.infoBulle(parent=UpdateButton,
                       text='Update tests (replace data base files).')
         CTK.infoBulle(parent=TextThreads, text='Number of threads.')
-        ierr = setupGlobal()  # Comparison is made against the global valid
-        if ierr == 1: setupLocal()  # Global valid does not exist, default back to local
+        if isDBAdmin(): setupLocal()  # Local valid for the DB admin 'cassiope'
+        else:
+            ierr = setupGlobal()  # Comparison is made against the global valid
+            if ierr == 1: setupLocal()  # Global valid does not exist, default back to local
         TK.mainloop()
     else:
         # --- Command line execution ---
@@ -1925,8 +1944,10 @@ if __name__ == '__main__':
         TextThreads = NoDisplayEntry()
         getThreads()
 
-        if os.access('/stck/cassiope/git/Cassiopee/', os.R_OK) and vcargs.global_db:
-            setupGlobal(loadSession=vcargs.loadSession)
+        if (os.access('/stck/cassiope/git/Cassiopee/', os.R_OK) and
+                vcargs.global_db and not (vcargs.update or isDBAdmin())):
+            ierr = setupGlobal(loadSession=vcargs.loadSession)
+            if ierr == 1: setupLocal()  # Global valid does not exist, default back to local
         else: setupLocal(loadSession=vcargs.loadSession)
         purgeSessionLogs(vcargs.purge)
         if vcargs.filters:
