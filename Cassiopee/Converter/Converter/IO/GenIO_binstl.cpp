@@ -107,9 +107,11 @@ E_Int K_IO::GenIO::stlread(
     c3[i] = 3*i+3;
   }
 
+  connect[0]->setNGon(0);
   K_CONNECT::cleanConnectivity(1, 2, 3, 
                                1.e-14,  "TRI",
                                *unstructField[0], *connect[0]);
+  connect[0]->setNGon(1);
 
   // Cree les noms de zones
   char* zoneName = new char [128];

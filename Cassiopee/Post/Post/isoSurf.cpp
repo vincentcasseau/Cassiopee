@@ -93,8 +93,10 @@ PyObject* K_POST::isoSurf(PyObject* self, PyObject* args)
   doIsoSurf(*f, *cn, posf, value, poscellN, fiso, ciso);
   RELEASESHAREDU(grid, f, cn);
   E_Float tolc = 1.e-12;
+  ciso.setNGon(0);
   K_CONNECT::cleanConnectivity(posx, posy, posz, tolc, 
                                "TRI", fiso, ciso);
+  ciso.setNGon(1);
 
   if (fiso.getSize() == 0 || ciso.getSize() == 0)
   {

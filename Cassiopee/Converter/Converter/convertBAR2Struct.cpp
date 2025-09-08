@@ -51,7 +51,9 @@ PyObject* K_CONVERTER::convertBAR2Struct(PyObject* self, PyObject* args)
     PyErr_SetString(PyExc_TypeError, "convertBAR2Struct: array must contain coordinates.");
     delete f; delete cn; return NULL;
   }
+  cn->setNGon(0);
   K_CONNECT::cleanConnectivity(posx, posy, posz, eps, "BAR", *f, *cn);
+  cn->setNGon(1);
   FldArrayI& cm = *(cn->getConnect(0));
   E_Int npts = f->getSize(); E_Int nelts = cm.getSize();
   E_Int nfld = f->getNfld();

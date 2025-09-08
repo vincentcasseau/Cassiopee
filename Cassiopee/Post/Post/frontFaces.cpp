@@ -195,10 +195,12 @@ PyObject* K_POST::frontFacesUnstructured(char* varString, FldArrayF& f,
   E_Int posx = K_ARRAY::isCoordinateXPresent(varString)+1;
   E_Int posy = K_ARRAY::isCoordinateYPresent(varString)+1;
   E_Int posz = K_ARRAY::isCoordinateZPresent(varString)+1;
+  connect->setNGon(0);
   if (posx != 0 && posy != 0 && posz != 0)
     K_CONNECT::cleanConnectivity(posx, posy, posz, 
                                  1.e-12, eltTypeOut, 
                                  *faces, *connect);
+  connect->setNGon(1);
   PyObject* tpl = K_ARRAY::buildArray(*faces, varString, 
                                       *connect, -1, eltTypeOut);
   delete faces; delete connect;

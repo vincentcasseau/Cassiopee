@@ -83,10 +83,11 @@ PyObject* K_TRANSFORM::breakElements(PyObject* self, PyObject* args)
       else if (eltTypev[v] == 6) strcpy(eltType, "PENTA");
       else if (eltTypev[v] == 5) strcpy(eltType, "PYRA");
       else if (eltTypev[v] == 8) strcpy(eltType, "NGON");
-
+      cEV[v]->setNGon(0);
       if (posx != 0 && posy != 0 && posz != 0)
         K_CONNECT::cleanConnectivity(posx, posy, posz, 1.e-10, eltType, 
                                      *fields[v], *cEV[v]);   
+      cEV[v]->setNGon(1);
       tpl = K_ARRAY::buildArray3(*fields[v], varString, *cEV[v], eltType);
       PyList_Append(l, tpl); Py_DECREF(tpl);
     }

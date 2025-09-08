@@ -325,8 +325,10 @@ PyObject* K_TRANSFORM::joinAll(PyObject* self, PyObject* args)
   E_Int posz = K_ARRAY::isCoordinateZPresent(unstructVarString[0])+1;
   if (posx > 0 && posy > 0 && posz > 0)
   {
+    cno->setNGon(0);
     K_CONNECT::cleanConnectivity(posx, posy, posz, tol, newEltType, 
                                  *f, *cno);
+    cno->setNGon(1);
     PyObject* tpl2 = K_ARRAY::buildArray3(*f, unstructVarString[0], *cno, newEltType);
     // PyObject* tpl2 = K_CONNECT::V_cleanConnectivity(
     //   unstructVarString[0], *f, *cno, newEltType, tol);

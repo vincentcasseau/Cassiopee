@@ -220,7 +220,9 @@ PyObject* K_GEOM::volumeFromCrossSections(PyObject* self, PyObject* args)
   coord.reAllocMat(nv, 3);
   
   // Nettoyage de la connectivite et des points (doublons...)
+  cn.setNGon(0);
   K_CONNECT::cleanConnectivity(1, 2, 3, 1.e-10, eltType1, coord, cn);
+  cn.setNGon(1);
 
   // check tetraedres de type t1/t2 : si pas de voisin de type t12, 
   // t1 ou t2 elimine

@@ -97,9 +97,11 @@ PyObject* K_POST::isoLine(PyObject* self, PyObject* args)
   {
     doIsoLine(*f, *cn, posf, value, poscellN, fiso, ciso);
     RELEASESHAREDU(surf, f, cn);
-    E_Float tolc = 1.e-12; 
+    E_Float tolc = 1.e-12;
+    ciso.setNGon(0);
     K_CONNECT::cleanConnectivity(posx, posy, posz, tolc, 
                                  "BAR", fiso, ciso);
+    ciso.setNGon(1);
 
   }
   else

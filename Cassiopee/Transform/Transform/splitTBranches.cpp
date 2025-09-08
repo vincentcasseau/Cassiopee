@@ -73,7 +73,9 @@ PyObject* K_TRANSFORM::splitTBranches(PyObject* self, PyObject* args)
     return NULL;
   }
   posx++; posy++; posz++;
+  cn->setNGon(0);
   K_CONNECT::cleanConnectivity(posx, posy, posz, eps, "BAR", *f, *cn);
+  cn->setNGon(1);
 
   //determination des vertices de split
   E_Int npts = f->getSize(); E_Int nfld = f->getNfld();
@@ -162,7 +164,9 @@ PyObject* K_TRANSFORM::splitTBranches(PyObject* self, PyObject* args)
   PyObject* l = PyList_New(0);
   for (E_Int i = 0; i < nbars; ++i)
   {
+    cnt[i]->setNGon(0);
     K_CONNECT::cleanConnectivity(posx, posy, posz, eps, "BAR", *fields[i], *cnt[i]);
+    cnt[i]->setNGon(1);
     tpl = K_ARRAY::buildArray(*fields[i], varString, *cnt[i], -1, "BAR");
     PyList_Append(l, tpl); Py_DECREF(tpl);
   }

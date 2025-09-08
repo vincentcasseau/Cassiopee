@@ -961,7 +961,9 @@ PyObject* K_TRANSFORM::joinBothUnstructured(
   // Clean connectivity
   if (posx > 0 && posy > 0 && posz > 0)
   {
+    cn->setNGon(0);
     K_CONNECT::cleanConnectivity(posx, posy, posz, tol, eltType, *f, *cn);
+    cn->setNGon(1);
     PyObject* tpln2 = K_ARRAY::buildArray3(*f, varString, *cn, eltType);
     PyList_Append(l, tpln2); Py_DECREF(tpln2);
   }

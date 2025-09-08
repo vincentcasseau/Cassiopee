@@ -133,10 +133,12 @@ PyObject* K_TRANSFORM::subzoneStructInt(PyObject* self, PyObject* args)
       indcell++;
     }
     
+    connect->setNGon(0);
     if (posx != 0 && posy != 0 && posz != 0)
       K_CONNECT::cleanConnectivity(posx, posy, posz, 
                                    1.e-12, newEltType, 
                                    *fnodes, *connect);
+    connect->setNGon(1);
     tpl = K_ARRAY::buildArray(*fnodes, varString, *connect, -1, newEltType);
     delete fnodes; delete connect;
   }
@@ -193,10 +195,12 @@ PyObject* K_TRANSFORM::subzoneStructInt(PyObject* self, PyObject* args)
       nov+=4; indcell++;
     }
     
+    connect->setNGon(0);
     if (posx != 0 && posy != 0 && posz != 0)
       K_CONNECT::cleanConnectivity(posx, posy, posz, 
                                    1.e-12, newEltType, 
                                    *fnodes, *connect);
+    connect->setNGon(1);
     tpl = K_ARRAY::buildArray(*fnodes, varString, *connect, -1, newEltType);
     delete fnodes; delete connect;
   }
@@ -363,10 +367,12 @@ PyObject* K_TRANSFORM::subzoneStructIntBoth(PyObject* self, PyObject* args)
       nov+=2; noet++;
     }
     
+    connect->setNGon(0);
     if (posx != 0 && posy != 0 && posz != 0)
       K_CONNECT::cleanConnectivity(posx, posy, posz, 
                                    1.e-12, newEltType, 
                                    *fnodes, *connect);
+    connect->setNGon(1);
     tplN = K_ARRAY::buildArray(*fnodes, varString, *connect, -1, newEltType);
     PyList_Append(l,tplN); Py_DECREF(tplN);
     tplC = K_ARRAY::buildArray(*fcenters, varStringc, *connect, -1, newEltType, true);
@@ -430,10 +436,12 @@ PyObject* K_TRANSFORM::subzoneStructIntBoth(PyObject* self, PyObject* args)
       nov+=4; noet++;
     }
     
+    connect->setNGon(0);
     if (posx != 0 && posy != 0 && posz != 0)
       K_CONNECT::cleanConnectivity(posx, posy, posz, 
                                    1.e-12, newEltType, 
                                    *fnodes, *connect);
+    connect->setNGon(1);
     tplN = K_ARRAY::buildArray(*fnodes, varString, *connect, -1, newEltType);
     PyList_Append(l,tplN); Py_DECREF(tplN);
     tplC = K_ARRAY::buildArray(*fcenters, varStringc, *connect, -1, newEltType, true);

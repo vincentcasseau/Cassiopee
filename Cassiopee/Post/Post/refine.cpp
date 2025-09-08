@@ -130,8 +130,10 @@ PyObject* K_POST::refine(PyObject* self, PyObject* args)
   refineElements(*f, *cn, indic);
 
   E_Float tolc = 1.e-12; 
+  cn->setNGon(0);
   K_CONNECT::cleanConnectivity(posxu, posyu, poszu, tolc, 
                                "TRI", *f, *cn);
+  cn->setNGon(1);
 
   PyObject* t = K_ARRAY::buildArray(*f, varString0, *cn, -1, "TRI");
 

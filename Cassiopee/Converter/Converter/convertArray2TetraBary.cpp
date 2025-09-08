@@ -313,7 +313,9 @@ PyObject* K_CONVERTER::convertArray2TetraBary(PyObject* self, PyObject* args)
   }
 
   // Nettoyage de la connectivite creee
+  newcn.setNGon(0);
   K_CONNECT::cleanConnectivity(posx, posy, posz, 1.e-12, newEltType, fnew, newcn);
+  newcn.setNGon(1);
 
   // Objet python retourne
   PyObject* tpl = K_ARRAY::buildArray(fnew, varString, newcn, -1, newEltType);
@@ -663,7 +665,9 @@ PyObject* K_CONVERTER::convertArray2TetraBaryBoth(PyObject* self, PyObject* args
   }
 
   // Nettoyage de la connectivite creee
+  newcn.setNGon(0);
   K_CONNECT::cleanConnectivity(posx, posy, posz, 1.e-12, newEltType, fnew, newcn);
+  newcn.setNGon(1);
   // Objet python retourne
   PyObject* l = PyList_New(0);
 

@@ -172,8 +172,10 @@ PyObject* K_TRANSFORM::splitConnexityBasics(
     FldArrayF* f0 = new FldArrayF(*f);
     FldArrayF& fp = *f0;
     FldArrayI& cnp = *components[i];
+    cnp.setNGon(0);
     K_CONNECT::cleanConnectivity(posx, posy, posz, 1.e-10, eltType,
                                  fp, cnp);
+    cnp.setNGon(1);
     tpl = K_ARRAY::buildArray(fp, varString, cnp, -1, eltType);
     delete &fp; delete &cnp;
     PyList_Append(l, tpl);
@@ -281,8 +283,10 @@ PyObject* K_TRANSFORM::splitConnexityNGon(
     cnpp[0] = comp[si]; cnpp[1] = si; cnpp += 2;
     for (E_Int j = 0; j < si; j++) cnpp[j] = comp[j];  
     
+    cnp.setNGon(0);
     K_CONNECT::cleanConnectivityNGon(posx, posy, posz, 1.e-10,
                                      fp, cnp);
+    cnp.setNGon(1);
     tpl = K_ARRAY::buildArray(fp, varString, cnp, -1, "NGON");
     delete &fp; delete components[i];
     PyList_Append(l, tpl);
@@ -299,8 +303,10 @@ PyObject* K_TRANSFORM::splitConnexityNODE(FldArrayF* f, FldArrayI* cn,
 {
   PyObject* tpl;
   PyObject* l = PyList_New(0);
+  cn->setNGon(0);
   K_CONNECT::cleanConnectivity(posx, posy, posz, 1.e-10, eltType,
                                *f, *cn);
+  cn->setNGon(1);
   E_Int npts = f->getSize();
   E_Int nfld = f->getNfld();
 

@@ -115,7 +115,9 @@ PyObject* K_TRANSFORM::collapse(PyObject* self, PyObject* args)
     }
   }
 
+  cn2->setNGon(0);
   K_CONNECT::cleanConnectivity(posx, posy, posz, eps, eltType2, *f, *cn2);
+  cn2->setNGon(1);
   PyObject* tpl = K_ARRAY::buildArray(*f, varString, *cn2, -1, eltType2);
   RELEASESHAREDU(array, f, cn);
   delete cn2;

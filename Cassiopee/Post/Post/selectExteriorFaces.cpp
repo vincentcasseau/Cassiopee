@@ -473,10 +473,12 @@ PyObject* K_POST::exteriorFacesStructured(char* varString, FldArrayF& f,
     E_Int posx = K_ARRAY::isCoordinateXPresent(varString)+1;
     E_Int posy = K_ARRAY::isCoordinateYPresent(varString)+1;
     E_Int posz = K_ARRAY::isCoordinateZPresent(varString)+1;
+    connect->setNGon(0);
     if (posx != 0 && posy != 0 && posz != 0)
       K_CONNECT::cleanConnectivity(posx, posy, posz, 
                                    1.e-12, newEltType,
                                    *fnodes, *connect);
+    connect->setNGon(1);
 
     PyObject* tpl2 = K_ARRAY::buildArray3(*fnodes, varString, *connect, newEltType);
     RELEASESHAREDU(tpl, fnodes, connect);
@@ -524,10 +526,13 @@ PyObject* K_POST::exteriorFacesBasic(char* varString, FldArrayF& f,
       (*fnodes)(0,i) = f(ind0,i);
       (*fnodes)(1,i) = f(ind1,i);
     }
+    connect->setNGon(0);
     if (posx != 0 && posy != 0 && posz != 0)
       K_CONNECT::cleanConnectivity(posx, posy, posz, 
                                    1.e-12, elttypeout, 
                                    *fnodes, *connect);
+    connect->setNGon(1);
+
     E_Int nExtNodes = fnodes->getSize();
     if (nExtNodes == 1 ) // c est ferme : un doublon
     {
@@ -559,10 +564,12 @@ PyObject* K_POST::exteriorFacesBasic(char* varString, FldArrayF& f,
     return NULL;
   }
 	
+  connect->setNGon(0);
   if (posx != 0 && posy != 0 && posz != 0)
     K_CONNECT::cleanConnectivity(posx, posy, posz, 
                                  1.e-12, elttypeout, 
                                  f, *connect);
+  connect->setNGon(1);
   PyObject* tpl;
   if (connect->getSize() == 0)
   {

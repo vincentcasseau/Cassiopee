@@ -279,9 +279,11 @@ E_Int K_IO::GenIO::plyread(
     ct->reAllocMat(ntri, 3);
     connect.push_back(ct);
     eltType.push_back(2);
+    connect[0]->setNGon(0);
     K_CONNECT::cleanConnectivity(1, 2, 3, 
                                  1.e-14,  "TRI",
                                  *unstructField[0], *connect[0]);
+    connect[0]->setNGon(1);
   }
   else if (nquad > 0 && ntri == 0)
   {
@@ -289,9 +291,11 @@ E_Int K_IO::GenIO::plyread(
     cq->reAllocMat(nquad, 4);
     connect.push_back(cq);
     eltType.push_back(3);
+    connect[0]->setNGon(0);
     K_CONNECT::cleanConnectivity(1, 2, 3, 
                                  1.e-14,  "QUAD",
                                  *unstructField[0], *connect[0]);
+    connect[0]->setNGon(1);
   }
   else if (ntri == 0 && nquad == 0)
   {
@@ -305,17 +309,21 @@ E_Int K_IO::GenIO::plyread(
     ct->reAllocMat(ntri, 3);
     connect.push_back(ct);
     eltType.push_back(2);
+    connect[0]->setNGon(0);
     K_CONNECT::cleanConnectivity(1, 2, 3, 
                                  1.e-14,  "TRI",
                                  *unstructField[0], *connect[0]);
+    connect[0]->setNGon(1);
     
     unstructField.push_back(f2);
     cq->reAllocMat(nquad, 4);
     connect.push_back(cq);
     eltType.push_back(3);
+    connect[0]->setNGon(0);
     K_CONNECT::cleanConnectivity(1, 2, 3, 
                                  1.e-14,  "QUAD",
                                  *unstructField[1], *connect[1]);
+    connect[0]->setNGon(1);
   }
 
   // Cree les noms de zones

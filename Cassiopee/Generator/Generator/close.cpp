@@ -283,7 +283,9 @@ void K_GENERATOR::closeUnstructuredMesh(E_Int posx, E_Int posy, E_Int posz,
   //if (nv == 2)
   //  closeBARMesh(posx, posy, posz, f, cn);
   
+  cn.setNGon(0);
   K_CONNECT::cleanConnectivity(posx, posy, posz, eps, eltType, f, cn, removeDegen);
+  cn.setNGon(1);
 }
 
 //=============================================================================

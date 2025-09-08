@@ -488,8 +488,10 @@ PyObject* K_POST::selectCellCenters(PyObject* self, PyObject* args)
     }
     
     // close
+    cout->setNGon(0);
     if (cleanConnectivity == 1 && posx > 0 && posy > 0 && posz > 0)
       K_CONNECT::cleanConnectivityNGon(posx, posy, posz, 1.e-10, *fout, *cout);
+    cout->setNGon(1);
 
     tpl = K_ARRAY::buildArray(*fout, varString, *cout, 8);
     delete cout; delete fout;     
@@ -845,9 +847,11 @@ PyObject* K_POST::selectCellCentersBoth(PyObject* self, PyObject* args)
     if (nntot == 0) fout->reAllocMat(0, nfld);
     else 
     {
+      acn->setNGon(0);
       if (cleanConnectivity == 1 && posx > 0 && posy > 0 && posz > 0)
         K_CONNECT::cleanConnectivity(posx, posy, posz, 1.e-10, eltType, 
                                      *fout, *acn);
+      acn->setNGon(1);
     }
     
     tpl  = K_ARRAY::buildArray(*fout,  varString,  *acn, elt, eltType);
@@ -1035,11 +1039,13 @@ PyObject* K_POST::selectCellCentersBoth(PyObject* self, PyObject* args)
     }
     
     // close
+    cout->setNGon(0);
     if (cleanConnectivity == 1 && posx > 0 && posy > 0 && posz > 0)
     {
       K_CONNECT::cleanConnectivityNGon(posx, posy, posz, 1.e-10, *fout, *cout);
       
     }
+    cout->setNGon(1);
 
     tpl  = K_ARRAY::buildArray(*fout,  varString,  *cout, 8);
     tplc = K_ARRAY::buildArray(*foutC, varStringC, *cout, 8);

@@ -648,8 +648,10 @@ PyObject* octree(PyObject* self, PyObject* args)
   }
   toptree = NULL;
   coords->reAllocMat(ind, 3); cn->reAllocMat(et, nvert);
-  const char* eltType = "HEXA"; if (dim == 2) eltType = "QUAD"; 
+  const char* eltType = "HEXA"; if (dim == 2) eltType = "QUAD";
+  cn->setNGon(0);
   K_CONNECT::cleanConnectivity(1, 2, 3, 1.e-6, eltType, *coords, *cn);
+  cn->setNGon(1);
   //buildArray
   tpl = K_ARRAY::buildArray(*coords, "x,y,z", *cn, -1, eltType, false);
 

@@ -245,8 +245,10 @@ PyObject* K_TRANSFORM::splitSharpEdgesBasics(
     FldArrayF* f0 = new FldArrayF(*f);
     FldArrayF& fp = *f0;
     FldArrayI& cnp = *components[i];
+    cnp.setNGon(0);
     K_CONNECT::cleanConnectivity(posx, posy, posz, 1.e-10, eltType,
                                  fp, cnp);
+    cnp.setNGon(1);
     tpl = K_ARRAY::buildArray(fp, varString, cnp, -1, eltType);
     delete &fp; delete &cnp;
     PyList_Append(l, tpl);
@@ -442,11 +444,13 @@ PyObject* K_TRANSFORM::splitSharpEdgesNGon(
     cnpp[0] = comp[si]; cnpp[1] = si; cnpp += 2;
     for (E_Int j = 0; j < si; j++) cnpp[j] = comp[j];  
     
+    cnp.setNGon(0);
     K_CONNECT::cleanConnectivityNGon(posx, posy, posz, 1.e-10,
                                      fp, cnp);
     if (dim == 1) // il semble que dans ce cas, il faut l'appeler 2 fois
       K_CONNECT::cleanConnectivityNGon(posx, posy, posz, 1.e-10,
                                        fp, cnp);
+    cnp.setNGon(1);
     tpl = K_ARRAY::buildArray(fp, varString, cnp, -1, "NGON");
     delete &fp; delete components[i];
     PyList_Append(l, tpl);

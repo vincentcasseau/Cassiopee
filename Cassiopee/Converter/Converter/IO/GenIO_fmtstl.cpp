@@ -114,9 +114,11 @@ E_Int K_IO::GenIO::fstlread(
       cn1[i] = 3*i+1; cn2[i] = 3*i+2; cn3[i] = 3*i+3;
     }
 
+    cn->setNGon(0);
     K_CONNECT::cleanConnectivity(1, 2, 3, 
                                  1.e-14, "TRI",
                                  *f, *cn);
+    cn->setNGon(1);
 
     unstructField.push_back(f);
     eltType.push_back(2);

@@ -304,7 +304,9 @@ PyObject* K_CONVERTER::convertTri2Quad(PyObject* self, PyObject* args)
   // Array QUAD
   cq.reAllocMat(nq, 4);
   FldArrayF fq(*f);
+  cq.setNGon(0);
   K_CONNECT::cleanConnectivity(posx, posy, posz, 1.e-12, "QUAD", fq, cq);
+  cq.setNGon(1);
   
   // Array TRI
   E_Int nt = 0;
@@ -319,7 +321,9 @@ PyObject* K_CONVERTER::convertTri2Quad(PyObject* self, PyObject* args)
     { ct1[nt] = cnp1[i]; ct2[nt] = cnp2[i]; ct3[nt] = cnp3[i]; nt++; }
   }
   ct.reAllocMat(nt, 3);
+  ct.setNGon(0);
   K_CONNECT::cleanConnectivity(posx, posy, posz, 1.e-12, "TRI", ft, ct);
+  ct.setNGon(1);
   
   PyObject* tpl = PyList_New(0);
   PyObject* o;
