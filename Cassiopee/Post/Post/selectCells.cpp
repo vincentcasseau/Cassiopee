@@ -500,7 +500,7 @@ PyObject* K_POST::selectCellsBoth(PyObject* self, PyObject* args)
     acn->setNGon(0);
     if (cleanConnectivity == 1 && posx > 0 && posy > 0 && posz > 0)
       K_CONNECT::cleanConnectivity(posx, posy, posz, 1.e-10, eltType, *an, *acn);
-    acn*>setNGon(1);
+    acn->setNGon(1);
     tpl = K_ARRAY::buildArray(*an, varString, *acn, elt, eltType);
     tplc = tpl ;
     delete an; delete acn;

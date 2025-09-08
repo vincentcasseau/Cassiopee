@@ -6,7 +6,7 @@ from setuptools._distutils import sysconfig
 from setuptools import Extension
 
 # Toggle to True for compiling for debug (valgrind, inspector, sanitizer)
-DEBUG = True
+DEBUG = False
 
 # Toggle to True for compiling all integers in i8
 EDOUBLEINT = False

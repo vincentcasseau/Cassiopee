@@ -487,9 +487,9 @@ PyObject* octree3(PyObject* self, PyObject* args)
   char eltType[8];
   if (dim == 2) strcpy(eltType, "QUAD");
   else strcpy(eltType, "HEXA");
-  cn.setNGon(0);
+  cn->setNGon(0);
   K_CONNECT::cleanConnectivity(1, 2, 3, 1.e-6, eltType,*coords, *cn);
-  cn.setNGon(1);
+  cn->setNGon(1);
     
   // buildArray
   tpl = K_ARRAY::buildArray(*coords, "x,y,z", *cn, -1, eltType, false);
