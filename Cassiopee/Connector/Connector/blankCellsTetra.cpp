@@ -406,6 +406,8 @@ PyObject* K_CONNECTOR::blankCellsTetra(PyObject* self, PyObject* args)
 
   K_FLD::FldArrayI cN(sz);
   for (size_t i = 0; i < sz; ++i) cN[i] = E_Int((*fC)[i]);
+  cmesh->setNGon(0);
+  cN.setNGon(0);
   
   E_Int err = 0;
   if (eltType && strstr(eltType, "TETRA") != 0)
@@ -422,6 +424,8 @@ PyObject* K_CONNECTOR::blankCellsTetra(PyObject* self, PyObject* args)
   {
   	do_the_blanking<K_MESH::Hexahedron/*dummy*/>(blankingType, maske, *fmesh, posx, posy, posz, cmesh, CELLNVAL, overwrite, cN);
   }
+  cmesh->setNGon(1);
+  cN.setNGon(1);
 
   if (err)
   {
