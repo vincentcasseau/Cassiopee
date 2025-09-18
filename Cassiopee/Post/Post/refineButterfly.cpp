@@ -83,6 +83,7 @@ PyObject* K_POST::refineButterfly(PyObject* self, PyObject* args)
   }
   posx++; posy++; posz++;
 
+  E_Int api = f->getApi();
   FldArrayF* fo; FldArrayI* cno;
   refineButterfly(*f, *cn, w, fo, cno);
 
@@ -92,7 +93,7 @@ PyObject* K_POST::refineButterfly(PyObject* self, PyObject* args)
    "TRI", *fo, *cno);
   cno->setNGon(1);
 
-  PyObject* t = K_ARRAY::buildArray(*fo, varString, *cno, -1, "TRI");
+  PyObject* t = K_ARRAY::buildArray3(*fo, varString, *cno, "TRI", api);
   delete fo; delete cno;
   return t;
 }

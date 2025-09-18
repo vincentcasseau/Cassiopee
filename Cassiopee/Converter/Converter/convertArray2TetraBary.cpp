@@ -33,7 +33,7 @@ using namespace std;
 PyObject* K_CONVERTER::convertArray2TetraBary(PyObject* self, PyObject* args)
 {
   PyObject* array;
-  if (!PyArg_ParseTuple(args, "O", &array)) return NULL;
+  if (!PYPARSETUPLE_(args, O_, &array)) return NULL;
 
   // Check array
   E_Int ni, nj, nk, res;
@@ -68,7 +68,8 @@ PyObject* K_CONVERTER::convertArray2TetraBary(PyObject* self, PyObject* args)
       (strcmp(eltType, "TRI") == 0) ||
       (strcmp(eltType, "TETRA") == 0))
   {
-    PyObject* tpl = K_ARRAY::buildArray(*f, varString, *cn, -1, eltType);
+    E_Int api = f->getApi();
+    PyObject* tpl = K_ARRAY::buildArray3(*f, varString, *cn, eltType, api);
     RELEASESHAREDU(array, f, cn);
     return tpl;
   }
@@ -331,7 +332,7 @@ PyObject* K_CONVERTER::convertArray2TetraBary(PyObject* self, PyObject* args)
 PyObject* K_CONVERTER::convertArray2TetraBaryBoth(PyObject* self, PyObject* args)
 {
   PyObject *array, *arrayc;
-  if (!PyArg_ParseTuple(args, "OO", &array, &arrayc)) return NULL;
+  if (!PYPARSETUPLE_(args, OO_, &array, &arrayc)) return NULL;
 
   // Check array
   E_Int ni, nj, nk, res;
@@ -366,7 +367,8 @@ PyObject* K_CONVERTER::convertArray2TetraBaryBoth(PyObject* self, PyObject* args
       (strcmp(eltType, "TRI") == 0) ||
       (strcmp(eltType, "TETRA") == 0))
   {
-    PyObject* tpl = K_ARRAY::buildArray(*f, varString, *cn, -1, eltType);
+    E_Int api = f->getApi();
+    PyObject* tpl = K_ARRAY::buildArray3(*f, varString, *cn, eltType, api);
     RELEASESHAREDU(array, f, cn);
     return tpl;
   }

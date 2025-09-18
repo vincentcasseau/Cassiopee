@@ -32,7 +32,7 @@ PyObject* K_POST::refine(PyObject* self, PyObject* args)
   // surf: maillage a deraffiner (x,y,z+sol)
   // indic: indicateur de deraffinement: vaut 0 ou 1
   PyObject* surf; PyObject* aindic;
-  if (!PyArg_ParseTuple(args, "OO", &surf, &aindic)) return NULL;  
+  if (!PYPARSETUPLE_(args, OO_, &surf, &aindic)) return NULL;  
 
   /*-----------------------------------------------*/
   /* Extraction des donnees du maillage surfacique */ 
@@ -113,6 +113,7 @@ PyObject* K_POST::refine(PyObject* self, PyObject* args)
   }
   
   // Passage a un indic en noeuds
+  E_Int api = f->getApi();
   E_Int npts = f->getSize();
   E_Int n1, n2, n3;
   FldArrayIS indic(npts); indic.setAllValuesAtNull();
@@ -135,7 +136,7 @@ PyObject* K_POST::refine(PyObject* self, PyObject* args)
                                "TRI", *f, *cn);
   cn->setNGon(1);
 
-  PyObject* t = K_ARRAY::buildArray(*f, varString0, *cn, -1, "TRI");
+  PyObject* t = K_ARRAY::buildArray3(*f, varString0, *cn, "TRI", api);
 
   RELEASESHAREDB(res1, aindic, findic, cn1);
   RELEASESHAREDU(surf, f, cn);

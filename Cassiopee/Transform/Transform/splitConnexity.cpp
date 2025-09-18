@@ -32,7 +32,7 @@ using namespace std;
 PyObject* K_TRANSFORM::splitConnexity(PyObject* self, PyObject* args)
 {
   PyObject* array;
-  if (!PyArg_ParseTuple(args, "O", &array))
+  if (!PYPARSETUPLE_(args, O_, &array))
   {
     return NULL;
   }
@@ -113,6 +113,7 @@ PyObject* K_TRANSFORM::splitConnexityBasics(
   vector< vector<E_Int> > cEEN(cn->getSize());
   K_CONNECT::connectEV2EENbrs(eltType, f->getSize(), *cn, cEEN);
   
+  E_Int api = f->getApi();
   E_Int nt = cn->getNfld();
   E_Int ne = cn->getSize(); // nbre d'elements
   E_Int nev = 0; // nbre d'elements deja visites
@@ -176,7 +177,7 @@ PyObject* K_TRANSFORM::splitConnexityBasics(
     K_CONNECT::cleanConnectivity(posx, posy, posz, 1.e-10, eltType,
                                  fp, cnp);
     cnp.setNGon(1);
-    tpl = K_ARRAY::buildArray(fp, varString, cnp, -1, eltType);
+    tpl = K_ARRAY::buildArray3(fp, varString, cnp, eltType, api);
     delete &fp; delete &cnp;
     PyList_Append(l, tpl);
     Py_DECREF(tpl);
@@ -189,6 +190,7 @@ PyObject* K_TRANSFORM::splitConnexityNGon(
   FldArrayF* f, FldArrayI* cn, char* varString,
   E_Int posx, E_Int posy, E_Int posz)
 {
+  E_Int api = f->getApi();
   E_Int* ptr = cn->begin();
   E_Int sf = ptr[1];
   E_Int ne = ptr[2+sf]; // nbre d'elements
@@ -286,8 +288,8 @@ PyObject* K_TRANSFORM::splitConnexityNGon(
     cnp.setNGon(0);
     K_CONNECT::cleanConnectivityNGon(posx, posy, posz, 1.e-10,
                                      fp, cnp);
-    cnp.setNGon(1);
-    tpl = K_ARRAY::buildArray(fp, varString, cnp, -1, "NGON");
+    cnp.setNGon(cn->getNGonType());
+    tpl = K_ARRAY::buildArray3(fp, varString, cnp, "NGON", api);
     delete &fp; delete components[i];
     PyList_Append(l, tpl);
     Py_DECREF(tpl);
@@ -309,6 +311,7 @@ PyObject* K_TRANSFORM::splitConnexityNODE(FldArrayF* f, FldArrayI* cn,
   cn->setNGon(1);
   E_Int npts = f->getSize();
   E_Int nfld = f->getNfld();
+  E_Int api = f->getApi();
 
   for (E_Int i = 0; i < npts; i++)
   {
@@ -317,7 +320,7 @@ PyObject* K_TRANSFORM::splitConnexityNODE(FldArrayF* f, FldArrayI* cn,
     FldArrayI* cnp = new FldArrayI(0);
     for (E_Int v = 1; v <= nfld; v++) fp[v-1] = (*f)(i,v);
 
-    tpl = K_ARRAY::buildArray(*f0, varString, *cnp, -1, eltType);
+    tpl = K_ARRAY::buildArray3(*f0, varString, *cnp, eltType, api);
     delete f0; delete cnp;
     PyList_Append(l, tpl);
     Py_DECREF(tpl);
