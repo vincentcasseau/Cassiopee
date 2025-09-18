@@ -201,7 +201,7 @@ PyObject* K_POST::frontFacesUnstructured(char* varString, FldArrayF& f,
     K_CONNECT::cleanConnectivity(posx, posy, posz, 
                                  1.e-12, eltTypeOut, 
                                  *faces, *connect);
-
+  connect->setNGon(1);
   PyObject* tpl = K_ARRAY::buildArray3(*faces, varString, 
                                        *connect, eltTypeOut, api);
   delete faces; delete connect;
