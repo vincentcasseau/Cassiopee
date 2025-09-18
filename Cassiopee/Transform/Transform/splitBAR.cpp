@@ -67,6 +67,7 @@ PyObject* K_TRANSFORM::splitBAR(PyObject* self, PyObject* args)
   
   // Duplique le pt et c'est tout. Le reste sera fait par un splitConnexity.
   E_Int npts = f->getSize();
+  E_Int api = f->getApi();
   E_Int N1 = N;
  
   if (N1 < 0 || N1 > npts-1)
@@ -80,34 +81,41 @@ PyObject* K_TRANSFORM::splitBAR(PyObject* self, PyObject* args)
   E_Int nptsf = npts+1;
   if (N2 > 0) nptsf = npts+2;
   E_Int nfld = f->getNfld();
-  E_Int csize = cn->getSize()*cn->getNfld(); 
-  PyObject* tpl = K_ARRAY::buildArray(nfld, varString,
-                                      nptsf, cn->getSize(),
-                                      -1, eltType, false, csize);
-  E_Float* fnp = K_ARRAY::getFieldPtr(tpl);
-  FldArrayF fn(nptsf, nfld, fnp, true);
+  E_Bool center = false;
+  PyObject* tpl = K_ARRAY::buildArray3(nfld, varString, nptsf,
+                                       *cn, eltType, center, api, true);
+  FldArrayF* fn2; FldArrayI* cn2; 
+  K_ARRAY::getFromArray3(tpl, fn2, cn2);
 
   for (E_Int v = 1; v <= nfld; v++)
   {
     E_Float* f1 = f->begin(v);
-    E_Float* f2 = fn.begin(v);
+    E_Float* f2 = fn2->begin(v);
 
     for (E_Int i = 0; i < npts; i++) f2[i] = f1[i];
     f2[npts] = f1[N1];
-  if (N2 > 0) f2[npts+1] = f1[N2];
+    if (N2 > 0) f2[npts+1] = f1[N2];
   }
-  
-  // copie connectivite
-  E_Int* cnnp = K_ARRAY::getConnectPtr(tpl);
-  memcpy(cnnp, cn->begin(), cn->getSize()*cn->getNfld()*sizeof(E_Int));
    
   // change le pts
-  for (E_Int i = 0; i < cn->getSize(); i++)
+  E_Int nc = cn2->getNConnect();
+  for (E_Int ic = 0; ic < nc; ic++)
   {
-    if (cnnp[i] == N1+1) { cnnp[i] = npts+1; }
-    if (cnnp[i] == N2+1) { cnnp[i] = npts+2; }
+    FldArrayI& cm = *(cn2->getConnect(ic));
+    E_Int nelts = cm.getSize();
+    for (E_Int i = 0; i < nelts; i++)
+    {
+      // first point of the BAR
+      if (cm(i, 1) == N1+1) { cm(i, 1) = npts+1; }
+      else if (cm(i, 1) == N2+1) { cm(i, 1) = npts+2; }
+
+      // second point of the BAR
+      if (cm(i, 2) == N1+1) { cm(i, 2) = npts+1; }
+      else if (cm(i, 2) == N2+1) { cm(i, 2) = npts+2; }
+    }
   }
 
-  RELEASESHAREDU(array, f, cn);  
+  RELEASESHAREDU(tpl, fn2, cn2);
+  RELEASESHAREDU(array, f, cn);
   return tpl;
 }

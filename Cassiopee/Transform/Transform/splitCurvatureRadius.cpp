@@ -40,12 +40,10 @@ PyObject* K_TRANSFORM::splitCurvatureRadius(PyObject* self, PyObject* args)
   E_Float ds = 0.;
   // extraction de l'array 1D
   E_Int im, jm, km;
-  FldArrayF* f;
-  FldArrayI* cn;
+  FldArrayF* f; FldArrayI* cn;
   char* varString;
   char* et;
-  E_Int res = 
-    K_ARRAY::getFromArray3(array, varString, f, im, jm, km, cn, et);
+  E_Int res = K_ARRAY::getFromArray3(array, varString, f, im, jm, km, cn, et);
   if ( res != 1 && res != 2 )
   {
     PyErr_SetString(PyExc_TypeError,
@@ -79,7 +77,8 @@ PyObject* K_TRANSFORM::splitCurvatureRadius(PyObject* self, PyObject* args)
                     "splitCurvatureRadius: structured array must be an i-array.");
     return NULL;         
   }
-    
+
+  E_Int api = f->getApi();
   E_Int npts = f->getSize();
   if ( npts < 6 )
   {
@@ -101,7 +100,7 @@ PyObject* K_TRANSFORM::splitCurvatureRadius(PyObject* self, PyObject* args)
   {
     FldArrayF& f0 = *fsplit[v];
     E_Int ni = f0.getSize();
-    tpl = K_ARRAY::buildArray(f0, varString, ni, 1, 1);
+    tpl = K_ARRAY::buildArray3(f0, varString, ni, 1, 1, api);
     delete &f0;
     PyList_Append(l, tpl);
     Py_DECREF(tpl);

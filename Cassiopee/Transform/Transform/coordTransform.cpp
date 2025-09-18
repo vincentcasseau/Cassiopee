@@ -183,47 +183,52 @@ PyObject* K_TRANSFORM::deformPoint(PyObject* self, PyObject* args)
   PyObject* tpl;
   E_Int npts = f->getSize();
   E_Int nfld = f->getNfld();
+  E_Int api = f->getApi();
   if (res == 1) //structured
   {
-    tpl = K_ARRAY::buildArray(nfld, varString, im, jm, km);
+    tpl = K_ARRAY::buildArray3(nfld, varString, im, jm, km, api);
   } 
   else //unstructured 
   {
-    E_Int csize = cn->getSize()*cn->getNfld(); 
-    tpl = K_ARRAY::buildArray(nfld, varString,
-                              npts, cn->getSize(),
-                              -1, eltType, false, csize);
+    E_Int center = false;
+    tpl = K_ARRAY::buildArray3(nfld, varString, npts,
+                               *cn, eltType, center, api, true);
   }
-  E_Float* fnp = K_ARRAY::getFieldPtr(tpl);
-  FldArrayF fn(npts, nfld, fnp, true);
-  fn.setAllValuesAt(*f);
-  if (res == 2)
-  {
-    E_Int* cnnp = K_ARRAY::getConnectPtr(tpl);
-    K_KCORE::memcpy__(cnnp, cn->begin(), cn->getSize()*cn->getNfld());
-  }
+  FldArrayF* f2;
+  K_ARRAY::getFromArray3(tpl, f2);
 
   // Pointers
-  E_Float* xo = fn.begin(posx);
-  E_Float* yo = fn.begin(posy);
-  E_Float* zo = fn.begin(posz);
+  E_Float* xo = f->begin(posx); E_Float* x2 = f2->begin(posx);
+  E_Float* yo = f->begin(posy); E_Float* y2 = f2->begin(posy);
+  E_Float* zo = f->begin(posz); E_Float* z2 = f2->begin(posz);
 
   // Regularisation
-#pragma omp parallel default(shared)
+  #pragma omp parallel
   {
-  E_Float d1, d2, d3, dd, f;
-#pragma omp for  
-  for (E_Int i = 0; i < npts; i++)
-  {
-    d1 = xo[i]-xi; d2 = yo[i]-yi; d3 = zo[i]-zi;
-    dd = d1*d1+d2*d2+d3*d3;
-    f = depth * exp(-dd*sigma);
-    xo[i] += dx*f;
-    yo[i] += dy*f;
-    zo[i] += dz*f;
-  }
+    E_Float d1, d2, d3, dd, f;
+    #pragma omp for  
+    for (E_Int i = 0; i < npts; i++)
+    {
+      d1 = xo[i] - xi; d2 = yo[i] - yi; d3 = zo[i] - zi;
+      dd = d1*d1 + d2*d2 + d3*d3;
+      f = depth * exp(-dd*sigma);
+      x2[i] = xo[i] + dx*f;
+      y2[i] = yo[i] + dy*f;
+      z2[i] = zo[i] + dz*f;
+    }
+
+    for (E_Int n = 1; n <= nfld; n++)
+    {
+      if (n != posx && n != posy && n != posz)
+      {
+        E_Float* fn = f->begin(n); E_Float* f2n = f2->begin(n);
+        #pragma omp for
+        for (E_Int i = 0; i < npts; i++) f2n[i] = fn[i];
+      }
+    }
   }
   
+  RELEASESHAREDS(tpl, f2);
   RELEASESHAREDB(res, array, f, cn);
   return tpl;
 }
