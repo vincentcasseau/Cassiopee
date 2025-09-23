@@ -205,16 +205,16 @@ PyObject* K_TRANSFORM::deformPoint(PyObject* self, PyObject* args)
   // Regularisation
   #pragma omp parallel
   {
-    E_Float d1, d2, d3, dd, f;
+    E_Float d1, d2, d3, dd, fac;
     #pragma omp for  
     for (E_Int i = 0; i < npts; i++)
     {
       d1 = xo[i] - xi; d2 = yo[i] - yi; d3 = zo[i] - zi;
       dd = d1*d1 + d2*d2 + d3*d3;
-      f = depth * exp(-dd*sigma);
-      x2[i] = xo[i] + dx*f;
-      y2[i] = yo[i] + dy*f;
-      z2[i] = zo[i] + dz*f;
+      fac = depth * exp(-dd*sigma);
+      x2[i] = xo[i] + dx*fac;
+      y2[i] = yo[i] + dy*fac;
+      z2[i] = zo[i] + dz*fac;
     }
 
     for (E_Int n = 1; n <= nfld; n++)
