@@ -238,7 +238,7 @@ PyObject* K_GENERATOR::adaptOctree(PyObject* self, PyObject* args)
 
   // Realloc
   fo->reAllocMat(no,3); cno->reAllocMat(eto, nvert); indicout->reAlloc(eto);
-  cno->setNGon(0);
+  cno->setNGonType(0);
   K_CONNECT::cleanConnectivity(1, 2, 3, 1.e-10, eltType, *fo, *cno);
   cno->setNGon(1);
 

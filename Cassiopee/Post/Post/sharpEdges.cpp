@@ -592,10 +592,10 @@ PyObject* K_POST::sharpEdges(PyObject* self, PyObject* args)
       cnep[1] = sizeco2; // taille du tableau d'elements
       cnep += 2;
       for (E_Int i = 0; i < sizeco2; i++) cnep[i] = newptrEF[i];
-      cne->setNGon(0);
+      cne->setNGonType(0);
       K_CONNECT::cleanConnectivityNGon(posx, posy, posz, 1.e-10,
                                        *f, *cne);
-      cne->setNGon(1);
+      cne->setNGonType(1);
       tpl = K_ARRAY::buildArray3(*f, varString0, *cne, "NGON", api);
       delete fe; delete cne;
       RELEASESHAREDU(array, f, cn);

@@ -28,13 +28,6 @@
 using namespace std;
 using namespace K_FLD;
 using namespace K_SEARCH;
-extern "C"
-{
-  void k6boundboxunstr_(const E_Int& npts, 
-                        const E_Float* x, const E_Float* y, const E_Float* z, 
-                        E_Float& xmax, E_Float& ymax, E_Float& zmax, 
-                        E_Float& xmin, E_Float& ymin, E_Float& zmin);
-}
 
 namespace K_GENERATOR 
 {
@@ -177,6 +170,8 @@ PyObject* octree3(PyObject* self, PyObject* args)
     posxt.push_back(posxi); posyt.push_back(posyi); poszt.push_back(poszi);
   }
 
+  E_Int api = 1; // TODO unstrF[0]->getApi();
+
   // recuperation des snears 
   E_Int nsnear = PyList_Size(listOfSnears);
   if ( nzones != nsnear )
@@ -226,8 +221,9 @@ PyObject* octree3(PyObject* self, PyObject* args)
     FldArrayF& f2 = *unstrF[v]; FldArrayI& cn2 = *cnt[v];
     posx2 = posxt[v]; posy2 = posyt[v]; posz2 = poszt[v];
     //bounding box globale ? 
-    k6boundboxunstr_(f2.getSize(), f2.begin(posx2), f2.begin(posy2), f2.begin(posz2),
-                     xmaxloc, ymaxloc, zmaxloc, xminloc, yminloc, zminloc);
+    K_COMPGEOM::boundingBoxUnstruct(f2.getSize(),
+                                    f2.begin(posx2), f2.begin(posy2), f2.begin(posz2),
+                                    xminloc, yminloc, zminloc, xmaxloc, ymaxloc, zmaxloc);
     xmino = K_FUNC::E_min(xminloc,xmino); xmaxo = K_FUNC::E_max(xmaxloc,xmaxo);
     ymino = K_FUNC::E_min(yminloc,ymino); ymaxo = K_FUNC::E_max(ymaxloc,ymaxo);
     if (dim == 2) {zmino = 0.; zmaxo = 0.;}
@@ -431,7 +427,7 @@ PyObject* octree3(PyObject* self, PyObject* args)
     zmino = current->getZmin(); zmaxo = zmino+dh0;//current->getZmax();
 
     // feuille->inserer dans le maillage
-    if (  current->getNext1() == NULL ) 
+    if (current->getNext1() == NULL) 
     { 
       //creation des 9 ou 27 sommets de la cellule 1
       xt[ind] = xmino; yt[ind] = ymino; zt[ind] = zmino; cn1[et] = ind+1; ind++; 
@@ -493,12 +489,12 @@ PyObject* octree3(PyObject* self, PyObject* args)
   char eltType[8];
   if (dim == 2) strcpy(eltType, "QUAD");
   else strcpy(eltType, "HEXA");
-  cn->setNGon(0);
+  cn->setNGonType(0);
   K_CONNECT::cleanConnectivity(1, 2, 3, 1.e-6, eltType,*coords, *cn);
-  cn->setNGon(1);
+  cn->setNGonType(1);
     
   // buildArray
-  tpl = K_ARRAY::buildArray(*coords, "x,y,z", *cn, -1, eltType, false);
+  tpl = K_ARRAY::buildArray3(*coords, "x,y,z", *cn, eltType, api);
   // nettoyage
   delete coords; delete cn;
   for (size_t v = 0; v < structF.size(); v++) RELEASESHAREDS(objst[v], structF[v]);

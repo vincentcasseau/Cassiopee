@@ -161,9 +161,9 @@ PyObject* K_GENERATOR::conformOctree3(PyObject* self, PyObject* args)
   }
   // Sortie
   RELEASESHAREDU(octree, f, cn);
-  cno->setNGon(0);
+  cno->setNGonType(0);
   K_CONNECT::cleanConnectivity(posx, posy, posz, 1.e-10, eltType, *fo, *cno);
-  cno->setNGon(1);
+  cno->setNGonType(1);
 
   PyObject* tpl = K_ARRAY::buildArray3(*fo, varString, *cno, eltType, api);
   delete fo; delete cno;

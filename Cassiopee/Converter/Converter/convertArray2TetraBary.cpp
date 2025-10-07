@@ -319,7 +319,8 @@ PyObject* K_CONVERTER::convertArray2TetraBary(PyObject* self, PyObject* args)
   newcn.setNGon(1);
 
   // Objet python retourne
-  PyObject* tpl = K_ARRAY::buildArray(fnew, varString, newcn, -1, newEltType);
+  E_Int api = f->getApi();
+  PyObject* tpl = K_ARRAY::buildArray3(fnew, varString, newcn, newEltType, api);
 
   RELEASESHAREDB(res, array, f, cn);
   return tpl;
@@ -673,9 +674,10 @@ PyObject* K_CONVERTER::convertArray2TetraBaryBoth(PyObject* self, PyObject* args
   // Objet python retourne
   PyObject* l = PyList_New(0);
 
-  PyObject* tpl1 = K_ARRAY::buildArray(fnew, varString, newcn, -1, newEltType);
+  E_Int api = f->getApi();
+  PyObject* tpl1 = K_ARRAY::buildArray3(fnew, varString, newcn, newEltType, api);
   PyList_Append(l, tpl1); Py_DECREF(tpl1);
-  PyObject* tpl2 = K_ARRAY::buildArray(fcnew, varStringc, newcn, -1, newEltType);
+  PyObject* tpl2 = K_ARRAY::buildArray3(fcnew, varStringc, newcn, newEltType, api);
   PyList_Append(l, tpl2); Py_DECREF(tpl2);
   RELEASESHAREDB(res, array, f, cn);
   RELEASESHAREDB(resc, arrayc, fc, cnc);

@@ -210,6 +210,7 @@ PyObject* front2Struct(PyObject* self, PyObject* args)
   // Check vmin
   if (Vmin < 2) Vmin = 2;
 
+  E_Int api = f1->getApi();
   E_Float* xt1 = f1->begin(posx1);
   E_Float* yt1 = f1->begin(posy1);
   E_Float* zt1 = f1->begin(posz1);
@@ -403,7 +404,7 @@ PyObject* front2Struct(PyObject* self, PyObject* args)
           fz[ind] = Fz + gamma*(Cz-Fz);
         }
     }
-    tpl = K_ARRAY::buildArray3(*f, "x,y,z", Vmin, Vmin, Nk);
+    tpl = K_ARRAY::buildArray3(*f, "x,y,z", Vmin, Vmin, Nk, api);
     delete f;
     PyList_Append(meshes, tpl);
     Py_DECREF(tpl);
@@ -437,12 +438,11 @@ PyObject* fillWithStruct( PyObject* self, PyObject* args )
   E_Int ni, nj, nk;
   FldArrayF* f; FldArrayI* cn;
   char* varString; char* eltType;
-  E_Int res1 = K_ARRAY::getFromArray(mesh, varString, 
-                                     f, ni, nj, nk, cn, eltType);
+  E_Int res1 = K_ARRAY::getFromArray3(mesh, varString, 
+                                      f, ni, nj, nk, cn, eltType);
   if (res1 != 2 || strcmp(eltType, "QUAD") != 0) 
   {
-    if (res1 == 1) delete f;
-    if (res1 == 2) {delete f; delete cn;}
+    RELEASESHAREDB(res1, mesh, f, cn);
     PyErr_SetString(PyExc_TypeError, 
                     "fillWithStruct: mesh must be a QUAD array.");
     return NULL;
@@ -452,7 +452,7 @@ PyObject* fillWithStruct( PyObject* self, PyObject* args )
   E_Int posz = K_ARRAY::isCoordinateZPresent(varString);
   if ( posx == -1 || posy == -1 || posz == -1 )
   {
-    delete f; delete cn;
+    RELEASESHAREDU(mesh, f, cn);
     PyErr_SetString(PyExc_TypeError, 
                     "fillWithStruct: coords must be present in mesh.");
     return NULL;
@@ -462,6 +462,7 @@ PyObject* fillWithStruct( PyObject* self, PyObject* args )
   // Check vmin
   if (Vmin < 2) Vmin = 2;
 
+  E_Int api = f->getApi();
   E_Float* xt = f->begin(posx);
   E_Float* yt = f->begin(posy);
   E_Float* zt = f->begin(posz);
@@ -535,7 +536,7 @@ PyObject* fillWithStruct( PyObject* self, PyObject* args )
         fz[ind] = Cz; ind++;
       }
     
-    tpl = K_ARRAY::buildArray3(*fl, "x,y,z", Vmin, Vmin, 1);
+    tpl = K_ARRAY::buildArray3(*fl, "x,y,z", Vmin, Vmin, 1, api);
     delete fl;
     PyList_Append(meshes, tpl);
     Py_DECREF(tpl);
@@ -546,7 +547,7 @@ PyObject* fillWithStruct( PyObject* self, PyObject* args )
          concaveQuads, nQuads);
 
   // Sortie
-  delete f; delete cn; 
+  RELEASESHAREDU(mesh, f, cn);  
   return meshes;
 }
 

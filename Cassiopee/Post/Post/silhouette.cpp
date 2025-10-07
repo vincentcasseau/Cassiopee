@@ -276,10 +276,10 @@ PyObject* K_POST::silhouette(PyObject* self, PyObject* args)
   
     // clean connectivity: suppress multiple nodes, unused nodes and degenerate elements
     posx++; posy++; posz++;
-    cnnew->setNGon(0);
+    cnnew->setNGonType(0);
     K_CONNECT::cleanConnectivity(posx, posy, posz, 1.e-10, eltType, 
                                  *fnew, *cnnew);
-    cnnew->setNGon(1);
+    cnnew->setNGonType(1);
   }
 
   if (cnnew->getSize() == 0)

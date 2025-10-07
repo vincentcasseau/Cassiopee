@@ -486,12 +486,12 @@ PyObject* K_POST::selectCellCenters(PyObject* self, PyObject* args)
     }
     
     // close
-    cout->setNGon(0);
+    cout->setNGonType(0);
     if (cleanConnectivity == 1 && posx > 0 && posy > 0 && posz > 0)
       K_CONNECT::cleanConnectivityNGon(posx, posy, posz, 1.e-10, *fout, *cout);
-    cout->setNGon(1);
+    cout->setNGonType(1);
 
-    cout->setNGon(cnp->getNGonType());
+    cout->setNGonType(cnp->getNGonType());
     tpl = K_ARRAY::buildArray3(*fout, varString, *cout, "NGON", api);
     delete cout; delete fout;     
   }
@@ -843,11 +843,11 @@ PyObject* K_POST::selectCellCentersBoth(PyObject* self, PyObject* args)
     if (nntot == 0) fout->reAllocMat(0, nfld);
     else 
     {
-      acn->setNGon(0);
+      acn->setNGonType(0);
       if (cleanConnectivity == 1 && posx > 0 && posy > 0 && posz > 0)
         K_CONNECT::cleanConnectivity(posx, posy, posz, 1.e-10, eltType, 
                                      *fout, *acn);
-      acn->setNGon(1);
+      acn->setNGonType(1);
     }
     
     tpl = K_ARRAY::buildArray3(*fout, varString, *acn, eltType, api);
@@ -1035,15 +1035,15 @@ PyObject* K_POST::selectCellCentersBoth(PyObject* self, PyObject* args)
     }
     
     // close
-    cout->setNGon(0);
+    cout->setNGonType(0);
     if (cleanConnectivity == 1 && posx > 0 && posy > 0 && posz > 0)
     {
       K_CONNECT::cleanConnectivityNGon(posx, posy, posz, 1.e-10, *fout, *cout);
       
     }
-    cout->setNGon(1);
+    cout->setNGonType(1);
 
-    cout->setNGon(1);
+    cout->setNGonType(1);
     tpl  = K_ARRAY::buildArray3(*fout,  varString, *cout, eltType, api);
     tplc = K_ARRAY::buildArray3(*foutC, varStringC, *cout, eltType, api);
     delete cout; delete fout; delete foutC; 

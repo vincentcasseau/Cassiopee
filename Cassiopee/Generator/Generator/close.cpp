@@ -66,10 +66,12 @@ PyObject* K_GENERATOR::closeMesh(PyObject* self, PyObject* args)
   }
   posx++; posy++; posz++;
 
+  E_Int api = f->getApi();
+
   if (res == 1)
   {
     closeStructuredMesh(f->begin(posx), f->begin(posy), f->begin(posz), im, jm, km, eps);
-    PyObject* tpl = K_ARRAY::buildArray3(*f, varString, im, jm, km); 
+    PyObject* tpl = K_ARRAY::buildArray3(*f, varString, im, jm, km, api); 
     RELEASESHAREDS(array, f);
     return tpl;
   }
@@ -127,10 +129,12 @@ PyObject* K_GENERATOR::closeMeshLegacy(PyObject* self, PyObject* args)
   }
   posx++; posy++; posz++;
 
+  E_Int api = f->getApi();
+
   if (res == 1)
   {
     closeStructuredMesh(f->begin(posx), f->begin(posy), f->begin(posz), im, jm, km, eps);
-    PyObject* tpl = K_ARRAY::buildArray3(*f, varString, im, jm, km); 
+    PyObject* tpl = K_ARRAY::buildArray3(*f, varString, im, jm, km, api); 
     RELEASESHAREDS(array, f);
     return tpl;
   }
@@ -145,7 +149,7 @@ PyObject* K_GENERATOR::closeMeshLegacy(PyObject* self, PyObject* args)
     }
 
     closeUnstructuredMesh(posx, posy, posz, eps, eltType, *f, *cn, removeDegen);
-    PyObject* tpl = K_ARRAY::buildArray3(*f, varString, *cn, eltType);
+    PyObject* tpl = K_ARRAY::buildArray3(*f, varString, *cn, eltType, api);
     RELEASESHAREDU(array, f, cn);
     return tpl;
   }
@@ -283,9 +287,9 @@ void K_GENERATOR::closeUnstructuredMesh(E_Int posx, E_Int posy, E_Int posz,
   //if (nv == 2)
   //  closeBARMesh(posx, posy, posz, f, cn);
   
-  cn.setNGon(0);
+  cn.setNGonType(0);
   K_CONNECT::cleanConnectivity(posx, posy, posz, eps, eltType, f, cn, removeDegen);
-  cn.setNGon(1);
+  cn.setNGonType(1);
 }
 
 //=============================================================================
@@ -298,10 +302,10 @@ void K_GENERATOR::closeBARMesh(E_Int posx, E_Int posy, E_Int posz,
 {
   // Verifie que la BAR est dans le plan x,y
   E_Float xmin, ymin, zmin, xmax, ymax, zmax;
-  K_COMPGEOM::boundingBox(posx, posy, posz,
-                          f,
-                          xmin, ymin, zmin,
-                          xmax, ymax, zmax);
+  E_Int npts = f.getSize();
+  K_COMPGEOM::boundingBoxUnstruct(npts, f.begin(posx), f.begin(posy), f.begin(posz),
+                                  xmin, ymin, zmin,
+                                  xmax, ymax, zmax);
   if (fEqualZero(zmax-zmin) == false) return;
 
   E_Int i = 0;

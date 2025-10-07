@@ -198,9 +198,9 @@ PyObject* K_GENERATOR::adaptOctree3(PyObject* self, PyObject* args)
 
   // Realloc
   fo->reAllocMat(no,3); cno->reAllocMat(eto,nvert); indicout->reAllocMat(eto,1);
-  cno->setNGon(0);
+  cno->setNGonType(0);
   K_CONNECT::cleanConnectivity(1, 2, 3, 1.e-10, eltType, *fo, *cno);
-  cno->setNGon(1);
+  cno->setNGonType(1);
 
   // Sortie
   RELEASESHAREDU(octree, f, cn);  RELEASESHAREDB(resi, indica, fi, cni);

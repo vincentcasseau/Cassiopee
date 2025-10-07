@@ -88,10 +88,10 @@ PyObject* K_POST::refineButterfly(PyObject* self, PyObject* args)
   refineButterfly(*f, *cn, w, fo, cno);
 
   E_Float tolc = 1.e-12;
-  cno->setNGon(0);
+  cno->setNGonType(0);
   K_CONNECT::cleanConnectivity(posx, posy, posz, tolc,
    "TRI", *fo, *cno);
-  cno->setNGon(1);
+  cno->setNGonType(1);
 
   PyObject* t = K_ARRAY::buildArray3(*fo, varString, *cno, "TRI", api);
   delete fo; delete cno;

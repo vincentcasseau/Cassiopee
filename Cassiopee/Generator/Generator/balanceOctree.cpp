@@ -478,9 +478,9 @@ void K_GENERATOR::checkBalancing2(FldArrayI& cn, FldArrayF& coords)
       cn = cno; coords = fo; cn1 = cn.begin(1); cn2 = cn.begin(2);
     }
   }
-  cn.setNGon(0);
+  cn.setNGonType(0);
   K_CONNECT::cleanConnectivity(1, 2, 3, 1.e-10, eltType, coords, cn);
-  cn.setNGon(1);
+  cn.setNGonType(1);
   return;
 }
 //=============================================================================
@@ -550,11 +550,11 @@ void K_GENERATOR::checkBalancing3(FldArrayI& cn, FldArrayF& coords)
     cEEN.clear();
     // Realloc
     fo.reAllocMat(no,3); cno.reAllocMat(eto,nvert); indict.reAllocMat(eto,1);
-    cno.setNGon(0);
+    cno.setNGonType(0);
     if (nvert == 4) K_CONNECT::cleanConnectivity(1, 2, 3, 1.e-10, "QUAD", 
                                                  fo, cno);
     else K_CONNECT::cleanConnectivity(1, 2, 3, 1.e-10, "HEXA", fo, cno);
-    cno.setNGon(1);
+    cno.setNGonType(1);
     coords = fo; cn = cno;
   }
   return;

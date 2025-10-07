@@ -368,8 +368,7 @@ def writeEnvs():
     env = os.environ
     cassiopee = env.get('CASSIOPEE', '')
     elsaprod = env.get('ELSAPROD', '')
-    if cassiopee != '': envPath = libPath+'/../../../'
-    else: envPath = libPath+'/../'
+    envPath = libPath+'/../'
     cmdPath = libPath+'/..'
     installLD = os.getenv('LD_LIBRARY_PATH')
 
@@ -380,7 +379,7 @@ def writeEnvs():
     except: mt = 1
 
     # sh ou bash
-    # usage: source $CASSIOPEE/Dist/env_Cassiopee.sh
+    # usage: source $CASSIOPEE/Dist/bin/$ELSAPROD/env_Cassiopee.sh
     with open(envPath+"env_Cassiopee.sh", 'w') as p:
         p.write("ulimit -s unlimited\n")
         if cassiopee != '': p.write("export CASSIOPEE=%s\n"%cassiopee)
@@ -406,7 +405,7 @@ def writeEnvs():
             p.write("fi\n")
 
     # csh ou tcsh
-    # usage: source $CASSIOPEE/Dist/env_Cassiopee.csh
+    # usage: source $CASSIOPEE/Dist/bin/ELSAPROD/env_Cassiopee.csh
     with open(envPath+"env_Cassiopee.csh", 'w') as p:
         p.write("limit stacksize unlimited\n")
         if cassiopee != '': p.write("setenv CASSIOPEE %s\n"%cassiopee)
@@ -440,7 +439,7 @@ def writeEnvs():
     # module
     # usage: module use $CASSIOPEE/Dist
     # module load cassiopee
-    with open(envPath+"cassiopee", 'w') as p:
+    with open(envPath+"mod_cassiopee", 'w') as p:
         p.write("#%Module1.0#####################################################################\n")
         p.write("##\n")
         p.write("## CASSIOPEE\n")
@@ -1563,6 +1562,33 @@ def checkOSMesa(additionalLibPaths=[], additionalIncludePaths=[]):
         return (False, i, l, libname)
     else:
         print('Info: libOSMesa and GL/osmesa.h was not found on your system. No OSMESA offscreen support for CPlot.')
+        return (False, i, l, libname)
+
+#=============================================================================
+# Check for adolc (automatic differentiation)
+# additionalPaths: chemins d'installation non standards: ['/home/toto',...]
+# Retourne: (True/False, chemin des includes, chemin de la librairie)
+#=============================================================================
+def checkAdolc(additionalLibPaths=[], additionalIncludePaths=[]):
+    libname = 'adolc'
+    l = checkLibFile__('libadolc.so', additionalLibPaths)
+    if l is None:
+        l = checkLibFile__('libadolc.a', additionalLibPaths)
+    if l is None:
+        l = checkLibFile__('adolc.dll.a', additionalLibPaths)
+
+    i = checkIncFile__('adolc/adolc.h', additionalIncludePaths)
+    if i is not None and l is not None:
+        print('Info: libadolc detected at %s.'%l)
+        return (True, i, l, libname)
+    elif l is None and i is not None:
+        print('Info: libadolc was not found on your system. No AD support.')
+        return (False, i, l, libname)
+    elif l is not None and i is None:
+        print('Info: adolc/adolc.h was not found on your system. No AD support.')
+        return (False, i, l, libname)
+    else:
+        print('Info: libadolc and adolc/adolc.h was not found on your system. No AD support.')
         return (False, i, l, libname)
 
 #=============================================================================
@@ -2880,12 +2906,9 @@ def createCudaScanner(env):
     SCons.Tool.SourceFileScanner.add_scanner(['.cu'], CudaScanner)
     return env
 
+# Add underlying common "NVIDIA CUDA compiler" variables that
+# are used by multiple builders.
 def addCommonNvccVariables(env):
-    """
-    Add underlying common "NVIDIA CUDA compiler" variables that
-    are used by multiple builders.
-    """
-
     # "NVCC common command line"
     if not env.has_key('_NVCCCOMCOM'):
         # nvcc needs '-I' prepended before each include path, regardless of platform

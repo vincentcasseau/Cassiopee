@@ -25,13 +25,6 @@
 using namespace std;
 using namespace K_FLD;
 using namespace K_SEARCH;
-extern "C"
-{
-  void k6boundboxunstr_(const E_Int& npts, 
-                        const E_Float* x, const E_Float* y, const E_Float* z, 
-                        E_Float& xmax, E_Float& ymax, E_Float& zmax, 
-                        E_Float& xmin, E_Float& ymin, E_Float& zmin);
-}
 
 namespace K_GENERATOR 
 {
@@ -181,6 +174,8 @@ PyObject* octree(PyObject* self, PyObject* args)
     posxi++; posyi++; poszi++;
     posxt.push_back(posxi); posyt.push_back(posyi); poszt.push_back(poszi);
   }
+
+  E_Int api = 1; // TODO unstrF[0]->getApi();
 
   // recuperation des snears 
   E_Int nsnear = PyList_Size(listOfSnears);
@@ -648,11 +643,11 @@ PyObject* octree(PyObject* self, PyObject* args)
   toptree = NULL;
   coords->reAllocMat(ind, 3); cn->reAllocMat(et, nvert);
   const char* eltType = "HEXA"; if (dim == 2) eltType = "QUAD";
-  cn->setNGon(0);
+  cn->setNGonType(0);
   K_CONNECT::cleanConnectivity(1, 2, 3, 1.e-6, eltType, *coords, *cn);
-  cn->setNGon(1);
+  cn->setNGonType(1);
   //buildArray
-  tpl = K_ARRAY::buildArray(*coords, "x,y,z", *cn, -1, eltType, false);
+  tpl = K_ARRAY::buildArray3(*coords, "x,y,z", *cn, eltType, api);
 
   //nettoyage
   delete coords; delete cn;

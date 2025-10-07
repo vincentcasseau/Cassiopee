@@ -243,10 +243,10 @@ void K_POST::mergeElements(FldArrayI& connect, FldArrayF& field,
   
   // 3- close
   E_Float tolc = 1.e-6;
-  connect.setNGon(0);
+  connect.setNGonType(0);
   K_CONNECT::cleanConnectivity(posx, posy, posz, tolc, 
                                "TRI", field, connect);
-  connect.setNGon(1);
+  connect.setNGonType(1);
 }
 
 //=============================================================================
@@ -457,9 +457,9 @@ void K_POST::getExternNodes(FldArrayI& cn, FldArrayF& coord,
   FldArrayF fext; 
   FldArrayI cnext;
   exteriorFacesBasic(nfaces, nvert, coord, cn, fext, cnext);
-  cnext.setNGon(0);
+  cnext.setNGonType(0);
   K_CONNECT::cleanConnectivity(1, 2, 3, 1.e-6, "TRI", fext, cnext);
-  cnext.setNGon(1);
+  cnext.setNGonType(1);
   E_Float* xt = coord.begin(1);
   E_Float* yt = coord.begin(2);
   E_Float* zt = coord.begin(3);

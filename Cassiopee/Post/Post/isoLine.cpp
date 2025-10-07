@@ -98,10 +98,10 @@ PyObject* K_POST::isoLine(PyObject* self, PyObject* args)
     doIsoLine(*f, *cn, posf, value, poscellN, fiso, ciso);
     RELEASESHAREDU(surf, f, cn);
     E_Float tolc = 1.e-12;
-    ciso.setNGon(0);
+    ciso.setNGonType(0);
     K_CONNECT::cleanConnectivity(posx, posy, posz, tolc, 
                                  "BAR", fiso, ciso);
-    ciso.setNGon(1);
+    ciso.setNGonType(1);
 
   }
   else
@@ -118,10 +118,11 @@ PyObject* K_POST::isoLine(PyObject* self, PyObject* args)
   }
 
   PyObject* t;
+  E_Int api = 1;  // f->getApi();
   if (strcmp(eltType0, "TRI") == 0)
-    t = K_ARRAY::buildArray(fiso, varString0, ciso, -1, "BAR");
+    t = K_ARRAY::buildArray3(fiso, varString0, ciso, "BAR", api);
   else
-    t = K_ARRAY::buildArray(fiso, varString0, ciso, -1, "NODE");
+    t = K_ARRAY::buildArray3(fiso, varString0, ciso, "NODE", api);
   return t;
 }
 
