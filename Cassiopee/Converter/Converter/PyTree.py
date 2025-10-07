@@ -534,7 +534,8 @@ def setValue(t, var, ind, val):
     else: loc = '*'; var = u[0]
 
     c = 0
-    if not isinstance(val, list): val = [val]
+    if isinstance(val, float): val = [val]
+    elif isinstance(val, int): val=[float(val)]
 
     # dim
     dim = Internal.getZoneDim(z); cellDim = dim[4]
@@ -5487,7 +5488,7 @@ def _mergeBCs(z):
     BCs=[]; BCNames=[]; BCTypes=[]
     for i in alltypes:
         BCs.append(alltypes[i])
-        BCNames.append('Merged'+i)
+        #BCNames.append('Merged'+i)
         BCTypes.append(i)
 
     _recoverBCs(z, (BCs,BCNames,BCTypes))
@@ -5625,7 +5626,6 @@ def computeBCMatchField(z, allMatch, variables=None):
 
                 if key in allCount.keys():
                     ncount = allCount[key]
-                    # print(key, ncount)
                 else:
                     ncount = None
 
@@ -5649,7 +5649,7 @@ def computeBCMatchField(z, allMatch, variables=None):
             if len(spl) != 1: varL.append(spl[1])
             else: varL.append(spl[0])
 
-        fld  = []; indR = None
+        fld = None; indR = None
 
         for key in allMatch:
             if key.split("/")[0] == z[0]:
@@ -5660,12 +5660,12 @@ def computeBCMatchField(z, allMatch, variables=None):
                                                                Internal.__FlowSolutionNodes__,
                                                                Internal.__FlowSolutionCenters__)
 
-                if indR is not None:
+                if fld is not None:
+                    fld.append(fld1)
                     indR = numpy.concatenate((indR,indR1))
                 else:
+                    fld  = [fld1]
                     indR = indR1
-
-                fld.append(fld1)
 
     return indR, fld
 
