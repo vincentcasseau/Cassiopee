@@ -18,104 +18,200 @@
 */
 
 # include "generator.h"
-# include <string>
-# include <sstream> 
-
-#include "Nuga/include/Polygon.h" 
-
-//#include <iostream>
-#include <memory>
-
-
-E_Int check_is_of_type(const char* type, PyObject* arr, K_FLD::FloatArray*& f1, K_FLD::IntArray*& cn1, char*& varString, char*& eltType)
-{
-  E_Int ni, nj, nk;
-  
-  E_Int res = K_ARRAY::getFromArray(arr, varString, f1, ni, nj, nk,
-                                    cn1, eltType);
-     
-  bool err = (res !=2);
-  err |= (strcmp(eltType, type) != 0);
-  if (err)
-  {
-    //std::cout << "input error : err => " << err << std::endl;
-    //std::cout << "input error : eltType => " << eltType << std::endl;
-    std::ostringstream o;
-    o << "input error : invalid array, must be a unstructured " << type << " array.";
-    PyErr_SetString(PyExc_TypeError, o.str().c_str());
-    delete f1; delete cn1;
-    return 1;
-  }
-
-  // Check coordinates.
-  E_Int posx = K_ARRAY::isCoordinateXPresent(varString);
-  E_Int posy = K_ARRAY::isCoordinateYPresent(varString);
-  E_Int posz = K_ARRAY::isCoordinateZPresent(varString);
-
-  if ((posx == -1) || (posy == -1) || (posz == -1))
-  {
-    PyErr_SetString(PyExc_TypeError, "input error : can't find coordinates in array.");//fixme  conformUnstr
-    delete f1; delete cn1;
-    return 1;
-  }
-  
-  return 0;
-}
-
-void quad_to_pyra(K_FLD::FloatArray& crd, K_FLD::IntArray& cnt, E_Float q)
-{
-  E_Int nb_q4 = cnt.cols();
-  E_Int nb_pts = crd.cols();
-  
-  cnt.resize(5, cnt.cols());
-  crd.resize(3, nb_pts + nb_q4);
-  
-  E_Float G[3]/*iso_bar*/, n[3]/*normal*/;
-  
-#pragma omp parallel for private(G, n)
-  for (E_Int i=0; i< nb_q4; ++i)
-  {
-    // approx centroid : iso bary
-    K_MESH::Polygon::iso_barycenter<K_FLD::FloatArray, 3>(crd, cnt.col(i), 4, 0, G);
-    // normal
-    K_MESH::Polygon::ndS<K_FLD::FloatArray, 3>(crd, cnt.col(i), 4, 0, n);
-    K_FUNC::normalize<3>(n);
-    
-    E_Float d = ::sqrt(K_FUNC::sqrDistance(crd.col(cnt(0,i)), G, 3)); // half diagonal of the quad
-    E_Float h = q * d;
-    
-    K_FUNC::sum<3>(1., G, h, n, crd.col(nb_pts + i));
-    cnt(4,i) = nb_pts + i; 
-  }
-  
-}
 
 //=============================================================================
-/* Creates a pyramid for each input quad */
+// Create a pyramid for each input quad
 //=============================================================================
 PyObject* K_GENERATOR::quad2Pyra(PyObject* self, PyObject* args)
 {
-  PyObject *arr;
-  E_Float hratio(0.5); 
+  PyObject* array;
+  E_Float hratio = 0.5;
 
-  if (!PYPARSETUPLE_(args, O_ R_, &arr, &hratio)) return NULL;
+  if (!PYPARSETUPLE_(args, O_ R_, &array, &hratio)) return NULL;
 
-  K_FLD::FloatArray* f(0);
-  K_FLD::IntArray* cn(0);
-  char* varString, *eltType;
-  // Check array # 1
-  E_Int err = check_is_of_type("QUAD", arr, f, cn, varString, eltType);
-  if (err) return NULL;
-    
-  K_FLD::FloatArray & crd = *f;
-  K_FLD::IntArray & cnt = *cn;
-  
-  quad_to_pyra(crd, cnt, hratio);
-  
-  PyObject* tpl = K_ARRAY::buildArray(crd, varString, cnt, -1, "PYRA", false);
+  // Check array
+  E_Int im, jm, km;
+  FldArrayF* f; FldArrayI* cn;
+  char* varString; char* eltType;
+  E_Int res =
+    K_ARRAY::getFromArray3(array, varString, f, im, jm, km, cn, eltType);
 
-  delete f; delete cn;
+  if (res == 1)
+  {
+    PyErr_SetString(PyExc_TypeError,
+                    "quad2Pyra: input array must be QUAD, not STRUCT.");
+    RELEASESHAREDS(array, f);
+    return NULL;
+  }
+  else if (res != 2)
+  {
+    PyErr_SetString(PyExc_TypeError,
+                    "quad2Pyra: unknown type of array.");
+    return NULL;
+  }
+  else if (K_STRING::cmp(eltType, "NGON") == 0)
+  {
+    PyErr_SetString(PyExc_TypeError,
+                    "quad2Pyra: input array must be QUAD, not NGON.");
+    RELEASESHAREDU(array, f, cn);
+    return NULL;
+  }
+
+  // Check that only QUADs are present in the input array
+  E_Int nc = cn->getNConnect();
+  std::vector<char*> eltTypes;
+  K_ARRAY::extractVars(eltType, eltTypes);
+
+  for (E_Int ic = 0; ic < nc; ic++)
+  {
+    if (K_STRING::cmp(eltTypes[ic], "QUAD") != 0)
+    {
+      PyErr_SetString(PyExc_TypeError,
+                     "quad2Pyra: input array must be QUAD only.");
+      RELEASESHAREDU(array, f, cn);
+      return NULL;
+    }
+  }
+
+  E_Int posx = K_ARRAY::isCoordinateXPresent(varString);
+  E_Int posy = K_ARRAY::isCoordinateYPresent(varString);
+  E_Int posz = K_ARRAY::isCoordinateZPresent(varString);
+  if (posx == -1 || posy == -1 || posz == -1)
+  {
+    PyErr_SetString(PyExc_TypeError,
+                    "quad2Pyra: coords must be present in array.");
+    return NULL;
+  }
+  posx++; posy++; posz++;
+
+  E_Float *xp = f->begin(posx), *yp = f->begin(posy), *zp = f->begin(posz);
+
+  E_Int nfld = f->getNfld();
+  E_Int npts = f->getSize();
+  E_Int api = f->getApi();
+
+  // Compute total number of elements across all connectivities, ntotElts
+  std::vector<E_Int> nepc(nc);
+  std::vector<E_Int> cumnepc(nc+1); cumnepc[0] = 0;  // cumulative number of elts per conn.
+  for (E_Int ic = 0; ic < nc; ic++)
+  {
+    K_FLD::FldArrayI& cm = *(cn->getConnect(ic));
+    E_Int nelts = cm.getSize();
+    nepc[ic] = nelts;
+    cumnepc[ic+1] = cumnepc[ic] + nelts;
+  }
+  E_Int ntotElts = cumnepc[nc];
+
+  // Build new connectivity
+  E_Int npts2 = npts + ntotElts;  // one new vertex for each QUAD
+  PyObject* tpl = K_ARRAY::buildArray3(nfld, varString, npts2,
+                                       nepc, "PYRA", false, api);
+  FldArrayF* f2; FldArrayI* cn2;
+  K_ARRAY::getFromArray3(tpl, f2, cn2);
+
+  // Coordinates of the tip of the new PYRA
+  std::vector<E_Float> x5(ntotElts), y5(ntotElts), z5(ntotElts);
+  // Unit normals of each QUAD (pointing outside the PYRA)
+  std::vector<E_Float> nx(ntotElts), ny(ntotElts), nz(ntotElts);
+
+  #pragma omp parallel
+  {
+    E_Int nelts, ioffset, ind1, ind2, ind3, ind4;
+    E_Float l14x, l14y, l14z, l12x, l12y, l12z, mag;
+    E_Float l13x, l13y, l13z, diagLength, height;
+
+    // Connectivities and coords of the tip of the PYRA
+    for (E_Int ic = 0; ic < nc; ic++)
+    {
+      FldArrayI& cm = *(cn->getConnect(ic));
+      FldArrayI& cm2 = *(cn2->getConnect(ic));
+      nelts = cm.getSize();
+      #pragma omp for schedule(static)
+      for (E_Int i = 0; i < nelts; i++)
+      {
+        ioffset = cumnepc[ic] + i;
+        ind1 = cm(i, 1); ind2 = cm(i, 2); ind3 = cm(i, 3); ind4 = cm(i, 4);
+        cm2(i, 1) = ind1; cm2(i, 2) = ind2;
+        cm2(i, 3) = ind3; cm2(i, 4) = ind4;
+        cm2(i, 5) = npts + ioffset + 1;
+        ind1 -= 1; ind2 -= 1; ind3 -= 1; ind4 -= 1;
+
+        // Barycenter of the element
+        x5[ioffset] = K_CONST::ONE_FOURTH * (xp[ind1] + xp[ind2] + xp[ind3] + xp[ind4]);
+        y5[ioffset] = K_CONST::ONE_FOURTH * (yp[ind1] + yp[ind2] + yp[ind3] + yp[ind4]);
+        z5[ioffset] = K_CONST::ONE_FOURTH * (zp[ind1] + zp[ind2] + zp[ind3] + zp[ind4]);
+
+        // Compute 'base' unit normal pointing outside the PYRA
+        l12x = xp[ind2] - xp[ind1]; l14x = xp[ind4] - xp[ind1];
+        l12y = yp[ind2] - yp[ind1]; l14y = yp[ind4] - yp[ind1];
+        l12z = zp[ind2] - zp[ind1]; l14z = zp[ind4] - zp[ind1];
+        K_MATH::cross(
+          l12x, l12y, l12z,
+          l14x, l14y, l14z,
+          nx[ioffset], ny[ioffset], nz[ioffset]
+        );
+        mag = std::sqrt(
+            nx[ioffset] * nx[ioffset]
+          + ny[ioffset] * ny[ioffset]
+          + nz[ioffset] * nz[ioffset]
+        );
+        if (!K_FUNC::fEqualZero(mag))
+        {
+          nx[ioffset] /= mag; ny[ioffset] /= mag; nz[ioffset] /= mag;
+        }
+
+        // Compute the diagonal length of the 'base'
+        // l13x = xp[ind3] - xp[ind1];
+        // l13y = yp[ind3] - yp[ind1];
+        // l13z = zp[ind3] - zp[ind1];
+        // diagLength = std::sqrt(l13x * l13x + l13y * l13y + l13z * l13z);
+        l13x = xp[ind4] - xp[ind2];
+        l13y = yp[ind4] - yp[ind2];
+        l13z = zp[ind4] - zp[ind2];
+        diagLength = std::sqrt(l13x * l13x + l13y * l13y + l13z * l13z);
+        // diagLength *= K_CONST::ONE_HALF;
+
+        // Move barycenter along the normal direction
+        height = K_CONST::ONE_HALF * diagLength * hratio;
+        x5[ioffset] += height * nx[ioffset];
+        y5[ioffset] += height * ny[ioffset];
+        z5[ioffset] += height * nz[ioffset];
+      }
+    }
+
+    // Fields
+    for (E_Int n = 1; n <= nfld; n++)
+    {
+      E_Float* fp = f->begin(n);
+      E_Float* f2p = f2->begin(n);
+      #pragma omp for nowait
+      for (E_Int i = 0; i < npts; i++) f2p[i] = fp[i];
+
+      if (n == posx)
+      {
+        #pragma omp for nowait
+        for (E_Int i = npts; i < npts2; i++) f2p[i] = x5[i-npts];
+      }
+      else if (n == posy)
+      {
+        #pragma omp for nowait
+        for (E_Int i = npts; i < npts2; i++) f2p[i] = y5[i-npts];
+      }
+      else if (n == posz)
+      {
+        #pragma omp for nowait
+        for (E_Int i = npts; i < npts2; i++) f2p[i] = z5[i-npts];
+      }
+      else
+      {
+        #pragma omp for nowait
+        for (E_Int i = npts; i < npts2; i++) f2p[i] = 0.;
+      }
+    }
+  }
+
+  RELEASESHAREDU(tpl, f2, cn2);
+  RELEASESHAREDU(array, f, cn);
+  for (size_t ic = 0; ic < eltTypes.size(); ic++) delete [] eltTypes[ic];
   return tpl;
 }
-
-//=======================  Generator/quad2pyra.cpp ====================

@@ -1896,7 +1896,7 @@ def _getTriQualityMap(t):
 def quad2Pyra(t, hratio=1.):
     """Creates a set of pyramids from a set of quads.
     Usage: quad2Pyra(array, hratio)"""
-    a = C.getFields(Internal.__GridCoordinates__, t, api=1)[0]
+    a = C.getFields(Internal.__GridCoordinates__, t, api=3)[0]
     return C.convertArrays2ZoneNode('pyra', [Generator.quad2Pyra(a, hratio)])
 
 # IN: t: arbre deep copy de torig
