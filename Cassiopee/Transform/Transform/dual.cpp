@@ -96,6 +96,13 @@ PyObject* K_TRANSFORM::dualNGon(PyObject* self, PyObject* args)
   {
     tpl = K_CONNECT::V_cleanConnectivityNGon(posx, posy, posz, varString,
                                              fd, cNGD, 1.e-10);
+    if (tpl == NULL) return NULL;
+    else if (tpl == Py_None)
+    {
+      Py_DECREF(tpl);
+      tpl = K_ARRAY::buildArray3(fd, varString, cNGD, eltType, api);
+      return tpl;
+    }
   }
   else
   {

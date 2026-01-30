@@ -485,8 +485,8 @@ PyObject* K_POST::exteriorFacesStructured(char* varString, FldArrayF& f,
         true, true, true, false, false
       );
       RELEASESHAREDU(tpl, fnodes, connect);
-      Py_DECREF(tpl);
-      return tpl2;
+      if (tpl2 == Py_None) return tpl;
+      else { Py_DECREF(tpl); return tpl2; }
     }
     else
     {

@@ -91,8 +91,12 @@ PyObject* K_GENERATOR::closeMesh(PyObject* self, PyObject* args)
         rmDegeneratedFaces, rmDegeneratedElts, exportIndirPts);
 
     RELEASESHAREDU(array, f, cn);
-    if (tpl == NULL) return array;
-    else return tpl;
+    if (tpl == Py_None)
+    {
+      Py_INCREF(array);  // TODO: to be removed
+      return array;
+    }
+    return tpl;
   }
   else
   {

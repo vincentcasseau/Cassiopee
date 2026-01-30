@@ -767,8 +767,9 @@ PyObject* K_TRANSFORM::joinUnstructured(FldArrayF& f1, FldArrayI& cn1,
   if (posx > 0 && posy > 0 && posz > 0)
   {
     PyObject* tpl2 = K_CONNECT::V_cleanConnectivity(varString, *f, *cn, eltType, tol);
-    RELEASESHAREDU(tpl, f, cn); Py_DECREF(tpl);
-    return tpl2;
+    RELEASESHAREDU(tpl, f, cn);
+    if (tpl2 == Py_None) { Py_DECREF(tpl2); return tpl; }
+    else { Py_DECREF(tpl); return tpl2; }
   }
   else
   {
@@ -882,8 +883,9 @@ PyObject* K_TRANSFORM::joinNGON(FldArrayF& f1, FldArrayI& cn1,
   if (posx > 0 && posy > 0 && posz > 0)
   {
     PyObject* tpl2 = K_CONNECT::V_cleanConnectivity(varString, *f, *cn, "NGON", tol);
-    RELEASESHAREDU(tpl, f, cn); Py_DECREF(tpl);
-    return tpl2;
+    RELEASESHAREDU(tpl, f, cn);
+    if (tpl2 == Py_None) { Py_DECREF(tpl2); return tpl; }
+    else { Py_DECREF(tpl); return tpl2; }
   }
   else
   {

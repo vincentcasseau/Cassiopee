@@ -251,7 +251,7 @@ PyObject* K_POST::selectCellCenters(PyObject* self, PyObject* args)
 
   // Selection
   PyObject* l = PyList_New(0);
-  PyObject* tpl=NULL;
+  PyObject* tpl = NULL;
 
   if (strcmp(eltType, "NGON") != 0) // tous les elements sauf NGON
   {
@@ -316,10 +316,20 @@ PyObject* K_POST::selectCellCenters(PyObject* self, PyObject* args)
     delete [] ptr;
 
     if (nntot == 0) fout->reAllocMat(0, nfld);
-    else if (cleanConnectivity == 1 && posx > 0 && posy > 0 && posz > 0)
-      tpl = K_CONNECT::V_cleanConnectivity(
-        varString, *fout, *acn, eltType, 1.e-10);
-    else tpl = K_ARRAY::buildArray3(*fout, varString, *acn, eltType, api);
+    else
+    {
+      if (cleanConnectivity == 1 && posx > 0 && posy > 0 && posz > 0)
+      {
+        tpl = K_CONNECT::V_cleanConnectivity(varString, *fout, *acn, eltType, 1.e-10);
+        if (tpl == NULL) return NULL;
+        else if (tpl == Py_None)
+        {
+          Py_DECREF(tpl);
+          tpl = K_ARRAY::buildArray3(*fout, varString, *acn, eltType, api);
+        }
+      }
+      else tpl = K_ARRAY::buildArray3(*fout, varString, *acn, eltType, api);
+    }
     delete acn; delete fout;
     if (res == 1) delete[] eltType;
   }
