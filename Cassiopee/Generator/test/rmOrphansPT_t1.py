@@ -31,19 +31,19 @@ def _addOrphans(t, api):
     x2 = np.empty(npts2, dtype=x.dtype)
     y2 = np.empty(npts2, dtype=y.dtype)
     z2 = np.empty(npts2, dtype=z.dtype)
-    
+
     x2[mask] = x[indir[mask]]
     y2[mask] = y[indir[mask]]
     z2[mask] = z[indir[mask]]
-    
+
     x2[~mask] = np.random.uniform(10., 11., norphans)
     y2[~mask] = np.random.uniform(10., 11., norphans)
     z2[~mask] = np.random.uniform(10., 11., norphans)
-    
+
     Internal.setValue(n_x, x2)
     Internal.setValue(n_y, y2)
     Internal.setValue(n_z, z2)
-    
+
     if api != 3:
         mask = np.zeros(ec.size, dtype=bool)
         i = 0
@@ -57,7 +57,7 @@ def _addOrphans(t, api):
     invIndir = np.empty(npts, dtype=Internal.E_NpyInt)
     invIndir[indir[origPts]] = np.flatnonzero(origPts)
     ec[mask] = invIndir[ec[mask] - 1] + 1
-    
+
     t[1][0][0] += norphans
 
 # add and delete orphans - api 1
@@ -77,4 +77,3 @@ test.testT(a, 3)  # create orphan-free ref
 _addOrphans(a, api=api)
 G._rmOrphans(a)
 test.testT(a, 3)
-
