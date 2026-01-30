@@ -145,9 +145,9 @@ def adaptMesh__(a, indicator="indicator", hook=None, dim=3, conformize=False, sp
     conformizei = 0
     if conformize: conformizei=1
 
-    hangHook=True
+    hangHook = True
     if hook is None:
-        hangHook=False
+        hangHook = False
         hook = _createHook4AdaptMesh(a, dim=dim, splitInfos=None)
 
     FSC = Internal.getNodeFromName(a, Internal.__FlowSolutionCenters__)
@@ -212,8 +212,8 @@ def _createHook4AdaptMesh(a, dim=3, splitInfos=None):
         nfaceselts = Internal.getNFaceNode(z)
         ER = Internal.getNodeFromName(nfaceselts, 'ElementRange')[1]
         ncells = ER[1]-ER[0]+1
-        gcells=numpy.arange(0, ncells)
-        gfaces=numpy.arange(1,nfaces+1)
+        gcells = numpy.arange(0, ncells)
+        gfaces = numpy.arange(1,nfaces+1)
         hook = XC.AdaptMesh_Init(z, normal2D, comm=[], gcells=gcells, gfaces=gfaces)
     else:
         comms = splitInfos["graph"]
@@ -1055,7 +1055,7 @@ def modifyBC__(dir, ni0, nj0, nk0, z):
     dims = Internal.getZoneDim(z)
     if dims[0] == 'Unstructured': return z
     ni = dims[1]; nj = dims[2]; nk = dims[3]
-    wins = Internal.getNodesFromType(z, 'BC_t')
+    wins = Internal.getNodesFromType2(z, 'BC_t')
     # BC
     for w in wins:
         (parent, d) = Internal.getParentOfNode(z, w)
@@ -1903,28 +1903,28 @@ def quad2Pyra(t, hratio=1.):
 # IN: t: torig: maillage originale
 # IN: refine: direction (1,2,3)
 # IN: dim_local: dimension=2 ou 3 -> dim
-# refine__ [CB:AT]
+# refine__
 def refine__(t, torig, refine, dim):
     """Refine xyz"""
-    list_of_types = ["BC_t","GridConnectivity_t"]
+    listOfTypes = ["BC_t", "GridConnectivity_t"]
 
-    for type_local in list_of_types:
+    for typeLocal in listOfTypes:
         listofzones = []
         zones = Internal.getZones(t)
         for z in zones:
-            znodes = Internal.getNodesFromType(z, type_local)
+            znodes = Internal.getNodesFromType(z, typeLocal)
             if znodes:
                 listofzones.append(z[0])
 
         for zname in listofzones:
-            z      = Internal.getNodeByName(t,zname)
-            znodes = Internal.getNodesFromType(z, type_local)
+            z = Internal.getNodeByName(t,zname)
+            znodes = Internal.getNodesFromType(z, typeLocal)
             for bc in znodes:
                 bcname = bc[0]
                 bcarray= bc[2][0][1]
                 for j in range(0, dim):
                     for i in range(0,2):
-                        if bcarray[j][i] !=1:
+                        if bcarray[j][i] != 1:
                             bcarray[j][i]=(bcarray[j][i]-1)*refine[j]+1
 
     ## CONNECT MATCH
@@ -1936,32 +1936,32 @@ def refine__(t, torig, refine, dim):
             listofzones.append(z[0])
 
     for zname in listofzones:
-        z      = Internal.getNodeByName(t,zname)
-        zgc    = Internal.getNodeFromType(z, "ZoneGridConnectivity_t")
+        z = Internal.getNodeByName(t,zname)
+        zgc = Internal.getNodeFromType(z, "ZoneGridConnectivity_t")
 
-        zorig  = Internal.getNodeByName(torig,zname)
+        zorig = Internal.getNodeByName(torig,zname)
         znodes = Internal.getNodesFromType(zorig, "GridConnectivity1to1_t")
         for gc in znodes:
-            gcarray_prange =gc[2][0][1] #PointRange
-            gcarray_prangeD=gc[2][1][1] #PointRangeDonor
+            gcarray_prange = gc[2][0][1] #PointRange
+            gcarray_prangeD = gc[2][1][1] #PointRangeDonor
             for j in range(0, dim):
                 for i in range(0,2):
                     ##Point Range
-                    if gcarray_prange[j][i] !=1:
-                        gcarray_prange[j][i]=(gcarray_prange[j][i]-1)*refine[j]+1
+                    if gcarray_prange[j][i] != 1:
+                        gcarray_prange[j][i] = (gcarray_prange[j][i]-1)*refine[j]+1
                     ##Point Range Donor
-                    if gcarray_prangeD[j][i] !=1:
-                        gcarray_prangeD[j][i]=(gcarray_prangeD[j][i]-1)*refine[j]+1
-            Internal.addChild(zgc,gc,pos=-1)
+                    if gcarray_prangeD[j][i] != 1:
+                        gcarray_prangeD[j][i] = (gcarray_prangeD[j][i]-1)*refine[j]+1
+            Internal.addChild(zgc, gc, pos=-1)
     return t
 
 def refineIndependently(t, refine=[1,1,1], dim=2):
     """Refine x, y, z directions independently per refine=[] and conserve the BCs.
      Usage: refineIndependently(t, refine=[], dim)"""
     import Converter.Mpi as Cmpi
-    torig      = Cmpi.convert2SkeletonTree(t)
-    list_nodes = ['GridCoordinates','ZoneBC']
-    for i in list_nodes:
+    torig = Cmpi.convert2SkeletonTree(t)
+    listNodes = ['GridCoordinates','ZoneBC']
+    for i in listNodes:
         Internal._rmNodesByName(torig,i)
 
     for i in range(0, dim):

@@ -110,9 +110,9 @@ def createDragonMesh0(body, dictOfParams={}, check=False, directory_tmp_files='.
 
     # pour un seul plan de symetrie, on symetrise la geometrie pour assurer que l octree se decoupe sur ce plan
     if nbsyms == 1:
-        if sym == 'X': syms = T.symetrize(body, (Locsyms[0],0.,0.), (0,1,0), (0,0,1))
-        elif sym == 'Y': syms = T.symetrize(body, (0.,Locsyms[0],0.), (1,0,0), (0,0,1))
-        elif sym == 'Z': syms = T.symetrize(body, (0.,0.,Locsyms[0]), (1,0,0), (0,1,0))
+        if sym == 'X': syms = T.symmetrize(body, (Locsyms[0],0.,0.), (0,1,0), (0,0,1))
+        elif sym == 'Y': syms = T.symmetrize(body, (0.,Locsyms[0],0.), (1,0,0), (0,0,1))
+        elif sym == 'Z': syms = T.symmetrize(body, (0.,0.,Locsyms[0]), (1,0,0), (0,1,0))
         syms[0] = 'syms'
         body = T.join(body,syms); G._close(body, tol=4.e-5)
 
@@ -207,7 +207,7 @@ def createDragonMesh0(body, dictOfParams={}, check=False, directory_tmp_files='.
             #C._initVars(t,'{centers:indic}=logical_and({centers:vol}-%g>-%g,{centers:vol}-%g<%g)'%(aera,eps,aera,eps))
             #a1 = P.selectCells2(t, 'centers:indic',strict=0)
             a1 = P.selectCells(o, 'abs({centers:vol}-%f)<%f'%(area,eps), strict=0)
-            a1 = Internal.getNodeFromType(a1,'Zone_t'); a1[0]='octree%d'%i
+            a1 = Internal.getNodeFromType(a1, 'Zone_t'); a1[0]='octree%d'%i
             npts = int(max(1,maxnpts/2**i));print(i,npts)
             T._addkplane(a1,N=npts)
             T._scale(a1, factor=(1.,1.,locmax/npts))
@@ -386,7 +386,7 @@ def createDragonMesh0(body, dictOfParams={}, check=False, directory_tmp_files='.
     tp = C.newPyTree(['Base']); tp[2][1][2] += [m]
 
     print('add families')
-    base = Internal.getNodeFromType(tp,'CGNSBase_t')
+    base = Internal.getNodeFromType1(tp, 'CGNSBase_t')
     #print(base)
     if nbsyms > 0:
         C._addFamily2Base(base, 'RIGHT', bndType='BCSymmetryPlane')
@@ -423,8 +423,8 @@ def createDragonMeshForBladeInChannel(ts, dictOfParams={}, check=False, director
         raise("ValueError: createDragonMesh: 3 zones must be defined: HUB/SHROUD/BLADE")
         return None
 
-    surf_hub = Internal.getNodeFromName(ts,"HUB")
-    if surf_hub is None or surf_hub==[]:
+    surf_hub = Internal.getNodeFromName(ts, "HUB")
+    if surf_hub is None or surf_hub == []:
         raise("ValueError: no base/zone of name HUB found.")
         return None
 
@@ -786,7 +786,7 @@ def createDragonMeshForBladeInChannel(ts, dictOfParams={}, check=False, director
 
     print('add families')
     tp = C.newPyTree(['Base']); tp[2][1][2] += [mesh_final]
-    base = Internal.getNodeFromType(tp,'CGNSBase_t')
+    base = Internal.getNodeFromType1(tp, 'CGNSBase_t')
     C._addFamily2Base(base, 'INLET', bndType='BCInflow')
     C._addFamily2Base(base, 'OUTLET', bndType='BCOutflow')
     C._addFamily2Base(base, 'HUB', bndType='BCWall')
@@ -796,11 +796,11 @@ def createDragonMeshForBladeInChannel(ts, dictOfParams={}, check=False, director
 
 def createInternalTetraMesh__(ext_TRI, ts, hext):
     # ts  : ['HUB','SHROUD','BLADE','AMONT','AVAL','PERIODIC']
-    mesh_cart = Internal.getNodesFromName(ts,'SHROUD')
-    mesh_spin = Internal.getNodesFromName(ts,'HUB')
-    mesh_amont = Internal.getNodesFromName(ts,'AMONT')
-    mesh_aval = Internal.getNodesFromName(ts,'AVAL')
-    mesh_perios =  Internal.getNodesFromName(ts,'PERIODIC')
+    mesh_cart = Internal.getNodesFromName1(ts, 'SHROUD')
+    mesh_spin = Internal.getNodesFromName1(ts, 'HUB')
+    mesh_amont = Internal.getNodesFromName1(ts, 'AMONT')
+    mesh_aval = Internal.getNodesFromName1(ts, 'AVAL')
+    mesh_perios =  Internal.getNodesFromName1(ts, 'PERIODIC')
 
     ext = P.exteriorFaces(ext_TRI)
     # ATTENTION REORDER COHERENT CAR NORMALES VERS L INTERIEUR
@@ -814,7 +814,7 @@ def createInternalTetraMesh__(ext_TRI, ts, hext):
     for e in ext:
         DTW._distance2Walls(e, mesh_perios, loc='nodes')
         dl = D.getLength(e)/C.getNPts(e)
-        toldistrel=0.1*dl
+        toldistrel = 0.1*dl
         e1 = P.selectCells(e,'{TurbulentDistance}>%g'%toldistrel,strict=0)
         e1 = T.splitConnexity(e1) # on doit en avoir 2
         DTW._distance2Walls(e1, mesh_amont, loc='nodes')

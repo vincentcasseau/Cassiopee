@@ -148,7 +148,7 @@ def _createBCNearMatch(a_hexa,bcnearmatch):
     return None
 
 def _createBCStandard(a_hexa,a):
-    nodes_bcs = Internal.getNodesFromType(a,"BC_t")
+    nodes_bcs = Internal.getNodesFromType(a, "BC_t")
     for node_bc in nodes_bcs:
         bctype = Internal.getValue(node_bc)
         bcname = Internal.getName(node_bc)
@@ -314,7 +314,7 @@ def _createQuadConnectivityFromNgonPointList(a_hexa, a, PL, bcname, bctype):
                 new_EC_ngon_faces[idx_new] = EC_faces[idx_face_init+i]
                 idx_new += 1
 
-    elts = Internal.getNodesFromType(a_hexa,"Elements_t")
+    elts = Internal.getNodesFromType1(a_hexa, "Elements_t")
     maxElt = Internal.getNodeFromName(elts[-1],"ElementRange")[1][1]
     zones = Internal.getZones(a_hexa)
     Internal.newElements(name=bcname, etype=7, econnectivity=new_EC_ngon_faces, erange=[maxElt+1, maxElt+len_new_faces], eboundary=0, parent=zones[0])

@@ -38,7 +38,7 @@ __all__ = [
     'normalize', '_normalize', 'randomizeVar', 'rmVars',
     'send', 'setPartialFields', 'setValue', 'addGhostCellsNGon',
     'checkFileType', 'convertHO2LO', 'convertLO2HO', 'convertExt2Format__',
-    'mergeConnectivity','adaptSurfaceNGon',
+    'mergeConnectivity', 'mergeByEltType', 'adaptSurfaceNGon',
     '_signNGonFaces', '_unsignNGonFaces', 'makeParentElements'
 ]
 
@@ -1352,16 +1352,11 @@ def convertArray2Hexa1__(array):
     if isinstance(sub, str): t = sub
     else: t = 'STRUCT'
     if t == 'STRUCT': return converter.convertStruct2Hexa(array)
-    elif t == 'HEXA' or t == 'QUAD' or t == 'BAR' or t == 'NODE':
-        return array
-    elif t == 'HEXA*' or t == 'QUAD*' or t == 'BAR*' or t == 'NODE*':
-        return array
-    elif t == 'TRI' or t == 'TETRA' or t == 'PENTA':
-        return converter.convertUnstruct2Hexa(array)
     elif t == 'NGON':
         try: import Transform as T
         except: raise ImportError("convertArray2Hexa: requires Transform for NGONs.")
         tmp = T.breakElements(array)
+        tmp = T.reorder(tmp)
         brd = []
         for i in tmp:
             if i[3] != 'NGON': brd.append(convertArray2Hexa1__(i))
@@ -1391,6 +1386,14 @@ def convertArray2Hexa(array):
             b.append(convertArray2Hexa1__(i))
         return b
     else: return convertArray2Hexa1__(array)
+
+def mergeByEltType(array):
+    """Merge an unstructured array by element type."""
+    if isinstance(array[0], list):
+        b = []
+        for i in array: b.append(converter.mergeByEltType(i))
+        return b
+    else: return converter.mergeByEltType(array)
 
 def convertArray2NGon__(array, api=1):
     try: sub = array[3]
@@ -1848,7 +1851,7 @@ def _unsignNGonFaces(a):
         isSigned = 1
         for i in a:
             if isSigned == 1: isSigned = converter.unsignNGonFaces(i)
-            else: break # stop if unsigned
+            else: break # stop if unsigned (assume consistent signness)
     else:
         isSigned = converter.unsignNGonFaces(a)
     return isSigned
