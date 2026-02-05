@@ -153,6 +153,15 @@ elif [ "$MAC" = "macosx" ]; then
     unset BUNDLE
     export DYLD_LIBRARY_PATH=$LD_LIBRARY_PATHL
 
+elif [ "$MAC" = "ubuntu_arm64" ]; then
+#-------------------------------- ubuntu_arm64 --------------------------------
+    export ELSAPROD=ubuntu_arm64
+    export ELSAPROD=$ELSAPROD$EXT
+    export OMP_NUM_THREADS=4
+    export PYTHONEXE=python3
+    export PRODMODE=1
+    export PIP_DISABLE_PIP_VERSION_CHECK=1
+
 elif [ "$MAC" = "ubuntu" ]; then
 #-------------------------------- ubuntu --------------------------------------
     export ELSAPROD=ubuntu

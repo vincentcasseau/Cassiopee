@@ -561,6 +561,22 @@ installDict = {
         [] # NvccAdditionalOptions
     ],
     ###############################################################################
+    'ubuntu_arm64': [
+        'Linux ubuntu 24.04 arm64',
+        'mpifort', # f77compiler
+        'mpifort', # f90compiler
+        'mpicxx', # Cppcompiler
+        [], # CppAdditionalOptions
+        [], # f77AdditionalOptions
+        True, # useOMP
+        False, # static
+        [ '/usr/include', '/usr/include/hdf5/openmpi', '/usr/lib/aarch64-linux-gnu/openmpi/include'], # additionalIncludePaths
+        ['gomp'], # additionalLibs
+        ['/usr/lib/aarch64-linux-gnu/hdf5/openmpi', '/usr/lib/aarch64-linux-gnu/openmpi/lib'], # additionalLibPaths
+        False, # useCuda
+        [] # NvccAdditionalOptions
+    ],
+    ###############################################################################
     'azure': [
         'Linux Centos7 - Github Actions',
         'gfortran', # f77compiler
