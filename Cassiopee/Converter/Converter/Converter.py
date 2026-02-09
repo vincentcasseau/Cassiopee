@@ -1392,7 +1392,7 @@ def convertArray2Unstruct(array):
     if isinstance(array[0], list):
         return [convertArray2Unstruct__(i) for i in array]
     else: return convertArray2Unstruct__(array)
-    
+
 def convertArray2NGon__(array, api=1):
     try: sub = array[3]
     except: raise TypeError("convertArray2NGon__: arg must be an array.")
