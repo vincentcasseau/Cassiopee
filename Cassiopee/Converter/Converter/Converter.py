@@ -1210,10 +1210,7 @@ def magnitude(array, vars):
     """Get the magnitude of the fields defined by vars in the array.
     Usage: magnitude(array, vars)"""
     if isinstance(array[0], list):
-        b = []
-        for i in array:
-            b.append(converter.magnitude(i, vars))
-        return b
+        return [converter.magnitude(i, vars) for i in array]
     else:
         return converter.magnitude(array, vars)
 
@@ -1221,10 +1218,7 @@ def convertHexa2Struct(array):
     """Convert an hexa array in a struct array.
     Usage: convertHexa2Struct(array)"""
     if isinstance(array[0], list):
-        b = []
-        for i in array:
-            b.append(converter.convertHexa2Struct(i))
-        return b
+        return [converter.convertHexa2Struct(i) for i in array]
     else:
         return converter.convertHexa2Struct(array)
 
@@ -1266,10 +1260,7 @@ def adaptSurfaceNGon(array):
     to another (B: NGON=polygon, NFACE=NULL).
     """
     if isinstance(array[0], list):
-        b = []
-        for i in array:
-            b.append(converter.adaptSurfaceNGon(i))
-        return b
+        return [converter.adaptSurfaceNGon(i) for i in array]
     else:
         return converter.adaptSurfaceNGon(array)
 
@@ -1339,10 +1330,7 @@ def convertArray2Tetra(array, split='simple'):
     Unstructured array is triangular in 2D and tetrahedral in 3D.
     Usage: convertArray2Tetra(array)"""
     if isinstance(array[0], list):
-        b = []
-        for i in array:
-            b.append(convertArray2Tetra1__(i, split=split))
-        return b
+        return [convertArray2Tetra1__(i, split=split) for i in array]
     else: return convertArray2Tetra1__(array, split=split)
 
 # -- interne --
@@ -1381,23 +1369,33 @@ def convertArray2Hexa(array):
     Unstructured array can be quad in 2D and hexa in 3D.
     Usage: convertArray2Hexa(array)"""
     if isinstance(array[0], list):
-        b = []
-        for i in array:
-            b.append(convertArray2Hexa1__(i))
-        return b
+        return [convertArray2Hexa1__(i) for i in array]
     else: return convertArray2Hexa1__(array)
 
 def mergeByEltType(array):
     """Merge an unstructured array by element type."""
     if isinstance(array[0], list):
-        b = []
-        for i in array: b.append(converter.mergeByEltType(i))
-        return b
+        return [converter.mergeByEltType(i) for i in array]
     else: return converter.mergeByEltType(array)
 
+def convertArray2Unstruct__(array):
+    try: sub = array[3]
+    except: raise TypeError("convertArray2Unstruct__: arg must be an array.")
+    if isinstance(sub, str): t = sub
+    else: t = 'STRUCT'
+    if t in ['STRUCT', 'NGON']: return converter.convertArray2Unstruct(array)
+    else: return array
+
+def convertArray2Unstruct(array):
+    """Convert an array in an unstructured (Multi-Element) array.
+    Usage: convertArray2Unstruct(array)"""
+    if isinstance(array[0], list):
+        return [convertArray2Unstruct__(i) for i in array]
+    else: return convertArray2Unstruct__(array)
+    
 def convertArray2NGon__(array, api=1):
     try: sub = array[3]
-    except: raise TypeError("convertArray2NGon: arg must be an array.")
+    except: raise TypeError("convertArray2NGon__: arg must be an array.")
     if isinstance(sub, str): t = sub
     else: t = 'STRUCT'
     if t == 'STRUCT': return converter.convertStruct2NGon(array, api)
@@ -1405,38 +1403,29 @@ def convertArray2NGon__(array, api=1):
     else: return converter.convertUnstruct2NGon(array, api)
 
 def convertArray2NGon(array, api=1):
-    """Convert a array in a NGON array.
+    """Convert an array in an NGON array.
     Usage: convertArray2NGon(array, api)"""
     if isinstance(array[0], list):
-        b = []
-        for i in array: b.append(convertArray2NGon__(i, api))
-        return b
+        return [convertArray2NGon__(i, api) for i in array]
     else: return convertArray2NGon__(array, api)
 
 def convertPenta2Strand(array):
     """Convert a PENTA array to a STRAND array."""
     if isinstance(array[0], list):
-        b = []
-        for i in array: b.append(converter.convertPenta2Strand(i))
-        return b
+        return [converter.convertPenta2Strand(i) for i in array]
     else: return converter.convertPenta2Strand(array)
 
 def convertStrand2Penta(array):
     """Convert a STRAND array to a PENTA array."""
     if isinstance(array[0], list):
-        b = []
-        for i in array: b.append(converter.convertStrand2Penta(i))
-        return b
+        return [converter.convertStrand2Penta(i) for i in array]
     else: return converter.convertStrand2Penta(array)
 
 def node2Center(array, accurate=0):
     """Convert array defined on nodes to array defined on centers.
     Usage: node2Center(array, accurate=0)"""
     if isinstance(array[0], list):
-        b = []
-        for i in array:
-            b.append(converter.node2Center(i, accurate))
-        return b
+        return [converter.node2Center(i, accurate) for i in array]
     else:
         return converter.node2Center(array, accurate)
 
@@ -1444,22 +1433,15 @@ def center2Node(array, cellNType=0, BCFields=None):
     """Convert array defined on centers to array defined on nodes.
     Usage: center2Node(array)"""
     if isinstance(array[0], list):
-        b = []
-        for i in array:
-            b.append(converter.center2Node(i, cellNType, BCFields))
-        return b
+        return [converter.center2Node(i, cellNType, BCFields) for i in array]
     else:
-        b = converter.center2Node(array, cellNType, BCFields)
-        return b
+        return converter.center2Node(array, cellNType, BCFields)
 
 def node2ExtCenter(array):
     """Convert array defined on nodes to an array defined on extended centers.
     Usage: node2ExtCenter(array)"""
     if isinstance(array[0], list):
-        b = []
-        for i in array:
-            b.append(converter.node2ExtCenter(i))
-        return b
+        return [converter.node2ExtCenter(i) for i in array]
     else:
         return converter.node2ExtCenter(array)
 
@@ -1467,10 +1449,7 @@ def extCenter2Node(array):
     """Convert array defined on extended centers to an array defined on nodes.
     Usage: extCenter2Node(array)"""
     if isinstance(array[0], list):
-        b = []
-        for i in array:
-            b.append(converter.extCenter2Node(i))
-        return b
+        return [converter.extCenter2Node(i) for i in array]
     else:
         return converter.extCenter2Node(array)
 
@@ -1478,10 +1457,7 @@ def center2ExtCenter(array):
     """Convert array defined for centers to an array defined for extended centers.
     Usage: center2ExtCenter(array)"""
     if isinstance(array[0], list):
-        b = []
-        for i in array:
-            b.append(converter.center2ExtCenter(i))
-        return b
+        return [converter.center2ExtCenter(i) for i in array]
     else:
         return converter.center2ExtCenter(array)
 
@@ -1490,10 +1466,7 @@ def convertArray2Node(array):
     """Convert an array in an unstructured node array.
     Usage: convertArray2Node(array)"""
     if isinstance(array[0], list):
-        b = []
-        for i in array:
-            b.append(converter.convertArray2Node(i))
-        return b
+        return [converter.convertArray2Node(i) for i in array]
     else:
         return converter.convertArray2Node(array)
 
