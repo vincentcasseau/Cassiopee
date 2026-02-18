@@ -56,7 +56,7 @@ diff (InputIterator1 x, InputIterator2 y, InputIterator3 z)
 {
   for (E_Int i = 0; i < dim; ++i) 
   {
-     *(z+i) = *(x+i) - *(y+i); 
+    *(z+i) = *(x+i) - *(y+i); 
   }
 
   return z + dim;
@@ -68,7 +68,7 @@ diff (InputIterator1 x, InputIterator2 y, E_Int stride, InputIterator3 z)
 {
   for (E_Int i = 0; i < dim; ++i)
   {
-     *(z+i) = *(x+i*stride) - *(y+i*stride);
+    *(z+i) = *(x+i*stride) - *(y+i*stride);
   }
 
   return z + dim;
@@ -80,7 +80,7 @@ inline InputIterator3
 sum (InputIterator1 x, InputIterator2 y, InputIterator3 z) 
 {
   for (E_Int i = 0; i < dim; ++i)
-   *(z+i) = *(x+i) + *(y+i);
+    *(z+i) = *(x+i) + *(y+i);
 
   return z + dim;
 }
@@ -91,7 +91,7 @@ inline InputIterator3
 sum (E_Float a, InputIterator1 x, E_Float b, InputIterator2 y,  InputIterator3 z) 
 {
   for (E_Int i = 0; i < dim; ++i)
-   *(z+i) = *(x+i)*a + *(y+i)*b;
+    *(z+i) = *(x+i)*a + *(y+i)*b;
 
   return z + dim;
 }
@@ -102,7 +102,7 @@ inline InputIterator3
 sum (E_Float a, InputIterator1 x, E_Float b, InputIterator2 y,  InputIterator2 c, InputIterator3 z) 
 {
   for (E_Int i = 0; i < dim; ++i)
-   *(z+i) = *(x+i)*a + *(y+i)*b + *(c+i);
+    *(z+i) = *(x+i)*a + *(y+i)*b + *(c+i);
 
   return z + dim;
 }
@@ -113,7 +113,7 @@ inline InputIterator3
 sum (E_Float a, InputIterator1 x, InputIterator2 y, InputIterator3 z) 
 {
   for (E_Int i = 0; i < dim; ++i)
-   *(z+i) = *(x+i)*a + *(y+i);
+    *(z+i) = *(x+i)*a + *(y+i);
 
   return z + dim;
 }
@@ -202,7 +202,7 @@ E_Float dot<3> (const E_Float* x, const E_Float* y)
 
 template <E_Int dim, typename InputIterator>
 inline
-E_Float normalize (InputIterator it)
+E_Float normalize(InputIterator it)
 {
   E_Float L0 = sqrt(sqrNorm<dim>(it));
   if (L0 != 0.)
@@ -266,7 +266,7 @@ inline E_Float angle_measure
   NUGA::crossProduct<3>(ni, nj, nk);
   E_Float c = NUGA::dot<3>(ni, nj);
 
-  E_Int s = zSIGN(::fabs(c) - 1., ZERO_M);
+  E_Int s = zSIGN(fabs(c) - 1., ZERO_M);
 
   if (s != 0) // non-degn case
   {
@@ -283,7 +283,7 @@ inline E_Float angle_measure
     assert(signK2 != 0);
 #endif
 
-    E_Float alpha = ::atan2(sqrt(s2), c);
+    E_Float alpha = atan2(sqrt(s2), c);
     alpha = NUGA::PI - signK2 * alpha;
 
     return alpha;
@@ -310,13 +310,13 @@ inline E_Float normals_angle (const E_Float* ni, const E_Float* nj)
   NUGA::crossProduct<3>(ni, nj, nk);
   E_Float c = NUGA::dot<3>(ni, nj);
 
-  E_Int s = zSIGN(::fabs(c) - 1., ZERO_M);
+  E_Int s = zSIGN(fabs(c) - 1., ZERO_M);
 
   if (s != 0) // non-degn case
   {
     E_Float s2 = NUGA::sqrNorm<3>(nk);
 
-    E_Float alpha = ::atan2(sqrt(s2), c);
+    E_Float alpha = atan2(sqrt(s2), c);
     return alpha;
   }
   else // (s == 0) : ni and nj are nearly colinear : 0, Pi or 2Pi
@@ -365,8 +365,7 @@ inline bool angular_weighted_normal(const E_Float* Pim1, const E_Float* Pi, cons
 }
 
 ///
-inline void __get_transform_matrix
-(E_Float* U, E_Float*V, E_Float* W, K_FLD::FloatArray& P)
+inline void __get_transform_matrix(E_Float* U, E_Float*V, E_Float* W, K_FLD::FloatArray& P)
 {
   P.resize(3, 3);
 
@@ -379,8 +378,7 @@ inline void __get_transform_matrix
 }
 
 ///
-inline void __get_normal_to
-(const E_Float* V, E_Float* N)
+inline void __get_normal_to(const E_Float* V, E_Float* N)
 {
   N[0] = 1.0;
   for (E_Int k = 1; k < 3; ++k)
@@ -446,7 +444,7 @@ void computeNodeRadiusAndAngles
     E_Float c = (pt[0] - x0) / radius[i];
     E_Float s = (pt[1] - y0) / radius[i];
 
-    angles[i] = ::atan2(s, c);
+    angles[i] = atan2(s, c);
   }
 }
 
@@ -467,8 +465,8 @@ inline void axial_rotate(K_FLD::FloatArray& crd, const E_Float* axis_pt, const E
     E_Float* pt = crd.col(i);
     E_Float X = pt[0] - axi_pt[0];
     E_Float Y = pt[1] - axi_pt[1];
-    pt[0] = ::cos(angle) * X - ::sin(angle) * Y + axi_pt[0];
-    pt[1] = ::sin(angle) * X + ::cos(angle) * Y + axi_pt[1];
+    pt[0] = cos(angle) * X - sin(angle) * Y + axi_pt[0];
+    pt[1] = sin(angle) * X + cos(angle) * Y + axi_pt[1];
   }
 
   NUGA::transform(crd, P); // back to original ref frame  

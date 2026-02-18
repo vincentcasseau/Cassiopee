@@ -92,7 +92,7 @@ class Tetrahedron
     static bool is_of_type(const ngunit_t & PGs, const E_Int* first_pg, E_Int nb_pgs) {
       if (nb_pgs != 4) return false;
 
-      for (int i = 0; i<4; i++)
+      for (E_Int i = 0; i < 4; i++)
         if (PGs.stride(*(first_pg + i) - 1) != 3) return false;
 
       return true;
@@ -276,8 +276,8 @@ class Tetrahedron
         if (NB_SPIKES != 4)
           std::cout << "LOGIC ERROR" << std::endl;
 
-        int count = 0; //fist 2 spike should be enough
-        int pairs[2][2];
+        E_Int count = 0; //fist 2 spike should be enough
+        E_Int pairs[2][2];
         pairs[0][0] = -1;
         pairs[0][1] = -1;
         pairs[1][0] = -1;
@@ -659,21 +659,21 @@ void Tetrahedron::reorder_pgs(ngo_t& ng, const K_FLD::IntArray& F2E, E_Int i)
 
   bool commonNodes[3];
 
-  for (int k = 1; k < 4; ++k)
+  for (E_Int k = 1; k < 4; ++k)
   {
-    int count = 0;
+    //E_Int count = 0;
     commonNodes[0] = commonNodes[1] = commonNodes[2] = false;
 
     E_Int testedPG = faces[k]-1;
     E_Int* pNode = ng.PGs.get_facets_ptr(testedPG);
 
-    for (int j = 0; j < 3; ++j)
+    for (E_Int j = 0; j < 3; ++j)
     {
       auto it = glmap.find(pNode[j]);
       if (it != glmap.end())
       {
         // found
-        count++;
+        //count++;
         commonNodes[it->second] = true;
       }
     }
@@ -696,8 +696,7 @@ void Tetrahedron::reorder_pgs(ngo_t& ng, const K_FLD::IntArray& F2E, E_Int i)
   assert (F2Id != IDX_NONE && F2Id != 0 && F2Id != F1Id && F2Id != F3Id);
   assert (F3Id != IDX_NONE && F3Id != 0 && F3Id != F1Id && F3Id != F2Id);
 
-  for (int i = 0; i < nb_faces; ++i)
-    faces[i] = mol[i];
+  for (E_Int i = 0; i < nb_faces; ++i) faces[i] = mol[i];
 }
 
 }

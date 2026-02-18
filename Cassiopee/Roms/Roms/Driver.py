@@ -791,7 +791,7 @@ class Surface():
             C._convertArray2NGon(z, recoverBC=False)
             p = P.exteriorFaces(z)
             C._addBC2Zone(z, 'wall', 'BCWall', subzone=p)
-            Internal.getNodeFromType(z, 'BC_t')[0] = 'wall'
+            Internal.getNodeFromType2(z, 'BC_t')[0] = 'wall'
             T._addkplane(z)
             T._contract(z, (0,0,0), (1,0,0), (0,1,0), 0.1)
 
@@ -901,7 +901,7 @@ class Surface():
             self.DefTree[i+1].computeMeshDisplacement()
 
         # copie Displacement#0/DisplacementX dans UV
-        zones1 = Internal.getZones(self.RefMeshUV)
+        #zones1 = Internal.getZones(self.RefMeshUV)
         zones2 = Internal.getZones(self.RefMeshUV2)
         zones3 = Internal.getZones(self.RefMesh)
         for i, z1 in enumerate(zones3):
@@ -928,7 +928,7 @@ class Surface():
             o = OCC.occ.evalFace(self.hook, a, i+1)
             zones3[i] = C.setFields([o], zones3[i], 'nodes')
 
-            C.convertPyTree2File(self.RefMeshUV2, 'out2.cgns')
+            #C.convertPyTree2File(self.RefMeshUV2, 'out2.cgns')
 
         return self.RefMesh
 
@@ -1202,6 +1202,30 @@ class Le:
     def __init__(self, expr1, expr2=None):
         # references sur l'inequation sympy
         self.s = sympy.Le(expr1, expr2)
+        DRIVER.registerInequation(self)
+
+#============================================================
+class Gt:
+    """Constraint inequation"""
+    def __init__(self, expr1, expr2=None):
+        # references sur l'inequation sympy
+        self.s = sympy.Gt(expr1, expr2)
+        DRIVER.registerInequation(self)
+
+#============================================================
+class Ge:
+    """Constraint inequation"""
+    def __init__(self, expr1, expr2=None):
+        # references sur l'inequation sympy
+        self.s = sympy.Ge(expr1, expr2)
+        DRIVER.registerInequation(self)
+
+#============================================================
+class Ne:
+    """Constraint inequation"""
+    def __init__(self, expr1, expr2=None):
+        # references sur l'inequation sympy
+        self.s = sympy.Ne(expr1, expr2)
         DRIVER.registerInequation(self)
 
 #============================================================
