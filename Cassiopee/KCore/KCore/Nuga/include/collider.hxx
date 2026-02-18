@@ -327,7 +327,7 @@ void compute_overlap(const K_FLD::FloatArray& crd1, const ngon_unit& PGs1,
         ELT2::template normal<crd_t, 3>(crd2, nodes2, nb_nodes2, 1, n2);
       
       E_Float ps = NUGA::dot<3>(n1,n2);
-      if (::fabs(ps) < ps_min) continue;
+      if (fabs(ps) < ps_min) continue;
       
       // Polygons pairs are now roughly overlapping/parallel : important in order to have a relevant result when using simplicial_colliding with Triangle::overlap
       
@@ -494,7 +494,7 @@ bool get_colliding<NUGA::aPolygon, edge_mesh_t>
 
   // project candidates on e1's plane => 2D problem
   STACK_ARRAY(E_Float, lmask.crd.cols(), signed_dists);
-  for (int i = 0; i < lmask.crd.cols(); ++i)
+  for (E_Int i = 0; i < lmask.crd.cols(); ++i)
   {
     // orthogonal projection on a plane (projection dir is the normal to the plane)
     // overwrite it
@@ -504,17 +504,17 @@ bool get_colliding<NUGA::aPolygon, edge_mesh_t>
   // discard those that are too far
   std::vector<bool> keep(cands.size(), true);
 
-  for (int i = 0; (i < lmask.cnt.cols()); ++i)
+  for (E_Int i = 0; (i < lmask.cnt.cols()); ++i)
   {
-    int e1 = lmask.cnt(0, i);
-    int e2 = lmask.cnt(1, i);
+    E_Int e1 = lmask.cnt(0, i);
+    E_Int e2 = lmask.cnt(1, i);
 
     E_Float z1 = signed_dists[e1];
     E_Float z2 = signed_dists[e2];
 
     if (z1*z2 < 0.) continue; // means crossing 
 
-    E_Float mz = std::min(::fabs(z1), ::fabs(z2));
+    E_Float mz = std::min(fabs(z1), fabs(z2));
     keep[i] = (mz < ATOL);
   }
 
@@ -565,14 +565,14 @@ bool get_colliding<NUGA::aPolygon, edge_mesh_t>
   keep.resize(ncands, false);
 
   E_Int T1[3];
-  for (int i = 0; (i < ae1.nb_tris()); ++i)
+  for (E_Int i = 0; (i < ae1.nb_tris()); ++i)
   {
     ae1.triangle(i, T1);
     const E_Float* P1 = crd2D.col(T1[0]);
     const E_Float* Q1 = crd2D.col(T1[1]);
     const E_Float* R1 = crd2D.col(T1[2]);
 
-    for (int j = 0; (j<ncands); ++j)
+    for (E_Int j = 0; (j<ncands); ++j)
     {
       if (keep[j]) continue;
 
@@ -647,7 +647,7 @@ bool get_colliding<NUGA::aPolyhedron<UNKNOWN>, pg_smesh_t>
   E_Int ncands(cands.size());
   std::vector<bool> keep(ncands, false);
 
-  for (int j = 0; (j<ncands); ++j)
+  for (E_Int j = 0; j < ncands; ++j)
   {
     if (keep[j]) continue;
 

@@ -2,10 +2,10 @@ EXPRESSION = True
 
 try:
     import KCore.Dist as Dist
-    from KCore.config import *
-    hdf, hdfIncDir, hdfLibDir, hdflibs = Dist.checkHdf(additionalLibPaths, additionalIncludePaths)
-    netcdf, netcdfIncDir, netcdfLibDir, netcdflibs = Dist.checkNetcdf(additionalLibPaths, additionalIncludePaths)
-
+    additionalLibPaths = Dist.getAdditionalLibPaths()
+    additionalIncludePaths = Dist.getAdditionalIncludePaths()
+    hdf, hdfIncDir, hdfLibDir, hdflibs = Dist.checkHdf()
+    netcdf, netcdfIncDir, netcdfLibDir, netcdflibs = Dist.checkNetcdf()
 except ModuleNotFoundError:
     hdf = True; netcdf = True
 
@@ -34,6 +34,7 @@ cpp_srcs = [
     'Converter/convertHexa2Struct.cpp',
     'Converter/convertUnstruct2NGon.cpp',
     'Converter/convertUnstruct2Hexa.cpp',
+    'Converter/mergeByEltType.cpp',
     'Converter/convertArray2Tetra.cpp',
     'Converter/convertNGon2TetraBary.cpp',
     'Converter/convertArray2TetraBary.cpp',
