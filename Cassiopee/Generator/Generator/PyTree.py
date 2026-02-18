@@ -15,44 +15,44 @@ except ImportError:
 def cart(Xo, H, N):
     """Create a structured cartesian mesh.
     Usage: cart((xo,yo,zo), (hi,hj,hk), (ni,nj,nk))"""
-    a = generator.cart(Xo, H, N, 2)
+    a = generator.cart(Xo, H, N, 3)
     return C.convertArrays2ZoneNode('cart', [a])
 
 def cartr1(Xo, H, R, N, doubleLeft=(0,0,0), doubleRight=(0,0,0)):
     """Create a structured cartesian mesh with geometric distribution.
     Usage: cartr1((xo,yo,zo), (hi,hj,hk), (ri,rj,rk), (ni,nj,nk))"""
-    a = generator.cartr1(Xo, H, R, N, doubleLeft, doubleRight, 2)
+    a = generator.cartr1(Xo, H, R, N, doubleLeft, doubleRight, 3)
     return C.convertArrays2ZoneNode('cartr1', [a])
 
 def cartr2(Xo, H, R, Xf, doubleLeft=(0,0,0), doubleRight=(0,0,0), skeleton=False):
     """Create a structured cartesian mesh with geometric distribution fixing last point. 
     Usage: cartr2((xo,yo,zo), (hi,hj,hk), (ri,rj,rk), (xf,yf,zf))"""
-    a = generator.cartr2(Xo, H, R, Xf, doubleLeft, doubleRight, 2, skeleton)
+    a = generator.cartr2(Xo, H, R, Xf, doubleLeft, doubleRight, 3, skeleton)
     if skeleton: return a
     return C.convertArrays2ZoneNode('cartr2', [a])
 
 def cartHexa(Xo, H, N):
     """Create a hexahedral cartesian mesh.
     Usage: cartHexa((xo,yo,zo), (hi,hj,hk), (ni,nj,nk))"""
-    a = generator.cartHexa(Xo, H, N, 2)
+    a = generator.cartHexa(Xo, H, N, 3)
     return C.convertArrays2ZoneNode('cartHexa', [a])
 
 def cartTetra(Xo, H, N):
     """Create a tetrahedrical cartesian mesh.
     Usage: cartTetra((xo,yo,zo), (hi,hj,hk), (ni,nj,nk))"""
-    a = generator.cartTetra(Xo, H, N, 2)
+    a = generator.cartTetra(Xo, H, N, 3)
     return C.convertArrays2ZoneNode('cartTetra', [a])
 
 def cartPenta(Xo, H, N):
     """Create a prismatic cartesian mesh.
     Usage: cartPenta((xo,yo,zo), (hi,hj,hk), (ni,nj,nk))"""
-    a = generator.cartPenta(Xo, H, N, 2)
+    a = generator.cartPenta(Xo, H, N, 3)
     return C.convertArrays2ZoneNode('cartPenta', [a])
 
 def cartPyra(Xo, H, N):
     """Create a pyramidal cartesian mesh.
     Usage: cartPyra((xo,yo,zo), (hi,hj,hk), (ni,nj,nk))"""
-    a = generator.cartPyra(Xo, H, N, 2)
+    a = generator.cartPyra(Xo, H, N, 3)
     return C.convertArrays2ZoneNode('cartPyra', [a])
 
 def cartNGon(Xo, H, N, api=2):
@@ -168,10 +168,10 @@ def adaptMesh__(a, indicator="indicator", hook=None, dim=3, conformize=False, sp
     return a
 
 # Create the hook for adaptMesh -
-# IN : conformal mesh ; infos : dictionary
+# IN: conformal mesh ; infos: dictionary
 # splitInfos["graph"]=comms between parts
-# splitInfos["cellGlobalIndex"] : global indices of the cells of the mesh
-# splitInfos["faceGlobalIndex"] : global indices of the faces in the mesh
+# splitInfos["cellGlobalIndex"]: global indices of the cells of the mesh
+# splitInfos["faceGlobalIndex"]: global indices of the faces in the mesh
 # splitInfos is only compatible with NGON !!!
 # otherwise a is modified & converted into a NGON v4 !!
 def createHook4AdaptMesh(a, dim=3, splitInfos=None):
@@ -207,10 +207,10 @@ def _createHook4AdaptMesh(a, dim=3, splitInfos=None):
     else:normal2D = numpy.array([0.0,0.0,1.0])
     if splitInfos is None or eltType != 'NGON':
         ngonelts = Internal.getNGonNode(z)
-        ER = Internal.getNodeFromName(ngonelts, 'ElementRange')[1]
+        ER = Internal.getNodeFromName1(ngonelts, 'ElementRange')[1]
         nfaces = ER[1]
         nfaceselts = Internal.getNFaceNode(z)
-        ER = Internal.getNodeFromName(nfaceselts, 'ElementRange')[1]
+        ER = Internal.getNodeFromName1(nfaceselts, 'ElementRange')[1]
         ncells = ER[1]-ER[0]+1
         gcells = numpy.arange(0, ncells)
         gfaces = numpy.arange(1,nfaces+1)
@@ -325,6 +325,8 @@ def octree2Struct(o, vmin=15, ext=0, optimized=1, merged=1, AMR=0,
     return zones
 
 def _adaptOctree(a, indicator="indicator", balancing=1, ratio=2):
+    """Adapt the octree with respect to the field 'indicator' located at centers.
+    Usage: adaptOctree(a, indicator, balancing, ratio)"""
     indicator = indicator.split(':')
     if len(indicator) == 2: indicator = indicator[1]
     else: indicator = indicator[0]
@@ -523,6 +525,8 @@ def snapFront(t, surfs, optimized=1):
                   arrays, optimized)
 
 def _snapFront(t, surfs, optimized=1):
+    """Adapt t to a given surface (cellN defined in t). 
+    Usage: snapFront(t, surfs, step, angle, optimized)"""
     arrays = C.getFields(Internal.__GridCoordinates__, surfs, api=1)
     return C._TZA1(t, 'nodes', 'nodes', True, Generator.snapFront,
                    arrays, optimized)
@@ -668,6 +672,8 @@ def bboxOfCells(t):
     return C.TZGC3(t, 'centers', True, Generator.bboxOfCells)
 
 def _bboxOfCells(t):
+    """Compute the bounding box of all cells of a mesh.
+    Usage: getBBoxOfCells(t)"""
     return C._TZGC3(t, 'centers', False, Generator.bboxOfCells)
 
 def getVolumeMap(t, method=0):
@@ -708,7 +714,6 @@ def getCellCenters(t, fc, fa, own=None, nei=None):
     centers = []
     for i in range(nzones):
         zone = zones[i]
-
         arr = C.getFields(Internal.__GridCoordinates__, zone, api=3)[0]
 
         if len(arr) != 4:
@@ -735,6 +740,8 @@ def getNormalMap(t):
     return C.TZGC3(t, 'centers', True, Generator.getNormalMap)
 
 def _getNormalMap(t):
+    """Return the map of surface normals in an array.
+    Usage: getNormalMap(t)"""
     return C._TZGC3(t, 'centers', False, Generator.getNormalMap)
 
 def getSmoothNormalMap(t, niter=2, eps=0.4):
@@ -744,6 +751,9 @@ def getSmoothNormalMap(t, niter=2, eps=0.4):
     return C.TZGC1(t, 'nodes', True, Generator.getSmoothNormalMap, niter, eps)
 
 def _getSmoothNormalMap(t, niter=2, eps=0.4):
+    """Return the map of smoothed and non-normalized surface normals in an array.
+    eps is the smoothing factor.
+    Usage: getSmoothNormalMap(t, niter, eps)"""
     return C._TZGC1(t, 'nodes', False, Generator.getSmoothNormalMap, niter, eps)
 
 def getCellPlanarity(t):
@@ -752,40 +762,48 @@ def getCellPlanarity(t):
     return C.TZGC1(t, 'centers', True, Generator.getCellPlanarity)
 
 def _getCellPlanarity(t):
+    """Return the cell planarity of a surface mesh in an array."""
     return C._TZGC1(t, 'centers', False, Generator.getCellPlanarity)
 
 def getCircumCircleMap(t):
     """Return the map of circum circle radius of a 'TRI' array.
     Usage: getCircumCircleMap(t)"""
-    return C.TZGC1(t, 'centers', True, Generator.getCircumCircleMap)
+    return C.TZGC3(t, 'centers', True, Generator.getCircumCircleMap)
 
 def _getCircumCircleMap(t):
-    return C._TZGC1(t, 'centers', False, Generator.getCircumCircleMap)
+    """Return the map of circum circle radius of a 'TRI' array.
+    Usage: getCircumCircleMap(t)"""
+    return C._TZGC3(t, 'centers', False, Generator.getCircumCircleMap)
 
 def getInCircleMap(t):
     """Return the map of inscribed circle radius of a 'TRI' array.
     Usage: getInCircleMap(t)"""
-    return C.TZGC1(t, 'centers', True, Generator.getInCircleMap)
+    return C.TZGC3(t, 'centers', True, Generator.getInCircleMap)
 
 def _getInCircleMap(t):
-    return C._TZGC1(t, 'centers', False, Generator.getInCircleMap)
+    """Return the map of inscribed circle radius of a 'TRI' array."""
+    return C._TZGC3(t, 'centers', False, Generator.getInCircleMap)
 
 def getEdgeRatio(t):
     """Compute the ratio between the max and min lengths of all the edges of
     cells in an array.
     Usage: getEdgeRatio(t)"""
-    return C.TZGC1(t, 'centers', True, Generator.getEdgeRatio)
+    return C.TZGC3(t, 'centers', True, Generator.getEdgeRatio)
 
 def _getEdgeRatio(t):
-    return C._TZGC1(t, 'centers', False, Generator.getEdgeRatio)
+    """Compute the ratio between the max and min lengths of all the edges of
+    cells in an array."""
+    return C._TZGC3(t, 'centers', False, Generator.getEdgeRatio)
 
-def getMaxLength(t):
-    """Compute the max length of all the edges of cells in a zone.
-    Usage: getMaxLength(t)"""
-    return C.TZGC1(t, 'centers', True, Generator.getMaxLength)
+def getEdgeLength(t, type=0, dim=3):
+    """Compute the min,max,ratio,mean length of all the edges for each cell in a zone.
+    Usage: getEdgeLength(t, type, dim)"""
+    return C.TZGC3(t, 'centers', True, Generator.getEdgeLength, type, dim)
 
-def _getMaxLength(t):
-    return C._TZGC1(t, 'centers', False, Generator.getMaxLength)
+def _getEdgeLength(t, type=0, dim=3):
+    """Compute the min,max,ratio,mean length of all the edges of cells in a zone.
+    Usage: getEdgeLength(t, type, dim)"""
+    return C._TZGC3(t, 'centers', False, Generator.getEdgeLength, type, dim)
 
 def enforceX(a, x0, enforcedh, N, add=0, verbose=True):
     """Enforce a x0-centered line in a distribution defined by an array.
@@ -950,6 +968,8 @@ def closeLegacy(a, tol=1.e-12, suppressDegeneratedNGons=False):
     return t
 
 def _closeLegacy(t, tol=1.e-12, suppressDegeneratedNGons=False):
+    """Merge vertices distant of tol and remove multiply defined vertices/faces/elements.
+    Usage: closeLegacy(array, tol, suppressDegeneratedNGons)"""
     fields = C.getAllFields(t, 'nodes', api=1)
     fields = Generator.closeLegacy(fields, tol, suppressDegeneratedNGons)
     C.setFields(fields, t, 'nodes')
@@ -973,6 +993,10 @@ def _close(t, tol=1.e-12, rmOverlappingPts=True, rmOrphanPts=True,
            rmDuplicatedFaces=True, rmDuplicatedElts=True,
            rmDegeneratedFaces=True, rmDegeneratedElts=True,
            indices=None):
+    """Merge vertices distant of tol and remove multiply defined vertices/faces/elements.
+    Usage: close(array, tol, rmOverlappingPts, rmOrphanPts, rmDuplicatedFaces,
+                 rmDuplicatedElts, rmDegeneratedFaces, rmDegeneratedElts,
+                 indices)"""
     fields = C.getAllFields(t, 'nodes', api=3)
     fields = Generator.close(fields, tol, rmOverlappingPts, rmOrphanPts,
                              rmDuplicatedFaces, rmDuplicatedElts,
@@ -980,6 +1004,18 @@ def _close(t, tol=1.e-12, rmOverlappingPts=True, rmOrphanPts=True,
                              indices=indices)
     C.setFields(fields, t, 'nodes')
     return None
+
+def rmOrphans(a):
+    """Remove orphan vertices."""
+    return close(a, rmOverlappingPts=False, rmOrphanPts=True,
+                 rmDuplicatedFaces=False, rmDuplicatedElts=False,
+                 rmDegeneratedFaces=False, rmDegeneratedElts=False)
+
+def _rmOrphans(a):
+    """Remove orphan vertices."""
+    return _close(a, rmOverlappingPts=False, rmOrphanPts=True,
+                  rmDuplicatedFaces=False, rmDuplicatedElts=False,
+                  rmDegeneratedFaces=False, rmDegeneratedElts=False)
 
 def zip(a, tol=1.e-12):
     """Zip zones if they are distant of tol."""
@@ -1020,14 +1056,14 @@ def grow(t, vector):
     if len(vector) != 3: raise ValueError("grow: 3 variables are required.")
     nodes = Internal.getZones(tp)
     for z in nodes:
-        fa = C.getFields(Internal.__FlowSolutionNodes__, z, api=1)[0]
+        fa = C.getFields(Internal.__FlowSolutionNodes__, z, api=3)[0]
         if fa != []:
             a = Converter.extractVars(fa, vector)
         else:
             print("Warning: grow: variables not found in zone.")
             a = []
         if a != []:
-            nodes = C.getAllFields(z, 'nodes', api=1)[0]
+            nodes = C.getAllFields(z, 'nodes', api=3)[0]
             nodes = Generator.grow(nodes, a)
             C.setFields([nodes], z, 'nodes')
     tp = Internal.addOneLayer2BC(tp, 3)
@@ -1037,10 +1073,10 @@ def stack(t1, t2=None):
     """Stack two meshes (with same nixnj) into a single mesh.
     Usage: stack(a1, a2)"""
     if t2 is not None:
-        a2 = C.getAllFields(t2, 'nodes', api=1)[0]
-        return C.TZA1(t1, 'nodes', 'nodes', True, Generator.stack, a2)
+        a2 = C.getAllFields(t2, 'nodes', api=3)[0]
+        return C.TZA3(t1, 'nodes', 'nodes', True, Generator.stack, a2)
     else:
-        a1 = C.getAllFields(t1, 'nodes', api=1)
+        a1 = C.getAllFields(t1, 'nodes', api=3)
         b = Generator.stack(a1)
         return C.convertArrays2ZoneNode('stack', [b])
 
@@ -1424,6 +1460,7 @@ def mmgs(t, ridgeAngle=45., hmin=0., hmax=0., hausd=0.01, grow=1.1,
 
 def _mmgs(t, ridgeAngle=45., hmin=0., hmax=0., hausd=0.01, grow=1.1,
           anisotropy=0, optim=0, fixedConstraints=[], sizeConstraints=[]):
+    """Remesh a surface using MMGs."""
     arrays = C.getFields('nodes', t, api=1)
     fixedConstraints = C.getFields('nodes', fixedConstraints, api=1)
     sizeConstraints = C.getFields('nodes', sizeConstraints, api=1)
@@ -1440,6 +1477,8 @@ def densify(z, h):
     return C.TZA1(z, 'nodes', 'nodes', True, Generator.densify, h)
 
 def _densify(z, h):
+    """Return zone with densified mesh.
+    Usage: densify(z, h)"""
     C._deleteFlowSolutions__(z)
     return C._TZA1(z, 'nodes', 'nodes', True, Generator.densify, h)
 
@@ -1795,7 +1834,7 @@ def polyTriMesher(z, h, hf, density, next):
         zone = C.convertArrays2ZoneNode(name+suffz,[m])
         walls = allwalls[noz-1]
         now = 1
-        for wrange in walls :
+        for wrange in walls:
             bndName = 'wall'+str(noz)+'_'+str(now)
             zone = C.addBC2Zone(zone, bndName, 'BCWall', wrange)
             now += 1
@@ -1853,6 +1892,8 @@ def getRegularityMap(t, addGC=False):
     return t
 
 def _getRegularityMap(t, addGC=False):
+    """Return the regularity map in an array.
+    Usage: getRegularityMap(t)"""
     if addGC: Internal._addGhostCells(t, t, 1, adaptBCs=0, modified=[], fillCorner=1)
     C._TZGC1(t, 'centers', False, Generator.getRegularityMap)
     if addGC: Internal._rmGhostCells(t, t, 1, adaptBCs=0, modified=[])
@@ -1874,6 +1915,8 @@ def getAngleRegularityMap(t, addGC=False):
     return t
 
 def _getAngleRegularityMap(t, addGC=False):
+    """Return the regularity map in an array (wrt angles).
+    Usage: getAngleRegularityMap(t)"""
     if addGC: Internal._addGhostCells(t, t, 1, adaptBCs=0, modified=[], fillCorner=1)
     C._TZGC1(t, 'centers', False, Generator.getAngleRegularityMap)
     if addGC: Internal._rmGhostCells(t, t, 1, adaptBCs=0, modified=[])
@@ -1888,6 +1931,8 @@ def getTriQualityMap(t):
     return C.TZGC1(t, 'centers', True, Generator.getTriQualityMap)
 
 def _getTriQualityMap(t):
+    """Return the quality map of a TRI array (0. for a degenerated triangle, 1. for an equilateral one).
+    Usage: getTriQualityMap(t)"""
     return C._TZGC1(t, 'centers', False, Generator.getTriQualityMap)
 
 #------------------------------------------------------------------------------

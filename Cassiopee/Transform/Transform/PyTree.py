@@ -1411,7 +1411,7 @@ def _reorderBCOverlap__(a, order):
             connect = Internal.getNodesFromType2(z, 'GridConnectivity_t')
             for i in connect:
                 pr = Internal.getNodeFromName1(i, 'PointRange')
-                r = Internal.getNodesFromType(i, 'GridConnectivityType_t')
+                r = Internal.getNodesFromType1(i, 'GridConnectivityType_t')
                 if r != []:
                     val = Internal.getValue(r[0])
                     if val == 'Overset':
@@ -2269,7 +2269,7 @@ def _splitSizeUpR__(t, N, R, multigrid, dirs, minPtsPerDir, topTree):
         import Distributor2.PyTree as D2
         for np, p in enumerate(procs):
             for zname in p[1]:
-                z = Internal.getNodeFromName(t, zname)
+                z = Internal.getNodeFromName2(t, zname)
                 D2._addProcNode(z, np)
     except: pass
     return None

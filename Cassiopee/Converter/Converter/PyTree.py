@@ -819,7 +819,7 @@ def _deleteBCOverlapWithDonorZone__(a, removeDnrZones=True, removeDnrFam=True):
                 if val == 'Overset' and zoneName != donorName: # no auto attach
                     typeOfDnr = 0 # 1: zone, 2: family
                     # check if donorName is a zone name
-                    if Internal.getNodeFromName(zones,donorName) is not None: typeOfDnr = 1
+                    if Internal.getNodeFromName(zones, donorName) is not None: typeOfDnr = 1
                     else: # check if it is referenced to a family
                         if Internal.getNodeFromName(families,donorName) is not None: typeOfDnr=2
 
@@ -4419,7 +4419,7 @@ def _recoverBCs2(t, BCInfo, tol=1.e-11):
     try: import Generator.PyTree as G
     except: raise ImportError("_recoverBCs: requires Generator module.")
     zones = Internal.getZones(t)
-    (BCs, BCNames, BCTypes) = BCInfo
+    BCs, BCNames, BCTypes = BCInfo
     for z in zones:
         dim = Internal.getZoneDim(z)
         if dim[0] == 'Structured': raise ValueError("recoverBC: not for structured grids.")
@@ -4460,53 +4460,37 @@ def _recoverBCs2(t, BCInfo, tol=1.e-11):
                 for b in bc:
                     if Internal.getZoneType(b) == 1: b = convertArray2Hexa(b)
                     if G.bboxIntersection(zf, b):
-                        # Break BC connectivity si necessaire
-                        elts = Internal.getElementNodes(b)
-                        size = 0
-                        for e in elts:
-                            erange = Internal.getNodeFromName1(e, 'ElementRange')[1]
-                            size += erange[1]-erange[0]+1
-                        n = len(elts)
-                        if n == 1:
-                            ids = identifyElements(hook, b, tol)
-                        else:
-                            bb = breakConnectivity(b)
-                            ids = numpy.array([], dtype=Internal.E_NpyInt)
-                            for bc in bb:
-                                ids = numpy.concatenate([ids, identifyElements(hook, bc, tol)])
-
+                        ids = identifyElements(hook, b, tol)
                         # Cree les BCs
-                        ids0 = ids # keep ids for bcdata
-                        ids = ids[ids > -1]
+                        validIds = ids > -1
+                        ids = ids[validIds]
                         sizebc = ids.size
-                        if sizebc > 0:
-                            #if dim[3] == 'NGON':
-                            id2 = numpy.empty(sizebc, dtype=Internal.E_NpyInt)
-                            id2[:] = indicesE[ids[:]-1]
-                            _addBC2Zone(z, BCNames[c], BCTypes[c], faceList=id2)
-                            #else:
-                            #    _addBC2Zone(z, BCNames[c], BCTypes[c], subzone=b)
+                        if sizebc == 0: continue
+                        #if dim[3] == 'NGON':
+                        id2 = numpy.empty(sizebc, dtype=Internal.E_NpyInt)
+                        id2[:] = indicesE[ids[:]-1]
+                        _addBC2Zone(z, BCNames[c], BCTypes[c], faceList=id2)
+                        #else:
+                        #    _addBC2Zone(z, BCNames[c], BCTypes[c], subzone=b)
 
-                            # Recupere BCDataSets
-                            fsc = Internal.getNodeFromName(b, Internal.__FlowSolutionCenters__)
+                        # Recupere BCDataSets
+                        fsc = Internal.getNodeFromName(b, Internal.__FlowSolutionCenters__)
+                        if fsc is not None:
+                            newBCName = getLastBCName(BCNames[c])
+                            bcz = Internal.getNodeFromNameAndType(z, newBCName, 'BC_t')
+                            ds = Internal.newBCDataSet(name='BCDataSet', value='UserDefined',
+                                                       gridLocation='FaceCenter', parent=bcz)
+                            d = Internal.newBCData('NeumannData', parent=ds)
 
-                            if fsc is not None:
-                                newNameOfBC = getLastBCName(BCNames[c])
-                                bcz = Internal.getNodeFromNameAndType(z, newNameOfBC, 'BC_t')
-
-                                ds = Internal.newBCDataSet(name='BCDataSet', value='UserDefined',
-                                                           gridLocation='FaceCenter', parent=bcz)
-                                d = Internal.newBCData('NeumannData', parent=ds)
-
-                                for node in Internal.getChildren(fsc):
-                                    if Internal.isType(node, 'DataArray_t'):
-                                        val0 = Internal.getValue(node)
-                                        if isinstance(val0,numpy.ndarray):
-                                            val0 = numpy.reshape(val0, val0.size, order='F')
-                                        else:
-                                            val0 = numpy.array([val0])
-                                        val1 = val0[ids0>-1]
-                                        Internal._createUniqueChild(d, node[0], 'DataArray_t', value=val1)
+                            for node in Internal.getChildren(fsc):
+                                if Internal.isType(node, 'DataArray_t'):
+                                    val0 = Internal.getValue(node)
+                                    if isinstance(val0,numpy.ndarray):
+                                        val0 = numpy.reshape(val0, val0.size, order='F')
+                                    else:
+                                        val0 = numpy.array([val0])
+                                    val1 = val0[validIds]
+                                    Internal._createUniqueChild(d, node[0], 'DataArray_t', value=val1)
             freeHook(hook)
     return None
 
@@ -4517,7 +4501,7 @@ def _recoverBCs1(a, BCInfo, tol=1.e-11):
     except: raise ImportError("_recoverBCs: requires Post module.")
     _deleteZoneBC__(a)
     zones = Internal.getZones(a)
-    (BCs, BCNames, BCTypes) = BCInfo
+    BCs, BCNames, BCTypes = BCInfo
     for z in zones:
         dim = Internal.getZoneDim(z)
         if dim[0] == 'Structured': raise ValueError("recoverBC: not for structured grids.")
@@ -4530,52 +4514,37 @@ def _recoverBCs1(a, BCInfo, tol=1.e-11):
             if bc == []: raise ValueError("_recoverBCs: boundary is probably ill-defined.")
             for b in bc:
                 if Internal.getZoneType(b) == 1: b = convertArray2Hexa(b)
-                # Break BC connectivity si necessaire
-                elts = Internal.getElementNodes(b)
-                size = 0
-                for e in elts:
-                    erange = Internal.getNodeFromName1(e, 'ElementRange')[1]
-                    size += erange[1]-erange[0]+1
-                n = len(elts)
-                if n == 1: # BE or NGon
-                    ids = identifyElements(hook, b, tol)
-                else: # ME
-                    bb = breakConnectivity(b)
-                    ids = numpy.array([], dtype=Internal.E_NpyInt)
-                    for bc in bb:
-                        ids = numpy.concatenate([ids, identifyElements(hook, bc, tol)])
+                ids = identifyElements(hook, b, tol)
                 # Cree les BCs
-                ids0 = ids # keep ids for bcdata
-                ids = ids[ids > -1]
+                validIds = ids > -1
+                ids = ids[validIds]
                 sizebc = ids.size
-                if sizebc > 0:
-                    #if dim[3] == 'NGON':
-                    id2 = numpy.empty(sizebc, dtype=Internal.E_NpyInt)
-                    id2[:] = indicesF[ids[:]-1]
-                    _addBC2Zone(z, BCNames[c], BCTypes[c], faceList=id2)
-                    #else:
-                    #    _addBC2Zone(z, BCNames[c], BCTypes[c], subzone=b)
+                if sizebc == 0: continue
+                #if dim[3] == 'NGON':
+                id2 = numpy.empty(sizebc, dtype=Internal.E_NpyInt)
+                id2[:] = indicesF[ids[:]-1]
+                _addBC2Zone(z, BCNames[c], BCTypes[c], faceList=id2)
+                #else:
+                #    _addBC2Zone(z, BCNames[c], BCTypes[c], subzone=b)
 
-                    # Recupere BCDataSets
-                    fsc = Internal.getNodeFromName(b, Internal.__FlowSolutionCenters__)
+                # Recupere BCDataSets
+                fsc = Internal.getNodeFromName(b, Internal.__FlowSolutionCenters__)
+                if fsc is not None:
+                    newBCName = getLastBCName(BCNames[c])
+                    bcz = Internal.getNodeFromNameAndType(z, newBCName, 'BC_t')
+                    ds = Internal.newBCDataSet(name='BCDataSet', value='UserDefined',
+                                               gridLocation='FaceCenter', parent=bcz)
+                    d = Internal.newBCData('NeumannData', parent=ds)
 
-                    if fsc is not None:
-                        newNameOfBC = getLastBCName(BCNames[c])
-                        bcz = Internal.getNodeFromNameAndType(z, newNameOfBC, 'BC_t')
-
-                        ds = Internal.newBCDataSet(name='BCDataSet', value='UserDefined',
-                                                   gridLocation='FaceCenter', parent=bcz)
-                        d = Internal.newBCData('NeumannData', parent=ds)
-
-                        for node in Internal.getChildren(fsc):
-                            if Internal.isType(node, 'DataArray_t'):
-                                val0 = Internal.getValue(node)
-                                if isinstance(val0,numpy.ndarray):
-                                    val0 = numpy.reshape(val0, val0.size, order='F')
-                                else:
-                                    val0 = numpy.array([val0])
-                                val1 = val0[ids0>-1]
-                                Internal._createUniqueChild(d, node[0], 'DataArray_t', value=val1)
+                    for node in Internal.getChildren(fsc):
+                        if Internal.isType(node, 'DataArray_t'):
+                            val0 = Internal.getValue(node)
+                            if isinstance(val0,numpy.ndarray):
+                                val0 = numpy.reshape(val0, val0.size, order='F')
+                            else:
+                                val0 = numpy.array([val0])
+                            val1 = val0[validIds]
+                            Internal._createUniqueChild(d, node[0], 'DataArray_t', value=val1)
         freeHook(hook)
     return None
 
@@ -5138,13 +5107,13 @@ def getEmptyBCForNGonZone__(z, dims, pbDim, splitFactor):
     indicesBC = []
     for b in bnds:
         f = Internal.getNodeFromName1(b, 'PointList')
-        indicesBC.append(f[1])
+        indicesBC.append(f[1].ravel('k'))
 
     undefBC = False
     if indicesBC != []:
-        indicesBC = numpy.concatenate(indicesBC, axis=1)
-        nfacesExt = indicesF.shape[0]
-        nfacesDef = indicesBC.shape[1]
+        indicesBC = numpy.concatenate(indicesBC)
+        nfacesExt = indicesF.size
+        nfacesDef = indicesBC.size
         if nfacesExt < nfacesDef:
             print('Warning: zone %s: number of faces defined by BCs is greater than the number of external faces. Try to reduce the matching tolerance.'%(z[0]))
         elif nfacesExt > nfacesDef:
@@ -5215,34 +5184,6 @@ def getBC2__(zbc, z, T, res, extrapFlow=True):
                     zp = Internal.copyRef(z)
                     connects = Internal.getNodesFromType1(z, 'Elements_t')
 
-                    '''
-                    ermin = numpy.amin(PL)
-                    ermax = numpy.amax(PL)
-                    for cn in connects:
-                        ERLoc = Internal.getNodeFromName1(cn, 'ElementRange')
-                        ERMin = Internal.getValue(ERLoc)[0]
-                        ERMax = Internal.getValue(ERLoc)[1]
-                        if ermin >= ERMin and ermax <= ERMax:
-                            for cn2 in connects:
-                                if cn2[0] != cn[0]:
-                                    Internal._rmNodesFromName(zp, cn2[0])
-                            etype = Internal.getValue(cn)
-                            if etype[1] != 0: etype[1] = 0
-                            nfaces = PL.size
-                            facelist = numpy.zeros(nfaces, dtype=Internal.E_NpyInt)
-                            facelist[:] = PL[:]-ERMin
-                            Internal._rmNodesFromType(zp, "ZoneBC_t")
-                            Internal._rmNodesFromType(zp, "ZoneGridConnectivity_t")
-                            Internal._rmNodesFromType(zp, "Family_t")
-                            Internal._rmNodesFromType(zp, "FamilyName_t")
-                            Internal._rmNodesFromName(zp, "ParentElement*")
-                            zp = T.subzone(zp, facelist, type='elements')
-                            zp[0] = z[0]+Internal.SEP1+zbc[0]
-                            _keepBCDataSet(zp, z, zbc, extrapFlow=extrapFlow)
-                            res.append(zp)
-                            break
-                    '''
-
                     for cn in connects:
                         ERLoc = Internal.getNodeFromName1(cn, 'ElementRange')
                         ERMin = Internal.getValue(ERLoc)[0]
@@ -5264,6 +5205,7 @@ def getBC2__(zbc, z, T, res, extrapFlow=True):
                             Internal._rmNodesFromType(zp, "Family_t")
                             Internal._rmNodesFromType(zp, "FamilyName_t")
                             Internal._rmNodesFromName(zp, "ParentElement*")
+                            _deleteFlowSolutions__(zp, loc='centers') # sadly
                             zp = T.subzone(zp, facelist, type='elements')
                             zp[0] = z[0]+Internal.SEP1+zbc[0]
                             _keepBCDataSet(zp, z, zbc, extrapFlow=extrapFlow)
@@ -5320,7 +5262,6 @@ def getBC__(i, z, T, res, reorder=True, extrapFlow=True, shift=0):
         _deleteZoneBC__(zp)
         _deleteGridConnectivity__(zp)
         _deleteSolverNodes__(zp)
-
         # Get BCDataSet if any
         _keepBCDataSet(zp, z, i, extrapFlow=extrapFlow)
         res.append(zp)

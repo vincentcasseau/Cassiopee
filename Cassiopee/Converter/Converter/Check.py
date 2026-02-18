@@ -686,7 +686,7 @@ def _reorderBCMatchPointRange(t):
             TR = Internal.getNodeFromName1(gc, 'Transform')
             TR = Internal.getValue(TR)
             trirac1 = TR[0]; trirac2 = TR[1]; trirac3 = TR[2]
-            PRN = Internal.getNodeFromName(gc, 'PointRangeDonor')
+            PRN = Internal.getNodeFromName1(gc, 'PointRangeDonor')
             win = Internal.range2Window(Internal.getValue(PRN))
             [imin, imax, jmin, jmax, kmin, kmax] = win
             if imin != imax and trirac1<0:
@@ -1109,11 +1109,11 @@ def _correctCGNSType(t):
     return None
 
 #==============================================================================
-# Check element nodes  dans t
+# Check element nodes dans t
 # Verifie:
 # si une zone a NGON+PE et pas de NFace
-# si il y a des connectivites multiples
 # les vertex references existent pour element et ngon
+# pas de faces negatives
 #==============================================================================
 def checkElementNodes(t):
     errors = []
@@ -1144,18 +1144,18 @@ def checkElementNodes(t):
                 c = Internal.getNodeFromName1(connects[iBE], 'ElementConnectivity')
                 if c[1] is None:
                     print("Warning: CheckPyTree: ElementConnectivity is None (may not be loaded).")
-                else:
+                elif c[1].size > 0:
                     minv = numpy.min(c[1]); maxv = numpy.max(c[1])
                     npts = C.getNPts(z)
                     if minv < 1 or maxv > npts:
                         errors += [z, b, 'Element connectivity referenced unexisting vertices in zone %s.'%z[0]]
 
-            #for iNFace in iNFaces: # check positive faces
-            #    c = Internal.getNodeFromName1(connects[iNFace], 'ElementConnectivity')
-            #    if c[1] is None: print("Warning: CheckPyTree: ElementConnectivity is None (may not be loaded).")
-            #    else:
-            #        minv = numpy.min(c[1])
-            #        if minv < 1: errors += [c, connects[iNFace], 'Negative NFace index']
+            for iNFace in iNFaces: # check positive faces
+                c = Internal.getNodeFromName1(connects[iNFace], 'ElementConnectivity')
+                if c[1] is None: print("Warning: CheckPyTree: ElementConnectivity is None (may not be loaded).")
+                else:
+                    minv = numpy.min(c[1])
+                    if minv < 1: errors += [c, connects[iNFace], 'Negative NFace index']
 
             for iNGon in iNGons: # check existing vertices
                 c = Internal.getNodeFromName1(connects[iNGon], 'ElementConnectivity')
@@ -1199,7 +1199,7 @@ def _correctElementNodes(t):
 # Corrige des boundary connectivity qui sont a zero (GE[1][1])
 #===============================================================================
 def _correctBCElementNodes(t):
-    #_correctBC_PL2ER(t)
+    #_correctBCPL2ER(t)
 
     zones = Internal.getZones(t)
     for z in zones:
@@ -1227,7 +1227,7 @@ def _correctBCElementNodes(t):
 #  1/ if BC is defined by a PointList= a set of vertices
 #  2/ or if BC is defined by a PointList= a set of face centers
 #==========================================================================================
-def _correctBC_PL2ER(t):
+def _correctBCPL2ER(t):
     import Post.PyTree as P
     for z in Internal.getZones(t):
         zdim = Internal.getZoneDim(z)
@@ -1237,15 +1237,15 @@ def _correctBC_PL2ER(t):
                 for zbc in Internal.getNodesFromType2(z, 'BC_t'):
                     bndName = Internal.getName(zbc)
                     #bndType = Internal.getValue(zbc)
-                    gcl = Internal.getNodeFromType(zbc, 'GridLocation_t')
-                    PL = Internal.getNodeFromName(zbc, 'PointList')
+                    gcl = Internal.getNodeFromType1(zbc, 'GridLocation_t')
+                    PL = Internal.getNodeFromName1(zbc, 'PointList')
                     if PL is not None:
                         if gcl is None or Internal.getValue(gcl)=='Vertex':
-                            C._initVars(z,'tag',0.)
+                            C._initVars(z, 'tag', 0.)
                             for ind in Internal.getValue(PL)[0]:
-                                C.setValue(z,'tag',ind,1.)
+                                C.setValue(z, 'tag', ind, 1.)
                             bc = P.exteriorFaces(z)
-                            C._rmVars(z,["tag"])
+                            C._rmVars(z, ["tag"])
                             bc = P.selectCells(bc,"{tag}>0",strict=1)
                             Internal._rmNodesFromName(zbc, "PointList")
                             if bc != []:
@@ -1257,9 +1257,9 @@ def _correctBC_PL2ER(t):
 
                         elif Internal.getValue(gcl) == 'FaceCenter':
                             bc_gcname = 'Elements_%s'%(Internal.getName(zbc))
-                            bc_gcnode = Internal.getNodeFromName(z,bc_gcname)
+                            bc_gcnode = Internal.getNodeFromName(z, bc_gcname)
                             if bc_gcnode is not None:
-                                ER = Internal.getNodeFromName(bc_gcnode,'ElementRange')
+                                ER = Internal.getNodeFromName(bc_gcnode, 'ElementRange')
                                 if ER is not None: ER = Internal.getValue(ER)
 
                         if ER is not None:
@@ -1279,7 +1279,7 @@ def _cleanBEConnect(t):
         zdim = Internal.getZoneDim(z)
         if zdim[0] == 'Unstructured':
             if zdim[3] == 'NGON':
-                for elt_t in Internal.getNodesFromType(z, 'Elements_t'):
+                for elt_t in Internal.getNodesFromType1(z, 'Elements_t'):
                     elt_no = Internal.getValue(elt_t)[0]
                     if elt_no != 22 and elt_no != 23:
                         Internal._rmNodesFromName(z, elt_t[0])
