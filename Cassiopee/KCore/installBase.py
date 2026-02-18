@@ -209,11 +209,11 @@ installDict = {
         [] # NvccAdditionalOptions
     ],
     ###############################################################################
-    'ld_spack1': [
+    'ld-clang': [
         'Poste grand calcul Onera-ld (ONERA)',
         'gfortran', # f77compiler
         'gfortran', # f90compiler
-        'gcc', # Cppcompiler
+        'clang', # Cppcompiler
         ['-DCACHELINE=32', '-DNB_SOCKET=1'], # CppAdditionalOptions
         [], # f77AdditionalOptions
         True, # useOMP
@@ -570,9 +570,9 @@ installDict = {
         [], # f77AdditionalOptions
         True, # useOMP
         False, # static
-        ['/usr/include', '/usr/include/hdf5/openmpi', '/usr/lib/x86_64-linux-gnu/openmpi/include'], # additionalIncludePaths
+        ['/usr/include', '/usr/include/openmpi-x86_64'], # additionalIncludePaths
         ['gfortran', 'gomp'], # additionalLibs
-        ['/usr/lib/x86_64-linux-gnu/hdf5/openmpi', '/usr/lib/x86_64-linux-gnu'], # additionalLibPaths
+        ['/usr/lib64', '/usr/lib64/openmpi/lib'], # additionalLibPaths
         False, # useCuda
         [] # NvccAdditionalOptions
     ],
@@ -609,7 +609,7 @@ installDict = {
         [] # NvccAdditionalOptions
     ],
     ###############################################################################
-    'sator_coda2': [
+    'sator_coda': [
         'Cluster de calcul Sator Saphire (ONERA)',
         'gfortran', # f77compiler
         'gfortran', # f90compiler
@@ -618,9 +618,9 @@ installDict = {
         [], # f77AdditionalOptions
         True, # useOMP
         False, # static
-        [], # additionalIncludePaths
-        [], # additionalLibs
-        [], # additionalLibPaths
+        ['/usr/include/openblas/'], # additionalIncludePaths
+        ['openblas'], # additionalLibs
+        ['/usr/lib64/'], # additionalLibPaths
         False, # useCuda
         [] # NvccAdditionalOptions
     ],

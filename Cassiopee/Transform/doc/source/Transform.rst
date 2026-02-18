@@ -63,7 +63,7 @@ List of functions
     Transform.homothety
     Transform.contract
     Transform.scale
-    Transform.symetrize
+    Transform.symmetrize
     Transform.perturbate
     Transform.smooth
     Transform.smoothField
@@ -584,21 +584,21 @@ Mesh transformation
 ---------------------------------------
 
 
-.. py:function:: Transform.symetrize(a, P, vector1, vector2)
+.. py:function:: Transform.symmetrize(a, P, vector1, vector2)
 
     .. A2.O0.D1
     
     Symmetrize a mesh with respect to a plane defined by point P and vectors vector1 and vector2.
 
-    Exists also as an in-place version (_symetrize) which modifies a and returns None.
+    Exists also as an in-place version (_symmetrize) which modifies a and returns None.
 
     :param a: mesh
     :type a: [array, list of arrays] or [zone, list of zones, base, pyTree]
     :param C: point of the symmetry plane 
     :type C: 3-tuple of floats
-    :param vector1: first vector of the symetry plane
+    :param vector1: first vector of the symmetry plane
     :type vector1: 3-tuple of floats
-    :param vector2: second vector of the symetry plane
+    :param vector2: second vector of the symmetry plane
     :type vector2: 3-tuple of floats
     :return: mesh after symmetrization
     :rtype: identical to input
@@ -780,7 +780,7 @@ Mesh transformation
 Mesh splitting and merging
 --------------------------
 
-.. py:function:: Transform.subzone(a, minIndex, maxIndex=None, type=None, dimOut=-1)
+.. py:function:: Transform.subzone(a, minIndex, maxIndex=None, type=None, dimOut=None)
 
     .. A1.O0.D0
     
@@ -815,7 +815,7 @@ Mesh splitting and merging
     :type  maxIndex: 3-tuple of integers
     :param type: type of subzone to perform (None, 'elements', 'faces')
     :type  type: None or string
-    :param dimOut: dimension of the output unstructured connectivity when type is None (-1 means same as the intput)
+    :param dimOut: dimension of the output unstructured connectivity when type is None (None means same as the intput, -1 means 2D for a 3D input connectivity)
     :type  dimOut: integer
     :return: subzoned mesh
     :rtype: identical to a

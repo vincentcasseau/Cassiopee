@@ -310,7 +310,7 @@ inline void detect_async_modified_faces(NUGA::ph_mesh_t& vmesh, const E_Float* c
       s2 += fb.surface<3>(m.crd);
     }
 
-    E_Float err = ::fabs((s1 - s2) / s2);
+    E_Float err = fabs((s1 - s2) / s2);
     if (err < 1.e-2)
       tmp.insert(std::make_pair(i.first, i.second));
   }
@@ -597,7 +597,7 @@ inline void replace_faces(
   for (E_Int i = 0; i < m.cnt.PHs.size(); ++i)
   {
     const E_Int* pPGi = m.cnt.PHs.get_facets_ptr(i);
-    int nb_pgs = m.cnt.PHs.stride(i);
+    E_Int nb_pgs = m.cnt.PHs.stride(i);
 
     molecPH.clear();
 
