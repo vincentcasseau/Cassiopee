@@ -265,6 +265,7 @@ def setCursor(cursor, B=None, C=None, D=None):
 # - prend les elts exterieurs pour les Tetra et les Hexa
 #==============================================================================
 def buildCPlotArrays(a, topTree=[]):
+
     if CPlot.__LOCATION__ == 'nodes':
         if __FIELD__ == '__all__':
             a = C.center2Node(a, Internal.__FlowSolutionCenters__)
@@ -629,7 +630,9 @@ def addFile():
 def saveFile():
     global FILE
     import tkinter.filedialog as tkFileDialog
-    ret = tkFileDialog.asksaveasfilename(filetypes=fileTypes, initialfile=FILE)
+    ret = tkFileDialog.asksaveasfilename(filetypes=fileTypes,
+                                         initialfile=FILE,
+                                         initialdir=os.getcwd())
     if ret == '' or ret is None or ret == (): # user cancel
         return
     try:
@@ -649,7 +652,9 @@ def quickSaveFile(event=None):
     global FILE
     import tkinter.filedialog as tkFileDialog
     if FILE == '':
-        ret = tkFileDialog.asksaveasfilename(filetypes=fileTypes)
+        ret = tkFileDialog.asksaveasfilename(filetypes=fileTypes,
+                                             initialfile=FILE,
+                                             initialdir=os.getcwd())
         if ret == '' or ret is None or ret == (): # user cancel
             return
         FILE = fixFileString2__(ret)
@@ -741,7 +746,9 @@ def saveSelZones2File():
         TXT.insert('START', 'Selection is empty.\n')
         TXT.insert('START', 'Error: ', 'Error'); return
     import tkinter.filedialog as tkFileDialog
-    ret = tkFileDialog.asksaveasfilename(filetypes=fileTypes)
+    ret = tkFileDialog.asksaveasfilename(filetypes=fileTypes,
+                                         initialfile='selection.cgns',
+                                         initialdir=os.getcwd())
     if ret == '' or ret is None or ret == (): # user cancel
         return
 
@@ -789,7 +796,9 @@ def saveNode2File():
         return
 
     import tkinter.filedialog as tkFileDialog
-    ret = tkFileDialog.asksaveasfilename(filetypes=fileTypes)
+    ret = tkFileDialog.asksaveasfilename(filetypes=fileTypes,
+                                         initialfile='nodes.cgns',
+                                         initialdir=os.getcwd())
     if ret == '' or ret is None or ret == (): # user cancel
         return
 
@@ -1090,6 +1099,7 @@ def cplotExport():
     ret = tkFileDialog.asksaveasfilename(
         title='Export as...',
         initialfile=EXPORTFILE,
+        initialdir=os.getcwd(),
         filetypes=[('Portable Network Graphics', '*.png'),
                    ('Portable pixmap', '*.ppm'),
                    ('Bitmap Postscript', '*.ps'),
