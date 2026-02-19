@@ -579,9 +579,9 @@ installDict = {
     ###############################################################################
     'ubuntu_arm64': [
         'Linux ubuntu 24.04 (emulation arm64 with QEMU) - Github Actions',
-        'mpifort', # f77compiler
-        'mpifort', # f90compiler
-        'mpicxx', # Cppcompiler
+        'gfortran', # f77compiler
+        'gfortran', # f90compiler
+        'gcc', # Cppcompiler
         [], # CppAdditionalOptions
         [], # f77AdditionalOptions
         True, # useOMP
