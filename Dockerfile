@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     gfortran \
+    libgfortran5 \
     libopenmpi-dev \
     libhdf5-openmpi-dev \
     mesa-common-dev \
@@ -75,10 +76,10 @@ ENV PIP_ROOT_USER_ACTION=ignore
 # Install Python dependencies using pip
 RUN python -m pip install --upgrade pip setuptools wheel build
 RUN python -m pip install \
-        numpy>=1.23.3 \
-        mpi4py>=3.1.3 \
-        scons>=4.4.0 \
-        matplotlib>=3.8.0
+        "numpy>=1.23.3" \
+        "mpi4py>=3.1.3" \
+        "scons>=4.4.0" \
+        "matplotlib>=3.10.0"
 
 # Verify the version of Python and numpy
 RUN python3 --version && pip3 --version
