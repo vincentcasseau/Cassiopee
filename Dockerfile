@@ -15,7 +15,6 @@ RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     gfortran \
-    libgfortran5 \
     libopenmpi-dev \
     libhdf5-openmpi-dev \
     mesa-common-dev \

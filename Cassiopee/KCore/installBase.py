@@ -587,7 +587,7 @@ installDict = {
         True, # useOMP
         False, # static
         [ '/usr/include', '/usr/include/hdf5/openmpi', '/usr/lib/aarch64-linux-gnu/openmpi/include'], # additionalIncludePaths
-        ['gomp'], # additionalLibs
+        ['gfortran', 'gomp'], # additionalLibs
         ['/usr/lib', '/usr/lib/aarch64-linux-gnu/hdf5/openmpi', '/usr/lib/aarch64-linux-gnu/openmpi/lib'], # additionalLibPaths
         False, # useCuda
         [] # NvccAdditionalOptions
