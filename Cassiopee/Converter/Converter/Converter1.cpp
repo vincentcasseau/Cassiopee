@@ -142,6 +142,14 @@ PyObject* K_CONVERTER::convertFile2Arrays(PyObject* self, PyObject* args)
     et.resize(et[0].size()); // TODO hack tmp
     for (size_t i = 1; i < et.size(); i++) et[i].push_back(et[0][i]);
   }
+  else if (K_STRING::cmp(fileFmt, "bin_vtu") == 0)
+  {
+    // Binary vtu read
+    ret = K_IO::GenIO::getInstance()->binvturead(fileName, varString, field, 
+                                                 im, jm, km, 
+                                                 ufield, c, et, zoneNames,
+                                                 api);
+  }
   else if (K_STRING::cmp(fileFmt, "fmt_plot3d") == 0)
   {
     // Formatted plot3d read
@@ -447,6 +455,7 @@ PyObject* K_CONVERTER::convertFile2Arrays(PyObject* self, PyObject* args)
   }
   
   PyObject* l = PyList_New(0);
+  printf("done.\n"); fflush(stdout);
 
   for (size_t i = 0; i < field.size(); i++)
   {
@@ -992,6 +1001,7 @@ E_Int K_CONVERTER::checkRecognisedFormat(char* fileFmt)
       K_STRING::cmp(fileFmt, "fmt_v3d") == 0 ||
       K_STRING::cmp(fileFmt, "bin_v3d") == 0 ||
       K_STRING::cmp(fileFmt, "bin_vtk") == 0 ||
+      K_STRING::cmp(fileFmt, "bin_vtu") == 0 ||
       K_STRING::cmp(fileFmt, "fmt_plot3d") == 0 ||
       K_STRING::cmp(fileFmt, "bin_plot3d") == 0 ||
       K_STRING::cmp(fileFmt, "fmt_pov") == 0 ||
