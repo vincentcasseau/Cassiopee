@@ -7,7 +7,7 @@ import KCore.test as test
 N = 10
 
 # -- initBCDataSet without having to create a BCDataSet node first.
-# A family is also defined. 
+# A family is also defined.
 a = G.cart((0,0,0), (1,1,1), (N,N,N))
 C._addBC2Zone(a, 'sym1', 'BCSymmetryPlane', 'imin')
 C._addBC2Zone(a, 'sym2', 'BCSymmetryPlane', 'imax')
@@ -31,4 +31,3 @@ C._initBCDataSet(t, 'MomentumY', 3., bndName='wall1')
 # Edit BC nodes by type
 C._initBCDataSet(t, 'MomentumX', 1., bndType='BCWallViscous')
 test.testT(t, 1)
-
