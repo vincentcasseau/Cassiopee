@@ -13,9 +13,8 @@ d = Internal.newBCDataSet(name='BCDataSet', value='UserDefined',
 d = Internal.newBCData('BCNeumann', parent=d)
 d = Internal.newDataArray('Density', value=nfaces*[1.], parent=d)
 
-# Init all BCs
+# Init all BC nodes
 C._initBCDataSet(a, 'MomentumX=2.*numpy.min({Density},0)')
-# Init only BC node
-bc = Internal.getNodeFromName(a, 'wall')
-C._initBCDataSet(bc, 'MomentumY=3.')
+# Init a single BC node only
+C._initBCDataSet(a, 'MomentumY=3.', bndName='wall')
 C.convertPyTree2File(a, 'out.cgns')
