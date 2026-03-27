@@ -4411,7 +4411,8 @@ def recoverBCs(a, BCInfo, tol=1.e-11, removeBC=True):
     return tp
 
 def _recoverBCs(t, BCInfo, tol=1.e-11, removeBC=True, indices=None):
-    if not removeBC and indices is not None:
+    method = "geometric" if indices is None else "topologic"
+    if not removeBC and method == "topologic":
         # topologic and removeBC = False
         raise NotImplementedError("_recoverBCs: assignement of new BC "
                                   "topologically not implemented yet when "
@@ -4432,7 +4433,7 @@ def _recoverBCs(t, BCInfo, tol=1.e-11, removeBC=True, indices=None):
         if dim[0] == 'Structured':
             raise TypeError("recoverBC: not for structured grids.")
 
-        if indices is None:  # geometric
+        if method == "geometric":
             indicesF = []
             # Get boundary face indices
             zf = P.exteriorFaces(z, indices=indicesF)
@@ -4459,10 +4460,10 @@ def _recoverBCs(t, BCInfo, tol=1.e-11, removeBC=True, indices=None):
                     nfacesExt = indicesF.shape[0]
                     nfacesDef = indicesBC.shape[1]
                     if nfacesExt < nfacesDef:
-                        print("Warning: zone %s: number of faces defined by "
-                              "BCs is greater than the number of external "
+                        print(f"Warning: zone {z[0]}: number of faces defined "
+                              "by BCs is greater than the number of external "
                               "faces. Try to  reduce the matching "
-                              "tolerance."%(z[0]))
+                              "tolerance.")
                     elif nfacesExt > nfacesDef:
                         indicesBC = indicesBC.reshape((indicesBC.size))
                         indicesF = Converter.converter.diffIndex(indicesF, indicesBC)
@@ -4478,7 +4479,7 @@ def _recoverBCs(t, BCInfo, tol=1.e-11, removeBC=True, indices=None):
             if bc == []:
                 raise ValueError("_recoverBCs: boundary is probably ill-defined.")
             for b in bc:
-                if indices is None:  # geometric
+                if method == "geometric":
                     if Internal.getZoneType(b) == 1: b = convertArray2Hexa(b)
                     if not removeBC and G.bboxIntersection(zf, b) != 1: continue
                     ids = identifyElements(hook, b, tol)
@@ -4538,7 +4539,10 @@ def _recoverBCs(t, BCInfo, tol=1.e-11, removeBC=True, indices=None):
                     else:  # BE/ME
                         _addBC2Zone(z, BCNames[c], BCTypes[c], pointList=pointList)
 
-        if indices is None: freeHook(hook)
+                    # Recover BCDataSets
+                    # TODO
+
+        if method == "geometric": freeHook(hook)
     return None
 
 # -- pushBC
@@ -5257,9 +5261,10 @@ def getBC__(i, z, T, res, reorder=True, extrapFlow=True, shift=0, method="geomet
                         zp = T.subzone(z, faceList, type='faces')
             elif val == 'Vertex': # vertex indices
                 pointList = r[1]
-                # if method != "geometric":
-                #     res.append(("VertexPointList", pointList))
-                #     return None
+                if method != "geometric":
+                    print("--- VertexPointList ---")
+                    res.append(("VertexPointList", pointList))
+                    return None
                 if zdim[0] == 'Unstructured' and zdim[3] != 'NGON':
                     zp = T.subzone(z, pointList, type='nodes', dimOut=-1)
                 else:
