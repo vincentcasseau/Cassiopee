@@ -22,4 +22,3 @@ hook = C.createHook(a, function='elementCenters')
 elts = C.identifyElements(hook, f)
 C.freeHook(hook)
 test.testO(elts, 7)"""
-
