@@ -40,7 +40,7 @@ def _addBCDataAtNodes(t):
     Internal.newDataArray('MomentumY', value=npts*[0.1], parent=d)
     Internal.newDataArray('MomentumZ', value=npts*[0.1], parent=d)
     Internal.newDataArray('EnergyStagnationDensity', value=npts*[2.], parent=d)"""
-    
+
 def _addBCDataAtFaceCenters(t):
     b = Internal.getBCNodesFromType(t, bndType='BCWall*')[0]
     er = Internal.getNodeFromName(b, Internal.__ELEMENTRANGE__)
@@ -115,4 +115,3 @@ _convertHexa2NGon(method="topologic", api=3)
 # 3D ME
 #_convertME2NGon(method="geometric")
 _convertME2NGon(method="topologic")
-
