@@ -139,8 +139,8 @@ PyObject* K_CONNECT::V_cleanConnectivityNGon(
                                                   indir, rmOverlappingPts);
     if (nuniquePts < 0) return NULL;
   }
-  //std::cout<<"npts: " << npts << std::endl;
-  //std::cout<<"nuniquePts: " << nuniquePts << std::endl;
+  std::cout<<"npts: " << npts << std::endl;
+  std::cout<<"nuniquePts: " << nuniquePts << std::endl;
 
   // An update is necessary before topological operations in 2. & 3.
   E_Bool rmDirtyPts = true;
@@ -193,8 +193,8 @@ PyObject* K_CONNECT::V_cleanConnectivityNGon(
     else rmDuplicatedElts = false;
   }
   if (nuniqueElts == nelts) rmDirtyElts = false;
-  //std::cout<<"nelts: " << nelts << std::endl;
-  //std::cout<<"nuniqueElts: " << nuniqueElts << std::endl;
+  std::cout<<"nelts: " << nelts << std::endl;
+  std::cout<<"nuniqueElts: " << nuniqueElts << std::endl;
 
   // --- 3. Identify dirty faces topologically ---
   E_Int nuniqueFaces = nfaces;
@@ -207,8 +207,8 @@ PyObject* K_CONNECT::V_cleanConnectivityNGon(
     if (nuniqueFaces == nfaces) rmDuplicatedFaces = false;
   }
   if (nuniqueFaces == nfaces) rmDirtyFaces = false;
-  //std::cout<<"nfaces: " << nfaces << std::endl;
-  //std::cout<<"nuniqueFaces: " << nuniqueFaces << std::endl;
+  std::cout<<"nfaces: " << nfaces << std::endl;
+  std::cout<<"nuniqueFaces: " << nuniqueFaces << std::endl;
 
   // --- 4. Reindex & Compress connectivities ---
   E_Int j, k; // write pointers
@@ -318,8 +318,8 @@ PyObject* K_CONNECT::V_cleanConnectivityNGon(
     }
     sizeEF2 = k;
 
-    //std::cout<<"sizeFN2: " << sizeFN2 << std::endl;
-    //std::cout<<"sizeEF2: " << sizeEF2 << std::endl;
+    std::cout<<"sizeFN2: " << sizeFN2 << std::endl;
+    std::cout<<"sizeEF2: " << sizeEF2 << std::endl;
   }
 
   // --- 5. Create resized connectivity ---
@@ -783,8 +783,8 @@ PyObject* K_CONNECT::V_cleanConnectivityME(
                                                   indir, rmOverlappingPts);
     if (nuniquePts < 0) return NULL;
   }
-  //std::cout<<"npts: " << npts << std::endl;
-  //std::cout<<"nuniquePts: " << nuniquePts << std::endl;
+  std::cout<<"npts: " << npts << std::endl;
+  std::cout<<"nuniquePts: " << nuniquePts << std::endl;
   
   // An update is necessary before topological operations in 2.
   E_Bool rmDirtyPts = true;
@@ -847,8 +847,8 @@ PyObject* K_CONNECT::V_cleanConnectivityME(
       nuniqueElts[ic] = cm.getSize();
     }
   }
-  //std::cout<<"ntotElts: " << ntotElts << std::endl;
-  //std::cout<<"ntotUniqueElts: " << ntotUniqueElts << std::endl;
+  std::cout<<"ntotElts: " << ntotElts << std::endl;
+  std::cout<<"ntotUniqueElts: " << ntotUniqueElts << std::endl;
 
   // --- 3. Reindex & Compress connectivities ---
   E_Bool rmDirtyElts = true;

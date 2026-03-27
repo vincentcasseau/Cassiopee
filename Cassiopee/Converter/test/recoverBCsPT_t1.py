@@ -1,16 +1,21 @@
 # - recoverBCs (pyTree) -
 import Converter.PyTree as C
 import Generator.PyTree as G
+import Transform.PyTree as T
+import Connector.PyTree as X
 import KCore.test as test
 
 # recover struct BCs on NGON
 a = G.cart((0,0,0),(1,1,1),(10,10,2))
-C._addBC2Zone(a, 'overlap', 'BCOverlap', 'imin')
+"""C._addBC2Zone(a, 'overlap', 'BCOverlap', 'imin')
 C._addBC2Zone(a, 'match1', 'BCMatch', 'jmin', a, 'jmax', [1,2,3])
 C._fillEmptyBCWith(a, 'wall', 'BCWall', dim=2)
-(BCs,BCNames,BCTypes) = C.getBCs(a)
-b = C.convertArray2NGon(a)
-C._recoverBCs(b, (BCs,BCNames,BCTypes))
+BCs, BCNames, BCTypes = C.getBCs(a)
+print(BCNames, BCTypes)"""
+b = C.convertArray2NGon(a, api=3)
+#C._recoverBCs(b, (BCs, BCNames, BCTypes))
+C.convertPyTree2File(b, 'out.cgns')
+exit()
 test.testT(b, 1)
 
 # recover hexa BCs on NGON
@@ -35,8 +40,6 @@ C._addBC2Zone(a, 'wall', 'BCWall', 'imin')
 C._addBC2Zone(a, 'overlap', 'BCOverlap', 'imax')
 (BCs,BCNames,BCTypes) = C.getBCs(a)
 b = C.convertArray2NGon(a,recoverBC=False)
-import Transform.PyTree as T
-import Connector.PyTree as X
 b = T.splitNParts(b,2)
 b = X.connectMatch(b)
 C._recoverBCs(b, (BCs,BCNames,BCTypes), removeBC=False)

@@ -5048,6 +5048,7 @@ def getEmptyBCForBEZone__(z, dims, pbDim, splitFactor):
     zp = Internal.copyRef(z)
     _deleteFlowSolutions__(zp)
 
+    print("A")
     defined = [] # BC deja definies
     for bc in bnds:
         flist = Internal.getNodeFromName1(bc, Internal.__FACELIST__)
@@ -5059,17 +5060,21 @@ def getEmptyBCForBEZone__(z, dims, pbDim, splitFactor):
             _deleteZoneBC__(s)
             defined.append(s)
 
+    print("B")
     hook = createHook(f, 'elementCenters')
     if defined != []:
         tag = Internal.getNodeFromName2(f, '__tag__')[1]
         for d in defined:
-            d = convertArray2NGon(d)
+            d = convertArray2NGon(d, api=3)
             id0 = identifyElements(hook, d)
             tag[id0[:]-1] = 0
 
+    print("C")
     sel = P.selectCells2(f, 'centers:__tag__')
+    print("D", splitFactor)
     if splitFactor >= 180.: sel = T.splitConnexity(sel)
     else: sel = T.splitSharpEdges(sel, alphaRef=splitFactor)
+    print("E")
 
     id0 = []
     for s in sel:
@@ -5989,7 +5994,7 @@ def extractBCFields(z, varList=None):
 
     if varList is None:
         varList = []
-        FS = Internal.getNodeFromName1(zp,Internal.__FlowSolutionCenters__)
+        FS = Internal.getNodeFromName1(zp, Internal.__FlowSolutionCenters__)
         for fs in FS[2]:
             if Internal.getType(fs) == 'DataArray_t':
                 varList.append(Internal.getName(fs))
@@ -6037,7 +6042,7 @@ def extractBCFields(z, varList=None):
                 if var not in varsL: varsE.append(var)
 
             if zoneType == 2:
-                if eltName =='NGON':
+                if eltName == 'NGON':
                     PE = Internal.getNodeFromName2(zp, 'ParentElements')
                     if PE is None: Internal._adaptNFace2PE(zp, remove=False)
                 else:
