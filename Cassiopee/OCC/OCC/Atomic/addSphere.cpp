@@ -25,6 +25,7 @@
 #include "TopExp_Explorer.hxx"
 #include "BRepPrimAPI_MakeSphere.hxx"
 #include "BRep_Builder.hxx"
+#include "BRepBuilderAPI_Sewing.hxx"
 
 //=====================================================================
 // Add a sphere to CAD hook
@@ -32,21 +33,25 @@
 PyObject* K_OCC::addSphere(PyObject* self, PyObject* args)
 {
   PyObject* hook; E_Float xc, yc, zc, R;
+  E_Int reverse;
   char* name;
-  if (!PYPARSETUPLE_(args, O_ TRRR_ R_ S_, &hook, &xc, &yc, &zc, &R, &name)) return NULL;
+  if (!PYPARSETUPLE_(args, O_ TRRR_ R_ I_ S_, 
+    &hook, &xc, &yc, &zc, &R, 
+    &reverse, &name)) return NULL;
 
+  GETPACKET;
   GETSHAPE;
-  GETMAPSURFACES;
-  GETMAPEDGES;
 
   /* new sphere */
   gp_Pnt center(xc, yc, zc);
   BRepPrimAPI_MakeSphere makerSphere(center, R);
   TopoDS_Shape sphere = makerSphere.Shape();
 
+  if (reverse == 1) sphere = sphere.Reversed();
+
 #ifdef USEXCAF
 
-  TDocStd_Document* doc = (TDocStd_Document*)packet[5];
+  GETDOC;
   addShape2OCAF(sphere, name, *doc);
   TopoDS_Shape* newshp = copyOCAF2TopShape(*doc);
   delete shape;
@@ -55,6 +60,9 @@ PyObject* K_OCC::addSphere(PyObject* self, PyObject* args)
   return Py_None;
 
 #else
+
+  GETMAPSURFACES;
+  GETMAPEDGES;
 
   // Rebuild a single compound
   BRep_Builder builder;
@@ -73,18 +81,20 @@ PyObject* K_OCC::addSphere(PyObject* self, PyObject* args)
   }
 
   // Add the sphere faces
-  TopTools_IndexedMapOfShape* sfs = new TopTools_IndexedMapOfShape();
-  TopExp::MapShapes(sphere, TopAbs_FACE, *sfs);
-  TopTools_IndexedMapOfShape& surfaces2 = *(TopTools_IndexedMapOfShape*)sfs;
+  TopTools_IndexedMapOfShape surfaces2 = TopTools_IndexedMapOfShape();
+  TopExp::MapShapes(sphere, TopAbs_FACE, surfaces2);
   for (E_Int i = 1; i <= surfaces2.Extent(); i++)
   {
     TopoDS_Face F = TopoDS::Face(surfaces2(i));
     builder.Add(compound, F);
   }
-  delete sfs;
+
+  BRepBuilderAPI_Sewing sewingTool;
+  sewingTool.Add(compound);
+  sewingTool.Perform();
+  TopoDS_Shape sewedShape = sewingTool.SewedShape();
 
   TopoDS_Shape* newshp = new TopoDS_Shape(compound);
-
   delete shape;
   SETSHAPE(newshp);
 

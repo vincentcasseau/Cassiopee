@@ -444,10 +444,10 @@ def T3mesher2D(a, grading=1.2, triangulateOnly=0, metricInterpType=0):
     c = Generator.T3mesher2D(c, grading, triangulateOnly, metricInterpType)
     return C.convertArrays2ZoneNode('tri', [c])
 
-def tetraMesher(a, maxh=-1., grading=0.4, triangulateOnly=0,
+def tetraMesher(a, maxh=-1., quality=1.2, grading=1.2, triangulateOnly=0,
                 remeshBoundaries=0, algo=1, optionString="", recoverBC=False):
     """Create a TRI/TETRA mesh given a set of BAR or surfaces in a.
-    Usage: tetraMesher(a, fineness, grading)"""
+    Usage: tetraMesher(a, ...)"""
     if recoverBC:
         zbcs=[]; bcnames=[]; bctypes=[]
         for z in Internal.getZones(a):
@@ -455,7 +455,7 @@ def tetraMesher(a, maxh=-1., grading=0.4, triangulateOnly=0,
             zbcs += b[0]; bcnames += b[1]; bctypes += b[2]
         gbcs = (zbcs, bcnames, bctypes)
     c = C.getFields('coords', a, api=1)
-    c = Generator.tetraMesher(c, maxh, grading, triangulateOnly,
+    c = Generator.tetraMesher(c, maxh, quality, grading, triangulateOnly,
                               remeshBoundaries, algo, optionString)
     z = C.convertArrays2ZoneNode('mesh', [c])
     if recoverBC: C._recoverBCs(z, gbcs)
@@ -1564,12 +1564,12 @@ def TTM(a, niter=100):
     return C.convertArrays2ZoneNode('ttm', [m])
 
 def hyper2D(t, distrib, type,
-            eta_start=10, eta_end=-1, beta=0.):
+            etaStart=10, etaEnd=-1, beta=0., forced=False):
     """Generate an hyperbolic mesh. 
     Usage: hyper2D(t, distrib, type)"""
     d = C.getFields(Internal.__GridCoordinates__, distrib, api=1)[0]
     return C.TZGC1(t, 'nodes', True, Generator.hyper2D, d, type,
-                   eta_start, eta_end, beta)
+                   etaStart, etaEnd, beta, forced)
 
 def hyper2D2(t, distrib, type, alpha):
     """Generate an hyperbolic mesh with a constant alpha angle.
@@ -1869,13 +1869,13 @@ def mapSplit(z, d, split_crit, dens_max=1000):
 # 2D: retourne un tableau d'angles alpha
 # 3D: retourne 3 tableaux d'angles alpha (dans l'ordre alpha_IJ, alpha_IK and alpha_JK pour les grilles structures)
 #------------------------------------------------------------------------------
-def getOrthogonalityMap(t):
+def getOrthogonalityMap(t, normalized=False):
     """Return the orthogonality map in an array.
     Usage: getOrthogonalityMap(t)"""
-    return C.TZGC1(t, 'centers', True, Generator.getOrthogonalityMap)
+    return C.TZGC3(t, 'centers', True, Generator.getOrthogonalityMap, normalized)
 
-def _getOrthogonalityMap(t):
-    return C._TZGC1(t, 'centers', False, Generator.getOrthogonalityMap)
+def _getOrthogonalityMap(t, normalized=False):
+    return C._TZGC3(t, 'centers', False, Generator.getOrthogonalityMap, normalized)
 
 #------------------------------------------------------------------------------
 # Calcul de la regularite (ratio entre des mailles adjacentes) d'une grille
@@ -1887,7 +1887,7 @@ def getRegularityMap(t, addGC=False):
     """Return the regularity map in an array.
     Usage: getRegularityMap(t)"""
     if addGC: t = Internal.addGhostCells(t, t, 1, adaptBCs=0, modified=[], fillCorner=1)
-    t = C.TZGC1(t, 'centers', True, Generator.getRegularityMap)
+    t = C.TZGC3(t, 'centers', True, Generator.getRegularityMap)
     if addGC: t = Internal.rmGhostCells(t, t, 1, adaptBCs=0, modified=[])
     return t
 
@@ -1895,7 +1895,7 @@ def _getRegularityMap(t, addGC=False):
     """Return the regularity map in an array.
     Usage: getRegularityMap(t)"""
     if addGC: Internal._addGhostCells(t, t, 1, adaptBCs=0, modified=[], fillCorner=1)
-    C._TZGC1(t, 'centers', False, Generator.getRegularityMap)
+    C._TZGC3(t, 'centers', False, Generator.getRegularityMap)
     if addGC: Internal._rmGhostCells(t, t, 1, adaptBCs=0, modified=[])
     return None
 

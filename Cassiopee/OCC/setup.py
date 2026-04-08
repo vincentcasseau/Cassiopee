@@ -7,6 +7,7 @@
 import os
 from setuptools import setup, Extension
 from importlib.util import spec_from_file_location, module_from_spec
+import KCore.Dist as Dist
 
 def loadModuleFromPath(modname):
     # Load a Python file by filesystem path (PEP-517 isolated build requirement)
@@ -16,10 +17,6 @@ def loadModuleFromPath(modname):
     spec.loader.exec_module(mod)
     return mod
 
-# Compiler settings must be set in installBase.py / installBaseUser.py
-Dist = loadModuleFromPath('../KCore/Dist')
-installBase = loadModuleFromPath('../KCore/installBase')
-Dist.setConfigDict(installBase.installDict)
 additionalLibPaths = Dist.getAdditionalLibPaths()
 additionalIncludePaths = Dist.getAdditionalIncludePaths()
 additionalLibs = Dist.getAdditionalLibs()
@@ -56,7 +53,7 @@ if OCCPresent:
     includeDirs += [OCCIncDir]
 
 srcs = loadModuleFromPath('srcs')
-libOCC = srcs.allMods
+libOCC = Dist.getOCCModules()
 if OCCPresent and Dist.getSystem()[0] == 'mingw':
     libOCE = [i+".dll" for i in libOCC]
 libraries += libOCC + libOCC
@@ -84,13 +81,3 @@ setup(
                            extra_link_args=Dist.getLinkArgs()
                            )]
 )
-
-# Check PYTHONPATH ===========================================================
-installPath = loadModuleFromPath('../KCore/installPath')
-installPathDict = {
-    "installPath": installPath.installPath,
-    "libPath": installPath.libPath,
-    "includePath": installPath.includePath
-}
-Dist.checkPythonPath(installPathDict)
-Dist.checkLdLibraryPath(installPathDict)

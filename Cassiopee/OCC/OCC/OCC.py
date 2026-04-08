@@ -21,8 +21,9 @@ __all__ = ['convertCAD2Arrays',
            'readCAD', 'writeCAD', 'createEmptyCAD', 'freeHook',
            'getNbEdges', 'getNbFaces', 'getFileAndFormat',
            'printOCAF', 'getFaceNameInOCAF', 'getEdgeNameInOCAF',
-           'getFaceArea', 'getBoundingBox',
-           '_translate', '_rotate', '_scale', '_sewing',
+           'getFaceNos', 'getEdgeNos', 'getFaceArea', 'getBoundingBox',
+           '_translate', '_rotate', '_scale', '_sewing', '_reverse',
+
            '_splitFaces', '_mergeFaces', '_trimFaces', '_removeFaces',
            '_fillHole', '_addFillet', '_offset', 'mergeCAD', '_mergeCAD',
            '_splitEdge',
@@ -31,8 +32,8 @@ __all__ = ['convertCAD2Arrays',
            '_addSquare', '_addSquare2',
            '_addBox', '_addBox2', '_addSphere', '_addCylinder',
            '_addSplineSurface', '_addGordonSurface', '_addDomain',
-           '_projectOnEdges', '_projectOnFaces',
-           '_revolve', '_sweep', '_loft', '_boolean']
+           '_revolve', '_sweep', '_loft', '_boolean',
+           '_projectOnEdges', '_projectOnFaces']
 
 # algo=0: mailleur open cascade (chordal_error)
 # algo=1: algorithme T3mesher (h, chordal_error, growth_ratio)
@@ -767,10 +768,10 @@ def meshAllFacesStruct(hook, dedges, faceList=[]):
     return dfaces, nloct, nofacet
 
 #===============================================
-# mesh using OCC mesher (anistropic, only hausd)
+# mesh using OCC mesher (anisotropic, only hausd)
 #===============================================
-def meshAllOCC(hook, hausd):
-    ret = occ.occmesh(hook, hausd)
+def meshAllOCC(hook, hausd, angularDeflection=28.):
+    ret = occ.occmesh(hook, hausd, angularDeflection)
     dedges = ret[0]
     dfaces = ret[1]
     return dedges, dfaces
@@ -794,16 +795,6 @@ def getFileAndFormat(hook):
     """Return file and format of associated CAD file."""
     return occ.getFileAndFormat(hook)
 
-# Return the area of specified faces
-def getFaceArea(hook, faceList=None):
-    """Return the area of given faces."""
-    return occ.getFaceArea(hook, faceList)
-
-# Return the bounding box of specified faces
-def getBoundingBox(hook, faceList=None):
-    """Return the bounding box of given faces."""
-    return occ.getBoundingBox(hook, faceList)
-
 # identify tag component
 def identifyTags__(a):
     return occ.identifyTags(a)
@@ -814,12 +805,58 @@ def printOCAF(hook):
     occ.printOCAF(hook)
 
 def getFaceNameInOCAF(hook):
-    """Return face labels in OCAF."""
+    """Return all face labels in OCAF."""
     return occ.getFaceNameInOCAF2(hook)
 
 def getEdgeNameInOCAF(hook):
-    """Return edge labels in OCAF."""
+    """Return all edge labels in OCAF."""
     return occ.getEdgeNameInOCAF2(hook)
+
+def getFaceNos(hook, labelName):
+    """Return face nos for a label."""
+    return occ.getFaceNos(hook, labelName)
+
+def getEdgeNos(hook, labelName):
+    """Return edge nos for a label."""
+    return occ.getEdgeNos(hook, labelName)
+
+# internal function to get the faceList
+# when faceList is a label name or a list of label names
+def getFaceList__(hook, faceList):
+    if faceList is not None:
+        if isinstance(faceList, str):
+            faceList = getFaceNos(hook, faceList)
+            return faceList
+        if isinstance(faceList, list):
+            if len(faceList) > 0 and isinstance(faceList[0], str):
+                out = []
+                for f in faceList: out += getFaceNos(hook, f)
+                return out
+    return faceList
+
+def getEdgeList__(hook, edgeList):
+    if edgeList is not None:
+        if isinstance(edgeList, str):
+            edgeList = getEdgeNos(hook, edgeList)
+            return edgeList
+        if isinstance(edgeList, list):
+            if len(edgeList) > 0 and isinstance(edgeList[0], str):
+                out = []
+                for f in edgeList: out += getEdgeNos(hook, f)
+                return out
+    return edgeList
+
+# Return the area of specified faces
+def getFaceArea(hook, faceList=None):
+    """Return the area of given faces."""
+    faceList = getFaceList__(hook, faceList)
+    return occ.getFaceArea(hook, faceList)
+
+# Return the bounding box of specified faces
+def getBoundingBox(hook, faceList=None):
+    """Return the bounding box of given faces."""
+    faceList = getFaceList__(hook, faceList)
+    return occ.getBoundingBox(hook, faceList)
 
 #=============================================================================
 # CAD modeling
@@ -864,9 +901,9 @@ def _addSpline(hook, Points, method, degree, name='spline'):
     occ.addSpline(hook, Points, method, degree, name)
     return None
 
-def _addBox(hook, P0, width, height, depth, name='box'):
+def _addBox(hook, P0, width, height, depth, reverse=False, name='box'):
     """Add a box to hook."""
-    occ.addBox(hook, P0, width, height, depth, name)
+    occ.addBox(hook, P0, width, height, depth, reverse, name)
     return None
 
 def _addBox2(hook, P1, P2, P3, P4, P5, P6, P7, P8, name='box2'):
@@ -874,9 +911,9 @@ def _addBox2(hook, P1, P2, P3, P4, P5, P6, P7, P8, name='box2'):
     occ.addBox2(hook, P1, P2, P3, P4, P5, P6, P7, P8, name)
     return None
 
-def _addSphere(hook, C, R, name='sphere'):
+def _addSphere(hook, C, R, reverse=False, name='sphere'):
     """Add a sphere to hook."""
-    occ.addSphere(hook, C, R, name)
+    occ.addSphere(hook, C, R, reverse, name)
     return None
 
 def _addCylinder(hook, C, axis, R, H, name='cylinder'):
@@ -911,13 +948,13 @@ def _addDomain(hook, dfar=10., type="box", plane=None):
     if type == "sphere":
         P0 = ((bb[3]+bb[0])*0.5, (bb[4]+bb[1])*0.5, (bb[5]+bb[2])*0.5)
         R = max(dfarx, dfary, dfarz)
-        _addSphere(hook, P0, R)
+        _addSphere(hook, P0, R, reverse=True)
     elif type == "box":
         P0 = (bb[0]-dfarx,bb[1]-dfary,bb[2]-dfarz)
         width = bb[3]-bb[0]+2*dfarx
         height = bb[4]-bb[1]+2*dfary
         depth = bb[5]-bb[2]+2*dfarz
-        _addBox(hook, P0, width, height, depth)
+        _addBox(hook, P0, width, height, depth, reverse=True)
     elif type == "half-sphere":
         if plane is None:
             raise ValueError('addDomain: requires plane for half-sphere.')
@@ -968,20 +1005,27 @@ def _addDomain(hook, dfar=10., type="box", plane=None):
     #nf2 = getNbFaces(hook)
     return None
 
-def _revolve(hook, edges, C, axis, angle):
+def _revolve(hook, edges, C, axis, angle, name='revolve'):
     """Revolve edges to create surface."""
-    occ.revolve(hook, edges, C, axis, angle)
+    edges = getEdgeList__(hook, edges)
+    occ.revolve(hook, edges, C, axis, angle, name)
 
-def _sweep(hook, profiles, paths):
+def _sweep(hook, profiles, paths, name='sweep'):
     """Sweep profiles along paths."""
-    occ.sweep(hook, profiles, paths)
+    profiles = getEdgeList__(hook, profiles)
+    paths = getEdgeList__(hook, paths)
+    occ.sweep(hook, profiles, paths, name)
 
-def _loft(hook, profiles, guides):
+def _loft(hook, profiles, guides, name='loft'):
     """Loft profiles."""
-    occ.loft(hook, profiles, guides)
+    profiles = getEdgeList__(hook, profiles)
+    guides = getEdgeList__(hook, guides)
+    occ.loft(hook, profiles, guides, name)
 
 def _boolean(hook, faces1, faces2, op=0, rev1=1, rev2=1):
     """Boolean operation on two surfaces."""
+    faces1 = getFaceList__(hook, faces1)
+    faces2 = getFaceList__(hook, faces2)
     occ.boolean(hook, faces1, faces2, op, rev1, rev2)
 
 #=============================================================================
@@ -1014,26 +1058,37 @@ def freeHook(hook):
 # Translate
 def _translate(hook, vector, faceList=None):
     """Translate all or given faces."""
+    faceList = getFaceList__(hook, faceList)
     occ.translate(hook, vector, faceList)
     return None
 
 # Rotate
 def _rotate(hook, Xc, axis, angle, faceList=None):
     """Rotate all or given faces."""
+    faceList = getFaceList__(hook, faceList)
     occ.rotate(hook, Xc, axis, angle, faceList)
     return None
 
 # Scale
 def _scale(hook, factor, X, faceList=None):
     """Scale all or given faces."""
+    faceList = getFaceList__(hook, faceList)
     occ.scale(hook, factor, X, faceList)
     return None
 
 # sew a set of faces
 # faces: face list numbers
-def _sewing(hook, faceList=None, tol=1.e-6):
+def _sewing(hook, tol=1.e-6, faceList=None):
     """Sew some faces (suppress redundant edges)."""
-    occ.sewing(hook, faceList, tol)
+    faceList = getFaceList__(hook, faceList)
+    occ.sewing(hook, tol, faceList)
+    return None
+
+# reverse a set of faces
+def _reverse(hook, faceList=None):
+    """Reverse some faces."""
+    faceList = getFaceList__(hook, faceList)
+    occ.reverse(hook, faceList)
     return None
 
 # add fillet from edges with given radius
@@ -1045,25 +1100,29 @@ def _addFillet(hook, edges, radius, new2OldEdgeMap=[], new2OldFaceMap=[]):
 # offset surfce of fiven distance
 def _offset(hook, distance, faceList=None):
     """Offset surface of given distance."""
+    faceList = getFaceList__(hook, faceList)
     occ.offset(hook, distance, faceList)
     return None
 
 # edgeMap and faceMap are new2old maps
 def _removeFaces(hook, faceList, new2OldEdgeMap=[], new2OldFaceMap=[]):
     """Remove given faces."""
+    faceList = getFaceList__(hook, faceList)
     occ.removeFaces(hook, faceList, new2OldEdgeMap, new2OldFaceMap)
     return None
 
 # fill hole from edges
 # edges: edge list numbers (must be ordered)
-def _fillHole(hook, edges, faceList=None, continuity=0):
+def _fillHole(hook, edges, faceList=None, continuity=0, name="fill"):
     """Fill hole defined by close loop of edges."""
-    occ.fillHole(hook, edges, faceList, continuity)
+    faceList = getFaceList__(hook, faceList)
+    occ.fillHole(hook, edges, faceList, continuity, name)
     return None
 
 # merge faces
 def _mergeFaces(hook, faceList=None):
     """Merge some faces."""
+    faceList = getFaceList__(hook, faceList)
     occ.mergeFaces(hook, faceList)
     return None
 
@@ -1083,6 +1142,8 @@ def _mergeCAD(hooks):
 # if mode=2, both cut
 def _trimFaces(hook, faces1, faces2, mode=2, algo=0):
     """Trim a set of faces with another set of faces."""
+    faces1 = getFaceList__(hook, faces1)
+    faces2 = getFaceList__(hook, faces2)
     occ.trimFaces(hook, faces1, faces2, mode, algo)
     return None
 

@@ -37,6 +37,7 @@ PyObject* K_OCC::scale(PyObject* self, PyObject* args)
   if (!PYPARSETUPLE_(args, O_ R_ TRRR_ O_, &hook, &factor, 
     &x0, &y0, &z0, &listFaces)) return NULL;
 
+  GETPACKET;
   GETSHAPE;
   GETMAPSURFACES;
 
@@ -99,10 +100,12 @@ PyObject* K_OCC::scale(PyObject* self, PyObject* args)
   }
 
 #ifdef USEXCAF
-  TDocStd_Document* doc = (TDocStd_Document*)packet[5];
+  GETDOC;
   std::map< E_Int, std::vector<E_Int> > label2Faces;
+  std::map< E_Int, std::vector<E_Int> > label2Edges;
+  getLabel2Edges(*doc, label2Edges);
   getLabel2Faces(*doc, label2Faces);
-  copyTopShape2OCAF(*newshp, label2Faces, *doc);
+  copyTopShape2OCAF(*newshp, label2Edges, label2Faces, *doc);
 #endif
 
   // Rebuild the hook

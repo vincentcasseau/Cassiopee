@@ -37,12 +37,14 @@ PyObject* K_OCC::addBox(PyObject* self, PyObject* args)
 {
   PyObject* hook;
   E_Float x0, y0, z0, width, height, depth;
+  E_Int reverse;
   char* name;
-  if (!PYPARSETUPLE_(args, O_ TRRR_ RRR_ S_, 
+  if (!PYPARSETUPLE_(args, O_ TRRR_ RRR_ I_ S_, 
     &hook, 
     &x0, &y0, &z0, &width, &height, &depth, 
-    &name)) return NULL;
+    &reverse, &name)) return NULL;
 
+  GETPACKET; 
   GETSHAPE;
   
   /* new box */
@@ -115,14 +117,17 @@ PyObject* K_OCC::addBox(PyObject* self, PyObject* args)
   builder.Add(compound, face5);
   builder.Add(compound, face6);
 
-  BRepBuilderAPI_Sewing sewingTool;
-  sewingTool.Add(compound);
-  sewingTool.Perform();
-  TopoDS_Shape sewedShape = sewingTool.SewedShape();
+  TopoDS_Shape shp = TopoDS_Shape(compound); 
+  if (reverse == 0) shp = shp.Reversed();
 
 #ifdef USEXCAF
 
-  TDocStd_Document* doc = (TDocStd_Document*)packet[5];
+  BRepBuilderAPI_Sewing sewingTool;
+  sewingTool.Add(shp);
+  sewingTool.Perform();
+  TopoDS_Shape sewedShape = sewingTool.SewedShape();
+
+  GETDOC;
   addShape2OCAF(sewedShape, name, *doc);
   TopoDS_Shape* newshp = copyOCAF2TopShape(*doc);
   delete shape;
@@ -151,9 +156,9 @@ PyObject* K_OCC::addBox(PyObject* self, PyObject* args)
   }
   
   TopTools_IndexedMapOfShape sf2 = TopTools_IndexedMapOfShape();
-  TopExp::MapShapes(sewedShape, TopAbs_FACE, sf2);
+  TopExp::MapShapes(shp, TopAbs_FACE, sf2);
   TopTools_IndexedMapOfShape se2 = TopTools_IndexedMapOfShape();
-  TopExp::MapShapes(sewedShape, TopAbs_EDGE, se2);
+  TopExp::MapShapes(shp, TopAbs_EDGE, se2);
   for (E_Int i = 1; i <= sf2.Extent(); i++)
   {
     TopoDS_Face F = TopoDS::Face(sf2(i));
@@ -165,7 +170,11 @@ PyObject* K_OCC::addBox(PyObject* self, PyObject* args)
     builder2.Add(compound2, E);
   }
 
-  TopoDS_Shape* newshp = new TopoDS_Shape(compound2);
+  BRepBuilderAPI_Sewing sewingTool;
+  sewingTool.Add(compound2);
+  sewingTool.Perform();
+  TopoDS_Shape sewedShape = sewingTool.SewedShape();
+  TopoDS_Shape* newshp = new TopoDS_Shape(sewedShape);
 
   delete shape;
   SETSHAPE(newshp);

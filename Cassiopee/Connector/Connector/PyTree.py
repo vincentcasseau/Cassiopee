@@ -329,7 +329,7 @@ def getEmptyWindowsInfoHybrid__(t, dim=3):
                 C._initVars(winp,'centers:tag1',-1.) # defines the opposite window
                 C._initVars(winp,'centers:tag2',-2.) # defines the opp index in opp window
                 allTags += [winp]; indirBlkOfWins += [noz]
-                ind = Converter.converter.range2PointList(r[0],r[1],r[2],r[3],r[4],r[5],dimZ[1],dimZ[2],dimZ[3])
+                ind = Converter.converter.window2FacePointList(*r, dimZ[1], dimZ[2], dimZ[3])
                 allExtIndices += [ind]
     return allTags, indirBlkOfWins, allExtIndices
 
@@ -1989,10 +1989,10 @@ def _doubleWall(t, tc, familyBC1, familyBC2, ghostCells=False, check=False, surf
     for b in Internal.getBases(t):
         for z in Internal.getZones(b):
             for f1 in familyBC1:
-                wall1 = C.getFamilyBCs(z, f1)
+                wall1 = Internal.getFamilyBCs(z, f1)
                 for w in wall1: listOfMismatch1.append(b[0]+'/'+z[0]+'/'+w[0])
             for f2 in familyBC2:
-                wall2 = C.getFamilyBCs(z, f2)
+                wall2 = Internal.getFamilyBCs(z, f2)
                 for w in wall2: listOfMismatch2.append(b[0]+'/'+z[0]+'/'+w[0])
 
     # project interpolated points (cellN=2) from listOfMismatch2 onto listOfMismatch1
@@ -2013,7 +2013,7 @@ def initDoubleWall(t, familyBC1, check=False):
     for b in Internal.getBases(t):
         for z in Internal.getZones(b):
             for f1 in familyBC1:
-                wall1 = C.getFamilyBCs(z, f1)
+                wall1 = Internal.getFamilyBCs(z, f1)
                 for w in wall1: listOfMismatch1.append(b[0]+'/'+z[0]+'/'+w[0])
 
     return DoubleWall.getProjSurfaceForDoubleWall(t, listOfMismatch1, '_'.join(familyBC1), check)

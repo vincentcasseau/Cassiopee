@@ -44,12 +44,6 @@ ok, libs, paths = Dist.checkCppLibs()
 libraryDirs += paths
 libraries += libs
 
-if Dist.ADOLC:
-    adolc, adolcIncDir, adolcLibDir, adolcLib = Dist.checkAdolc()
-    if adolc:
-        libraryDirs += adolcLibDir
-        libraries.append(adolcLib)
-
 # Extensions
 listExtensions = [
     Extension(
@@ -72,13 +66,3 @@ setup(
     packages=['KCore'],
     ext_modules=listExtensions
 )
-
-# Check PYTHONPATH
-installPath = loadModuleFromPath('installPath')
-installPathDict = {
-    "installPath": installPath.installPath,
-    "libPath": installPath.libPath,
-    "includePath": installPath.includePath
-}
-Dist.checkPythonPath(installPathDict)
-Dist.checkLdLibraryPath(installPathDict)

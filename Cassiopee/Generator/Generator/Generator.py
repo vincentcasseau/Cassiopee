@@ -795,10 +795,10 @@ def densify(array, h):
         return generator.densify(array, h)
 
 def hyper2D(array, arrayd, type,
-            eta_start=10, eta_end=-1, beta=0.0):
+            etaStart=10, etaEnd=-1, beta=0.0, forced=False):
     """Generate an hyperbolic mesh. 
     Usage: hyper2D(array, arrayd, type)"""
-    return generator.hyper2D(array, arrayd, type, eta_start, eta_end, beta)
+    return generator.hyper2D(array, arrayd, type, etaStart, etaEnd, beta, forced)
 
 def hyper2D2(array, arrayd, type, alpha):
     """Generate an hyperbolic mesh with a constant alpha angle.
@@ -1465,7 +1465,7 @@ def T3mesher2D(a, grading=1.2, triangulateOnly=0, metricInterpType=0):
     except:
         return generator.T3mesher2D(a, grading, triangulateOnly, metricInterpType)
 
-def tetraMesher(a, maxh=-1., grading=0.4, triangulateOnly=0,
+def tetraMesher(a, maxh=-1., quality=1.2, grading=1.2, triangulateOnly=0,
                 remeshBoundaries=0, algo=1, optionString=""):
     """Create a TRI/TETRA mesh given a set of BAR or surfaces in a.
     Usage: tetraMesher(a, maxh, grading)"""
@@ -1511,7 +1511,7 @@ def tetraMesher(a, maxh=-1., grading=0.4, triangulateOnly=0,
                     eps = 1.e-10
                     holes.append([pt[0]+eps*n[0], pt[1]+eps*n[1], pt[2]+eps*n[2]])
             except: pass
-            return generator.tetgen(a, maxh, grading, remeshBoundaries, holes, optionString)
+            return generator.tetgen(a, maxh, quality, remeshBoundaries, holes, optionString)
     else:
         raise TypeError("tetraMesher: requires BAR or TRI mesh.")
 
@@ -2383,16 +2383,16 @@ def addNormalLayersUnstr__(surface, distrib, check=0, niterType=0, niter=0, nite
     return m
 
 # Fonction retournant la carte d'orthogonalite d'une grille
-def getOrthogonalityMap(array):
+def getOrthogonalityMap(array, normalized=False):
     """Return the orthogonality map in an array.
     Usage: getOrthogonalityMap(array)"""
     if isinstance(array[0], list):
         b = []
         for i in array:
-            b.append(generator.getOrthogonalityMap(i))
+            b.append(generator.getOrthogonalityMap(i, normalized))
         return b
     else:
-        return generator.getOrthogonalityMap(array)
+        return generator.getOrthogonalityMap(array, normalized)
 
 # Fonction retournant la carte de regularite d'une grille
 def getRegularityMap(array):
@@ -2462,17 +2462,17 @@ def getMeshFieldInfo__(array, field, critValue, verbose):
     for cpt, m in enumerate(array):
         f = DictFunction[field](m)[1]
 
-        size_loc  = numpy.size(f)
+        size_loc = numpy.size(f)
         fcrit_loc = numpy.count_nonzero(f<critValue) if field == 'vol' else numpy.count_nonzero(f>critValue)
-        fmin_loc  = numpy.min(f)
-        fmax_loc  = numpy.max(f)
-        fsum_loc  = numpy.sum(f)
+        fmin_loc = numpy.min(f)
+        fmax_loc = numpy.max(f)
+        fsum_loc = numpy.sum(f)
 
-        fmin   = min(fmin_loc, fmin)
-        fmax   = max(fmax_loc, fmax)
-        fsum  += fsum_loc
+        fmin = min(fmin_loc, fmin)
+        fmax = max(fmax_loc, fmax)
+        fsum += fsum_loc
         fcrit += fcrit_loc
-        size  += size_loc
+        size += size_loc
 
         if verbose == 2 or (verbose == 1 and fcrit_loc > 0):
             print(info%(field.upper(),fmin_loc,fmax_loc,fsum_loc/float(size_loc),field,'<' if field == 'vol' else '>',critValue,fcrit_loc,size_loc,fcrit_loc/float(size_loc)*100,"Zone %d"%(cpt)))

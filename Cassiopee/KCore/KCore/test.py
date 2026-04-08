@@ -317,11 +317,11 @@ def testO(objet, number=1):
         file.close()
         return True
     else:
-        import pickle
+        from KCore.restrictedUnpickler import restrictedPickleLoad
         file = open(reference, 'rb')
         oldData = False
-        if oldData: a = pickle.load(file, encoding='latin1')
-        else: a = pickle.load(file)
+        if oldData: a = restrictedPickleLoad(file, encoding='latin1')
+        else: a = restrictedPickleLoad(file)
         file.close()
         print(f"Reading {reference}... done.")
         if isinstance(a, str) and a == 'Undumpable object': return True
@@ -336,7 +336,7 @@ def testO(objet, number=1):
 # Retourne 0 si differents
 #=============================================================================
 def checkTree(t1, t2):
-    """Check that pyTree t1 and t2 are identical."""
+    """Check that pyTrees t1 and t2 are identical."""
     dict1 = {}
     buildDict__('.', dict1, t1)
     dict1.pop('./CGNSTree/CGNSLibraryVersion', None) # avoid comparison when version change
@@ -344,14 +344,25 @@ def checkTree(t1, t2):
     buildDict__('.', dict2, t2)
     dict2.pop('./CGNSTree/CGNSLibraryVersion', None)
 
-    for k in dict2.keys():
-        node2 = dict2[k]
+    missing = []
+    for k in dict2:
         # cherche le noeud equivalent dans t1
-        if k not in dict1:
-            print('DIFF: node %s existe dans reference mais pas dans courant.'%k)
-        else:
-            node1 = dict1[k]
-            checkTree__(node1, node2)
+        if k in dict1:
+            checkTree__(dict1[k], dict2[k])
+        elif not any(k.startswith(p + "/") or k == p for p in missing):
+            # parent node of k was found but k isn't: report as missing in current
+            missing.append(k)
+            print(f'DIFF: node {k} exists in reference but not in current.')
+
+    missing = []
+    for k in dict1:
+        # cherche le noeud equivalent dans t2
+        if k in dict2:
+            pass  # test already done above
+        elif not any(k.startswith(p + "/") or k == p for p in missing):
+            # parent node of k was found but k isn't: report as missing in reference
+            missing.append(k)
+            print(f'DIFF: node {k} exists in current but not in reference.')
 
 def buildDict__(curr, mdict, node):
     d = f"{curr}/{node[0]}"
@@ -975,17 +986,21 @@ def writeCoverage(coverage):
 # Retourne 0 (FAIL), 1 (SUCCESS)
 #==============================================================================
 def checkCGNSlib(t, number=1):
-    import Converter.PyTree as C
-    C.convertPyTree2File(t, '.test%d.cgns'%number)
     import subprocess
-    cmd = "cgnscheck .test%d.cgns"%number
+    import Converter.PyTree as C
+    filename = f".test{number:d}.cgns"
+    C.convertPyTree2File(t, filename)
+    cmd = ["cgnscheck", filename]
     try:
-        s = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
-        # Look for errors in output
-        i1 = s.find("ERROR:")
-        if i1 != -1: print("FAILED: CGNSlib check."); return 0
-        return 1
-    except: print("FAILED: CGNSlib check."); return 0
+        s = subprocess.check_output(cmd, stderr=subprocess.STDOUT, text=True)
+    except subprocess.CalledProcessError as e:
+        s = e.output  # capture output on error
+    try: os.remove(filename)
+    except (FileNotFoundError, PermissionError): pass
+    if "ERROR:" in s:
+        print("FAILED: CGNSlib check.")
+        return 0
+    return 1
 
 #==============================================================================
 # Ecrit la memoire prise par le process
