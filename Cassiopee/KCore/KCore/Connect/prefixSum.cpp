@@ -156,3 +156,4 @@ std::vector<E_Int> K_CONNECT::prefixSum(std::vector<E_Int>& a,
 
   return bucketTotals;  // total number of tagged elements per buckets
 }
+

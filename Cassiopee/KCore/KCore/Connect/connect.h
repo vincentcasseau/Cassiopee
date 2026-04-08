@@ -172,7 +172,8 @@ namespace K_CONNECT
 
   /* Get all facets of a basic element*/
   E_Int getEVFacets(std::vector<std::vector<E_Int> >& facets,
-                    const char* eltType, E_Bool allow_degenerated=true);
+                    const char* eltType, E_Bool allow_degenerated=true,
+                    E_Bool expandToLowerDim=true);
   
   /* Change a Elts-Vertex connectivity to a Vertex-Elts connectivity.
      cVE doit deja etre alloue au nombre de noeuds. */
@@ -523,6 +524,13 @@ namespace K_CONNECT
   E_Int colorConnexParts(E_Int *, E_Int *, E_Int, E_Int *);
 
   /* Miscellenous */
+  // Given a sorted array of global indices belonging to consecutive buckets,
+  // compute the starting offset in the array for each bucket using binary
+  // search.
+  void computeStartOffsets(const E_Int* sortedIndices, E_Int nindices,
+                           const std::vector<E_Int>& bucketSizes,
+                           std::vector<E_Int>& offsets);
+
   // Perform an exclusive prefix sum on an array that is a mask comprised solely
   // of zeros and ones. Return the total number of ones, that is the total number
   // of tagged elements.
