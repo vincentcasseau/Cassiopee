@@ -13,10 +13,12 @@
 name: Bandit
 on:
   push:
-    branches: [ "security" ]
+    branches:
+      - 'security'
   pull_request:
     # The branches below must be a subset of the branches above
-    branches: [ "security" ]
+    branches:
+      - 'security'
   workflow_dispatch:   # optional manual trigger
   schedule:
 #    - cron: '16 2 * * 1'

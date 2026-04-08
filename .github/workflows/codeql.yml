@@ -22,10 +22,15 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: python, cpp
-          # optionally: queries: +security-and-quality
+          queries: +security-and-quality
+#          queries: security-and-quality,security-extended
 
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
+      - name: Build project
+        run: |
+          export CASSIOPEE=$GITHUB_WORKSPACE
+          export MACHINE=ubuntu
+          cd $GITHUB_WORKSPACE/Cassiopee
+          ./install
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
