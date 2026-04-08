@@ -17,8 +17,8 @@ import numpy
 from OCC import readCAD, writeCAD, createEmptyCAD, freeHook, \
     getNbEdges, getNbFaces, getFileAndFormat, \
     printOCAF, getFaceNameInOCAF, getEdgeNameInOCAF, \
-    getFaceArea, getBoundingBox, \
-    _translate, _rotate, _scale, _sewing, _splitFaces, \
+    getFaceNos, getEdgeNos, getFaceArea, getBoundingBox, \
+    _translate, _rotate, _scale, _sewing, _reverse, _splitFaces, \
     _mergeFaces, _trimFaces, _removeFaces, _fillHole, \
     _addFillet, _offset, mergeCAD, _splitEdge, \
     _addArc, _addCircle, _addEllipse, _addSuperEllipse, _addLine, \
@@ -607,14 +607,14 @@ def meshAllPara(hook, hmin=-1, hmax=-1., hausd=-1.):
     return t
 
 #=============================
-def meshAllOCC(hook, hausd):
+def meshAllOCC(hook, hausd, angularDeflection=28.):
     t = C.newPyTree(['EDGES', 'FACES'])
 
     # Add CAD top container containing the CAD file name
     fileName, fileFmt = OCC.occ.getFileAndFormat(hook)
     _setCADcontainer(t, fileName, fileFmt, -1, -1, hausd)
 
-    dedges, dfaces = OCC.meshAllOCC(hook, hausd)
+    dedges, dfaces = OCC.meshAllOCC(hook, hausd, angularDeflection)
 
     # - Edges -
     b = Internal.getNodeFromName1(t, 'EDGES')
@@ -938,6 +938,7 @@ def _meshAllFacesTri(hook, t, metric=True, faceList=None, hList=[], hmin=-1, hma
         b[2].append(z)
 
     _updateEdgesFaceList__(t)
+    _addOCAFCompoundNames(hook, t)
     _setLonelyEdgesColor(t)
 
     return None
@@ -987,6 +988,7 @@ def _meshAllFacesStruct(hook, t, faceList=None):
         b[2].append(z)
 
     _updateEdgesFaceList__(t)
+    _addOCAFCompoundNames(hook, t)
     _setLonelyEdgesColor(t)
 
     return None

@@ -45,6 +45,7 @@ PyObject* K_OCC::addGordonSurface(PyObject* self, PyObject* args)
   char* name;
   if (!PYPARSETUPLE_(args, OOO_ S_, &hook, &listSet1, &listSet2, &name)) return NULL;
 
+  GETPACKET;
   GETSHAPE;
   GETMAPEDGES;
 
@@ -88,7 +89,7 @@ PyObject* K_OCC::addGordonSurface(PyObject* self, PyObject* args)
   builder.MakeCompound(compound);
   builder.Add(compound, face);
 
-  TDocStd_Document* doc = (TDocStd_Document*)packet[5];
+  GETDOC;
   addShape2OCAF(compound, name, *doc);
   TopoDS_Shape* newshp = copyOCAF2TopShape(*doc);
   delete shape;
@@ -99,8 +100,6 @@ PyObject* K_OCC::addGordonSurface(PyObject* self, PyObject* args)
 #else
 
   TopoDS_Shape* newshp = new TopoDS_Shape(face);
-
-  // Rebuild the hook
   delete shape;
   SETSHAPE(newshp);
 

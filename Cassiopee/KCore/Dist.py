@@ -11,9 +11,6 @@ EDOUBLEINT = False
 # Toggle to True for compiling global index in i8
 GDOUBLEINT = False
 
-# Temporary for ADOLC
-ADOLC = False
-
 # System configuration dictionary
 CONFIGDICT = {}
 
@@ -53,22 +50,7 @@ def setConfigDict(installDict=None):
         print("Warning: to change that, add a block in KCore/installBase.py.")
         cassProd = 'default'
 
-    configKeys = [
-        "description",
-        "f77compiler",
-        "f90compiler",
-        "Cppcompiler",
-        "CppAdditionalOptions",
-        "f77AdditionalOptions",
-        "useOMP",
-        "useStatic",
-        "additionalIncludePaths",
-        "additionalLibs",
-        "additionalLibPaths",
-        "useCuda",
-        "NvccAdditionalOptions"
-    ]
-    CONFIGDICT = dict(zip(configKeys, installDict[cassProd]))
+    CONFIGDICT = installDict[cassProd]
 
 def getConfigDict():
     global CONFIGDICT
@@ -276,46 +258,42 @@ def getInstallPath(prefix, type=0):
 # Functions returning the names of the remote repo & branch and the commit hash
 #==============================================================================
 def getGitOrigin(cassiopeeIncDir):
-    if not shutil.which("git"): return "unknown"
-    mySystem = getSystem()[0]
-    if mySystem == 'mingw' or mySystem == 'Windows':
-        lpath = cassiopeeIncDir.replace('/', '\\')
-        cmd = "cd {} && git config --get remote.origin.url".format(lpath)
-    else: # unix
-        lpath = cassiopeeIncDir
-        cmd = "cd {}; git config --get remote.origin.url 2>/dev/null".format(lpath)
+    if not shutil.which("git"):
+        return "unknown"
     try:
-        origin = subprocess.check_output(cmd, shell=True)
-        return origin.decode('utf-8', 'ignore').strip()
-    except: return "unknown"
+        return subprocess.check_output(
+            ["git", "-C", cassiopeeIncDir,
+             "config", "--get", "remote.origin.url"],
+            stderr=subprocess.DEVNULL,
+            text=True
+        ).strip()
+    except Exception:
+        return "unknown"
 
 def getGitBranch(cassiopeeIncDir):
-    if not shutil.which("git"): return "unknown"
-    mySystem = getSystem()[0]
-    if mySystem == 'mingw' or mySystem == 'Windows':
-        lpath = cassiopeeIncDir.replace('/', '\\')
-        cmd = "cd {} && git rev-parse --abbrev-ref HEAD".format(lpath)
-    else: # unix
-        lpath = cassiopeeIncDir
-        cmd = "cd {}; git rev-parse --abbrev-ref HEAD 2>/dev/null".format(lpath)
+    if not shutil.which("git"):
+        return "unknown"
     try:
-        branchName = subprocess.check_output(cmd, shell=True)
-        return branchName.decode('utf-8', 'ignore').strip()
-    except: return "unknown"
+        return subprocess.check_output(
+            ["git", "-C", cassiopeeIncDir, "rev-parse", "--abbrev-ref", "HEAD"],
+            stderr=subprocess.DEVNULL,
+            text=True
+        ).strip()
+    except Exception:
+        return "unknown"
+
 
 def getGitHash(cassiopeeIncDir):
-    if not shutil.which("git"): return "unknown"
-    mySystem = getSystem()[0]
-    if mySystem == 'mingw' or mySystem == 'Windows':
-        lpath = cassiopeeIncDir.replace('/', '\\')
-        cmd = "cd {} && git rev-parse --short HEAD".format(lpath)
-    else: # unix
-        lpath = cassiopeeIncDir
-        cmd = "cd {}; git rev-parse --short HEAD 2>/dev/null".format(lpath)
+    if not shutil.which("git"):
+        return "unknown"
     try:
-        sha = subprocess.check_output(cmd, shell=True)
-        return sha.decode('utf-8', 'ignore').strip()
-    except: return "unknown"
+        return subprocess.check_output(
+            ["git", "-C", cassiopeeIncDir, "rev-parse", "--short", "HEAD"],
+            stderr=subprocess.DEVNULL,
+            text=True
+        ).strip()
+    except Exception:
+        return "unknown"
 
 #=============================================================================
 # nom de l'egg cree par setup tools
@@ -761,7 +739,7 @@ def scanext(args, dir, file):
     givenExts = args[0]
     ret = args[1]
     for f in file:
-        (root,ext) = os.path.splitext(f)
+        root, ext = os.path.splitext(f)
         tot = '%s/%s'%(dir,f)
         t = os.path.islink(tot)
         m = True
@@ -780,7 +758,10 @@ def scanext(args, dir, file):
 #==============================================================================
 def getFilesOfExt(rootdir, givenExts):
     ret = []
-    os.path.walk(rootdir, scanext, [givenExts, ret])
+    for root, _, files in os.walk(rootdir):
+        for filename in files:
+            if filename.endswith(tuple(givenExts)):
+                ret.append(os.path.join(root, filename))
     return ret
 
 #==============================================================================
@@ -902,7 +883,6 @@ def getCArgs():
     options = getCppAdditionalOptions()
     if EDOUBLEINT: options += ['-DE_DOUBLEINT']
     if GDOUBLEINT: options += ['-DG_DOUBLEINT']
-    if ADOLC: options += ['-DE_ADOLC']
     if Cppcompiler == "icpc" or Cppcompiler == "icc":
         v = getCppVersion()
         if DEBUG:
@@ -1538,70 +1518,87 @@ def checkOCC():
         return (False, i, l)
 
 # Return open-cascade module names depending on version
-def getOCCModules():
-    allMods6 = ["FWOSPlugin", "TKPLCAF", "PTKernel", "TKPrim",
-                "TKAdvTools", "TKPShape", "TKBinL", "TKService",
-                "TKBin", "TKShapeSchema", "TKBinTObj", "TKShHealing",
-                "TKBinXCAF", "TKStdLSchema", "TKBool", "TKStdSchema",
-                "TKBO", "TKSTEP209", "TKBRep", "TKSTEPAttr",
-                "TKCAF", "TKSTEPBase", "TKCDF", "TKSTEP",
-                "TKernel", "TKSTL", "TKFeat", "TKTObj",
-                "TKFillet", "TKTopAlgo", "TKG2d", "TKV3d",
-                "TKG3d", "TKVoxel", "TKGeomAlgo", "TKVRML",
-                "TKGeomBase", "TKXCAFSchema", "TKHLR", "TKXCAF",
-                "TKIGES", "TKXDEIGES", "TKLCAF", "TKXDESTEP",
-                "TKMath", "TKXMesh", "TKMesh", "TKXmlL",
-                "TKMeshVS", "TKXml", "TKNIS", "TKXmlTObj",
-                "TKOffset", "TKXmlXCAF", "TKOpenGl", "TKXSBase",
-                "TKPCAF"]
+def getOCCModules(OCCIncDir=None):
+    #default
+    if getSystem()[0] == 'mingw': version = (7, 8)
+    else: version = (7, 5)
 
-    allMods75 = ["TKBinL", "TKBin", "TKBinTObj",
-                 "TKBinXCAF", "TKBool", "TKBO", "TKBRep",
-                 "TKCAF", "TKCDF", "TKDCAF", "TKDraw", "TKernel",
-                 "TKFeat", "TKFillet", "TKG2d", "TKG3d", "TKGeomAlgo",
-                 "TKGeomBase", "TKHLR", "TKIGES", "TKLCAF", "TKMath",
-                 "TKMesh", "TKMeshVS", "TKOffset", "TKOpenGl", "TKPrim",
-                 "TKQADraw", "TKRWMesh", "TKService", "TKShHealing", "TKStdL",
-                 "TKStd", "TKSTEP209", "TKSTEPAttr", "TKSTEPBase", "TKSTEP",
-                 "TKSTL", "TKTObjDRAW", "TKTObj", "TKTopAlgo", "TKTopTest",
-                 "TKV3d", "TKVCAF", "TKViewerTest", "TKVRML", "TKXCAF", "TKXDEDRAW",
-                 "TKXDEIGES", "TKXDESTEP", "TKXMesh", "TKXmlL", "TKXml", "TKXmlTObj",
-                 "TKXmlXCAF", "TKXSBase", "TKXSDRAW"]
+    if OCCIncDir is not None:
+        if os.path.exists(OCCIncDir+'/Standard_Version.hxx'):
+            file = open(OCCIncDir+'/Standard_Version.hxx', 'r')
+            ret = file.readlines()
+            for r in ret:
+                if '#define OCC_VERSION ' in r:
+                    version = r.replace('#define OCC_VERSION ', '')
+                    version = version.split('.')
+                    version = (int(version[0]), int(version[1]))
 
-    allMods75W = ["TKBin", "TKBinL", "TKBinTObj", "TKBinXCAF", "TKBO",
-                  "TKBool", "TKBRep", "TKCAF", "TKCDF", "TKernel",
-                  "TKFeat", "TKFillet", "TKG2d", "TKG3d", "TKGeomAlgo",
-                  "TKGeomBase", "TKHLR", "TKIGES", "TKLCAF", "TKMath",
-                  "TKMesh", "TKMeshVS", "TKOffset", "TKOpenGl",
-                  "TKPrim", "TKService",
-                  "TKShHealing", "TKStdLSchema",
-                  "TKStdSchema", "TKSTEP", "TKSTEP209", "TKSTEPAttr",
-                  "TKSTEPBase", "TKSTL", "TKTObj", "TKTopAlgo",
-                  "TKV3d", "TKVoxel", "TKVRML", "TKXCAF", "TKXCAFSchema",
-                  "TKXDEIGES", "TKXDESTEP", "TKXMesh", "TKXml",
-                  "TKXmlL", "TKXmlTObj", "TKXmlXCAF", "TKXSBase",
-                  "TKPCAF", "TKPLCAF", "TKNIS", "TKPShape", "TKShapeSchema"]
-
-    allMods78 = ["TKBO", "TKBRep", "TKBin", "TKBinL", "TKBinTObj",
-                 "TKBinXCAF", "TKBool", "TKCAF", "TKCDF", "TKD3DHost",
-                 "TKD3DHostTest", "TKDCAF", "TKDE", "TKDECascade", "TKDEGLTF",
-                 "TKDEIGES", "TKDEOBJ", "TKDEPLY", "TKDESTEP", "TKDESTL",
-                 "TKDEVRML", "TKDraw", "TKExpress", "TKFeat", "TKFillet",
-                 "TKG2d", "TKG3d", "TKGeomAlgo", "TKGeomBase",
-                 "TKHLR", "TKIVtk", "TKIVtkDraw", "TKLCAF",
-                 "TKMath", "TKMesh", "TKMeshVS", "TKOffset",
-                 "TKOpenGl", "TKOpenGlTest", "TKPrim", "TKQADraw",
-                 "TKRWMesh", "TKService", "TKShHealing", "TKStd",
-                 "TKStdL", "TKTObj", "TKTObjDRAW", "TKTopAlgo",
-                 "TKTopTest", "TKV3d", "TKVCAF",
-                 "TKViewerTest", "TKXCAF", "TKXDEDRAW",
-                 "TKXMesh", "TKXSBase", "TKXSDRAW",
-                 "TKXSDRAWDE", "TKXSDRAWGLTF", "TKXSDRAWIGES",
-                 "TKXSDRAWOBJ", "TKXSDRAWPLY", "TKXSDRAWSTEP",
-                 "TKXSDRAWSTL", "TKXSDRAWVRML", "TKXml",
-                 "TKXmlL", "TKXmlTObj", "TKXmlXCAF", "TKernel"]
-    if getSystem()[0] == 'mingw': allMods = allMods78
-    else: allMods = allMods75
+    if version[0] <= 6:
+        allMods = [
+            "FWOSPlugin", "TKPLCAF", "PTKernel", "TKPrim",
+            "TKAdvTools", "TKPShape", "TKBinL", "TKService",
+            "TKBin", "TKShapeSchema", "TKBinTObj", "TKShHealing",
+            "TKBinXCAF", "TKStdLSchema", "TKBool", "TKStdSchema",
+            "TKBO", "TKSTEP209", "TKBRep", "TKSTEPAttr",
+            "TKCAF", "TKSTEPBase", "TKCDF", "TKSTEP",
+            "TKernel", "TKSTL", "TKFeat", "TKTObj",
+            "TKFillet", "TKTopAlgo", "TKG2d", "TKV3d",
+            "TKG3d", "TKVoxel", "TKGeomAlgo", "TKVRML",
+            "TKGeomBase", "TKXCAFSchema", "TKHLR", "TKXCAF",
+            "TKIGES", "TKXDEIGES", "TKLCAF", "TKXDESTEP",
+            "TKMath", "TKXMesh", "TKMesh", "TKXmlL",
+            "TKMeshVS", "TKXml", "TKNIS", "TKXmlTObj",
+            "TKOffset", "TKXmlXCAF", "TKOpenGl", "TKXSBase",
+            "TKPCAF"]
+    elif version[0] == 7 and version[1] <= 5:
+        allMods = [
+            "TKBinL", "TKBin", "TKBinTObj",
+            "TKBinXCAF", "TKBool", "TKBO", "TKBRep",
+            "TKCAF", "TKCDF", "TKDCAF", "TKDraw", "TKernel",
+            "TKFeat", "TKFillet", "TKG2d", "TKG3d", "TKGeomAlgo",
+            "TKGeomBase", "TKHLR", "TKIGES", "TKLCAF", "TKMath",
+            "TKMesh", "TKMeshVS", "TKOffset", "TKOpenGl", "TKPrim",
+            "TKQADraw", "TKRWMesh", "TKService", "TKShHealing", "TKStdL",
+            "TKStd", "TKSTEP209", "TKSTEPAttr", "TKSTEPBase", "TKSTEP",
+            "TKSTL", "TKTObjDRAW", "TKTObj", "TKTopAlgo", "TKTopTest",
+            "TKV3d", "TKVCAF", "TKViewerTest", "TKVRML", "TKXCAF", "TKXDEDRAW",
+            "TKXDEIGES", "TKXDESTEP", "TKXMesh", "TKXmlL", "TKXml", "TKXmlTObj",
+            "TKXmlXCAF", "TKXSBase", "TKXSDRAW"]
+    elif version[0] == 7 and version[1] == 6:
+        allMods = [
+            "TKBin", "TKBinL", "TKBinTObj", "TKBinXCAF", "TKBO",
+            "TKBool", "TKBRep", "TKCAF", "TKCDF", "TKernel",
+            "TKFeat", "TKFillet", "TKG2d", "TKG3d", "TKGeomAlgo",
+            "TKGeomBase", "TKHLR", "TKIGES", "TKLCAF", "TKMath",
+            "TKMesh", "TKMeshVS", "TKOffset", "TKOpenGl",
+            "TKPrim", "TKService",
+            "TKShHealing", "TKStdLSchema",
+            "TKStdSchema", "TKSTEP", "TKSTEP209", "TKSTEPAttr",
+            "TKSTEPBase", "TKSTL", "TKTObj", "TKTopAlgo",
+            "TKV3d", "TKVoxel", "TKVRML", "TKXCAF", "TKXCAFSchema",
+            "TKXDEIGES", "TKXDESTEP", "TKXMesh", "TKXml",
+            "TKXmlL", "TKXmlTObj", "TKXmlXCAF", "TKXSBase",
+            "TKPCAF", "TKPLCAF", "TKNIS", "TKPShape", "TKShapeSchema"]
+    else:
+        allMods = [
+            "TKBO", "TKBRep", "TKBin", "TKBinL", "TKBinTObj",
+            "TKBinXCAF", "TKBool", "TKCAF", "TKCDF", "TKD3DHost",
+            "TKD3DHostTest", "TKDCAF", "TKDE", "TKDECascade", "TKDEGLTF",
+            "TKDEIGES", "TKDEOBJ", "TKDEPLY", "TKDESTEP", "TKDESTL",
+            "TKDEVRML", "TKDraw", "TKExpress", "TKFeat", "TKFillet",
+            "TKG2d", "TKG3d", "TKGeomAlgo", "TKGeomBase",
+            "TKHLR", "TKIVtk", "TKIVtkDraw", "TKLCAF",
+            "TKMath", "TKMesh", "TKMeshVS", "TKOffset",
+            "TKOpenGl", "TKOpenGlTest", "TKPrim", "TKQADraw",
+            "TKRWMesh", "TKService", "TKShHealing", "TKStd",
+            "TKStdL", "TKTObj", "TKTObjDRAW", "TKTopAlgo",
+            "TKTopTest", "TKV3d", "TKVCAF",
+            "TKViewerTest", "TKXCAF", "TKXDEDRAW",
+            "TKXMesh", "TKXSBase", "TKXSDRAW",
+            "TKXSDRAWDE", "TKXSDRAWGLTF", "TKXSDRAWIGES",
+            "TKXSDRAWOBJ", "TKXSDRAWPLY", "TKXSDRAWSTEP",
+            "TKXSDRAWSTL", "TKXSDRAWVRML", "TKXml",
+            "TKXmlL", "TKXmlTObj", "TKXmlXCAF", "TKernel"]
     return allMods
 
 #=============================================================================
@@ -2215,6 +2212,14 @@ def checkFortranLibs():
 
     return (ret, libs, paths)
 
+# Run the make command to build the wdir target
+def runMakeFortran(forCompiler, opt, wdir):
+    import shlex
+    subprocess.run(
+        ["make", "-e", f"FC={forCompiler}", f"WDIR={wdir}", *shlex.split(opt)],
+        check=True
+    )
+
 #=============================================================================
 # Check Cpp libs
 # additionalLibs: si les libs requises ont des noms non conventionnels
@@ -2589,52 +2594,40 @@ def writeBuildInfo():
     p.close()
 
 #==============================================================================
-# Ecrit la base d'installation dans le fichier installBase.py
-# IN: dict: dictionnaire d'install
+# Ecrit la base d'installation dans le fichier installBaseUser.py
+# IN: config: dict d'install
 #==============================================================================
-def writeInstallBase(dict):
-    p = open("installBase.py", 'w')
-    if p is None:
-        raise SystemError("Error: can not open file installBase.py for writing.")
+def writeInstallBase(config):
+    configKeys = [
+        "description",
+        "f77compiler",
+        "f90compiler",
+        "Cppcompiler",
+        "CppAdditionalOptions",
+        "f77AdditionalOptions",
+        "useOMP",
+        "useStatic",
+        "additionalIncludePaths",
+        "additionalLibs",
+        "additionalLibPaths",
+        "useCuda",
+        "NvccAdditionalOptions"
+    ]
 
-    # Write doc
-    p.write("# This is the dictionary keeping track of installation.\n# The key is the machine name or ELSAPROD name. For each key a list is stored.\n# [description, \n# f77compiler, libfortdir, libfort, f90compiler, libf90dir, libf90, \n# Cppcompiler, libCpp, useOMP, \n# pngPath, mpegPath, adfPath, hdfPath].\n# Path are list of strings. useOMP, static are booleans. \n# Others are strings.\n")
-
-    # Write dictionary
-    #p.write("installDict = "+str(dict))
-
-    # Pretty print dict
-    p.write("installDict = {\n")
-    kc = 0
-    for k in dict:
-        p.write("###############################################################################\n")
-        if isinstance(k, str): kstr = "\'%s\'"%k
-        else: kstr = str(k)
-        p.write("%s: [ "%kstr)
-        list = dict[k]
-        lc = 0
-        for l in list:
-            lc += 1
-            if isinstance(l, str): lstr = "\'%s\'"%l
-            else: lstr = str(l)
-            if lc == 1:  p.write("%s,\n"%lstr)
-            if lc == 2:  p.write("%s, # f77compiler\n"%lstr)
-            elif lc == 3: p.write("%s, # f90compiler\n"%lstr)
-            elif lc == 4: p.write("%s, # Cppcompiler\n"%lstr)
-            elif lc == 5: p.write("%s, # CppAdditionalOptions\n"%lstr)
-            elif lc == 6: p.write("%s, # f77AdditionalOptions\n"%lstr)
-            elif lc == 7: p.write("%s, # useOMP\n"%lstr)
-            elif lc == 8: p.write("%s, # static\n"%lstr)
-            elif lc == 9: p.write("%s, # additionalIncludePaths\n"%lstr)
-            elif lc == 10: p.write("%s, # additionalLibs\n"%lstr)
-            elif lc == 11: p.write("%s, # additionalLibPaths\n"%lstr)
-            elif lc == 12: p.write("%s, # useCuda\n"%lstr)
-            elif lc == 13: p.write("%s  # NvccAdditionalOptions\n"%lstr)
-        kc += 1
-        if kc == len(dict): p.write("]\n")
-        else: p.write("], \n")
-    p.write("}\n")
-    p.close()
+    with open("installBaseUser.py", "w") as p:
+        p.write("# This is the dictionary keeping track of user installation configs.\n")
+        p.write("installDict = {\n")
+        for machine, cfgList in config.items():
+            cfg = dict(zip(configKeys, cfgList))
+            p.write(f"    '{machine}': {{\n")
+            for i, (k, v) in enumerate(cfg.items()):
+                comma = "," if i < len(cfg) - 1 else ""
+                if isinstance(v, str):
+                    p.write(f"        '{k}': '{v}'{comma}\n")
+                else:
+                    p.write(f"        '{k}': {v}{comma}\n")
+            p.write("    },\n")
+        p.write("}\n")
 
 #==============================================================================
 # Sur certains unix, le chemin d'installation contient un lib64

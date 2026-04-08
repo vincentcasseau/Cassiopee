@@ -41,6 +41,7 @@ PyObject* K_OCC::rotate(PyObject* self, PyObject* args)
   if (!PYPARSETUPLE_(args, O_ TRRR_ TRRR_ R_ O_, &hook, &xc, &yc, &zc, 
     &xaxis, &yaxis, &zaxis, &angle, &listFaces)) return NULL;
 
+  GETPACKET;
   GETSHAPE;
   GETMAPSURFACES;
 
@@ -110,10 +111,12 @@ PyObject* K_OCC::rotate(PyObject* self, PyObject* args)
   }
 
 #ifdef USEXCAF
-  TDocStd_Document* doc = (TDocStd_Document*)packet[5];
+  GETDOC;
   std::map< E_Int, std::vector<E_Int> > label2Faces;
+  std::map< E_Int, std::vector<E_Int> > label2Edges;
+  getLabel2Edges(*doc, label2Edges);
   getLabel2Faces(*doc, label2Faces);
-  copyTopShape2OCAF(*newshp, label2Faces, *doc);
+  copyTopShape2OCAF(*newshp, label2Edges, label2Faces, *doc);
 #endif
 
   delete shape;

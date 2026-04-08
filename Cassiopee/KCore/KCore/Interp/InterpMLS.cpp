@@ -25,13 +25,6 @@ using namespace std;
 using namespace K_FLD;
 using namespace K_ARRAY;
 
-extern "C"
-{
-  void k6compsurfofstructcell_(E_Int& ni, E_Int& nj, E_Int& nk,
-                                E_Int& indcell, E_Float* x,
-                                E_Float* y, E_Float* z,
-                                E_Float& surface);
-}
 //=============================================================================
 /* On calcule le vecteur cfLoc tel que
   u_tilde(X) = cfLoc(X) Ui
@@ -875,7 +868,7 @@ void K_INTERP::OBbox(
   }
   else val = E_Float(n);
 
-  #ifdef E_ADOLC
+#ifdef E_ADOUBLE
   if (val == floor(val))   // si le nuage de point est carre on enleve une ligne (cas 2D)
     n_ = n-E_Int(val.value());
 #else

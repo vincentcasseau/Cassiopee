@@ -38,6 +38,7 @@ cpp_srcs = ["Transform/coordTransform.cpp",
             "Transform/alignVectorFieldWithRadialCylindricProjection.cpp",
             "Transform/smooth.cpp",
             "Transform/smoothField.cpp",
+            "Transform/consSmooth.cpp",
             "Transform/collapse.cpp",
             "Transform/mergeCartGrids.cpp",
             "Transform/mergeStructGrids.cpp",
@@ -55,8 +56,3 @@ cpp_srcs = ["Transform/coordTransform.cpp",
             "Transform/contractEdges.cpp",
             "Transform/checkTriMesh.cpp"
             ]
-
-#==============================================================================
-# Fichiers fortran
-#==============================================================================
-#for_srcs = [ 'Transform/Fortran/DeformF.for' ]

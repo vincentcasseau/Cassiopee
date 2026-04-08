@@ -45,6 +45,7 @@ PyObject* K_OCC::addBox2(PyObject* self, PyObject* args)
     &x5, &y5, &z5, &x6, &y6, &z6, &x7, &y7, &z7, &x8, &y8, &z8,
     &name)) return NULL;
 
+  GETPACKET; 
   GETSHAPE;
 
   /* new box */
@@ -117,14 +118,17 @@ PyObject* K_OCC::addBox2(PyObject* self, PyObject* args)
   builder.Add(compound, face5);
   builder.Add(compound, face6);
 
-  BRepBuilderAPI_Sewing sewingTool;
-  sewingTool.Add(compound);
-  sewingTool.Perform();
-  TopoDS_Shape sewedShape = sewingTool.SewedShape();
+  TopoDS_Shape shp = TopoDS_Shape(compound); 
+  shp = shp.Reversed();
 
 #ifdef USEXCAF
 
-  TDocStd_Document* doc = (TDocStd_Document*)packet[5];
+  BRepBuilderAPI_Sewing sewingTool;
+  sewingTool.Add(shp);
+  sewingTool.Perform();
+  TopoDS_Shape sewedShape = sewingTool.SewedShape();
+
+  GETDOC;
   addShape2OCAF(sewedShape, name, *doc);
   TopoDS_Shape* newshp = copyOCAF2TopShape(*doc);
   delete shape;
@@ -153,9 +157,9 @@ PyObject* K_OCC::addBox2(PyObject* self, PyObject* args)
   }
   
   TopTools_IndexedMapOfShape sf2 = TopTools_IndexedMapOfShape();
-  TopExp::MapShapes(sewedShape, TopAbs_FACE, sf2);
+  TopExp::MapShapes(shp, TopAbs_FACE, sf2);
   TopTools_IndexedMapOfShape se2 = TopTools_IndexedMapOfShape();
-  TopExp::MapShapes(sewedShape, TopAbs_EDGE, se2);
+  TopExp::MapShapes(shp, TopAbs_EDGE, se2);
   for (E_Int i = 1; i <= sf2.Extent(); i++)
   {
     TopoDS_Face F = TopoDS::Face(sf2(i));
@@ -167,8 +171,12 @@ PyObject* K_OCC::addBox2(PyObject* self, PyObject* args)
     builder2.Add(compound2, E);
   }
 
+  BRepBuilderAPI_Sewing sewingTool;
+  sewingTool.Add(compound2);
+  sewingTool.Perform();
+  TopoDS_Shape sewedShape = sewingTool.SewedShape();
+
   TopoDS_Shape* newshp = new TopoDS_Shape(sewedShape);
-    
   delete shape;
   SETSHAPE(newshp);
 

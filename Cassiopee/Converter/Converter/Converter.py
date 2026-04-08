@@ -782,13 +782,13 @@ def convertFile2Arrays(fileName, format=None, nptsCurve=20, nptsLine=2,
     if not exists: raise IOError("convertFile2Arrays: file %s not found."%fileName)
 
     if format == 'bin_pickle':
-        import pickle
+        from KCore.restrictedUnpickler import restrictedPickleLoad
         print('Reading \''+fileName+'\'...', end="")
         try:
             file = open(fileName, 'rb')
             oldData = False
-            if oldData: a = pickle.load(file, encoding='latin1')
-            else: a = pickle.load(file)
+            if oldData: a = restrictedPickleLoad(file, encoding='latin1')
+            else: a = restrictedPickleLoad(file)
             file.close()
         except:
             raise TypeError("convertFile2Arrays: file %s can not be read."%fileName)
@@ -836,7 +836,9 @@ def convertFile2Arrays(fileName, format=None, nptsCurve=20, nptsLine=2,
             elif np > 0: line = f[0]
             else: line = ''
             line = line.split(' ')
-            nv = len(line)
+            nv = 0
+            for l in line:
+                if l != '': nv += 1
             # varstring
             varString = ''
             for i in range(nv-1): varString += 'v%d,'%(i+1)
@@ -844,10 +846,14 @@ def convertFile2Arrays(fileName, format=None, nptsCurve=20, nptsLine=2,
             a = array(varString, np, 1, 1)
             pt = a[1]
             for i in range(np):
-                line = f[i]; line = line.split(' ')
-                for n in range(len(line)): pt[n,i] = float(line[n])
+                line = f[i]
+                line = line.split(' ')
+                n = 0
+                for l in line:
+                    if l != '': pt[n,i] = float(l); n += 1
             print('done.')
-            zoneNames.append('zone0')
+            if zoneNames is not None:
+                zoneNames.append('Zone0')
             return [a]
         except:
             raise TypeError("convertFile2Arrays: file %s can not be read."%fileName)
@@ -860,7 +866,7 @@ def convertFile2Arrays(fileName, format=None, nptsCurve=20, nptsLine=2,
 
             format = checkFileType(fileName)
             try:
-                return converter.convertFile2Arrays(fileName, format, nptsCurve, nptsLine, density, zoneNames, BCFaces, centerArrays, api)
+                return converter.convertFile2Arrays(fileName, format, nptsCurve, nptsLine, density, zoneNames, BCFaces, BCFields, centerArrays, api)
             except:
                 FORMATS = [
                     'bin_ply', 'fmt_tp', 'fmt_v3d',
@@ -1395,23 +1401,23 @@ def mergeByEltType(array):
         return b
     else: return converter.mergeByEltType(array)
 
-def convertArray2NGon__(array, api=1):
+def convertArray2NGon__(array, indices=None, api=1):
     try: sub = array[3]
     except: raise TypeError("convertArray2NGon: arg must be an array.")
     if isinstance(sub, str): t = sub
     else: t = 'STRUCT'
-    if t == 'STRUCT': return converter.convertStruct2NGon(array, api)
+    if t == 'STRUCT': return converter.convertStruct2NGon(array, indices, api)
     elif t == 'NGON': return array
-    else: return converter.convertUnstruct2NGon(array, api)
+    else: return converter.convertUnstruct2NGon(array, indices, api)
 
-def convertArray2NGon(array, api=1):
+def convertArray2NGon(array, indices=None, api=1):
     """Convert a array in a NGON array.
-    Usage: convertArray2NGon(array, api)"""
+    Usage: convertArray2NGon(array, indices, api)"""
     if isinstance(array[0], list):
         b = []
-        for i in array: b.append(convertArray2NGon__(i, api))
+        for i in array: b.append(convertArray2NGon__(i, indices, api))
         return b
-    else: return convertArray2NGon__(array, api)
+    else: return convertArray2NGon__(array, indices, api)
 
 def convertPenta2Strand(array):
     """Convert a PENTA array to a STRAND array."""
@@ -1659,40 +1665,40 @@ def freeHook(hook):
 #==============================================================================
 # Fonctions d'identification geometrique
 #==============================================================================
-def identifyNodes(hook, a, tol=1.e-11):
+def identifyNodes(hook, a, tol=1.e-11, rtol=1.e-14):
     """Identify nodes of a in KDT. return identified indices.
     Usage: identifyNodes(hook, a)"""
     if isinstance(a[0], list):
         b = []
         for i in a:
-            b.append(converter.identifyNodes(hook, i, tol))
+            b.append(converter.identifyNodes(hook, i, tol, rtol))
         return b
     else:
-        return converter.identifyNodes(hook, a, tol)
+        return converter.identifyNodes(hook, a, tol, rtol)
 
-def identifyFaces(hook, a, tol=1.e-11):
+def identifyFaces(hook, a, tol=1.e-11, rtol=1.e-12):
     """Identify face centers of a in KDT. return identified indices.
     Usage: identifyFaces(hook, a)"""
     if isinstance(a[0], list):
         b = []
         for i in a:
-            b.append(converter.identifyFaces(hook, convertArray2NGon(i), tol))
+            b.append(converter.identifyFaces(hook, convertArray2NGon(i), tol, rtol))
         return b
     else:
-        return converter.identifyFaces(hook, convertArray2NGon(a), tol)
+        return converter.identifyFaces(hook, convertArray2NGon(a), tol, rtol)
 
-def identifyElements(hook, a, tol=1.e-11):
+def identifyElements(hook, a, tol=1.e-11, rtol=1.e-12):
     """Identify element centers of a in KDT. return identified indices.
     Usage: identifyElement(hook, a)"""
     if isinstance(a[0], list):
         b = []
         for i in a:
             # if len(i) == 5: i = convertArray2Hexa(i)
-            b.append(converter.identifyElements(hook, i, tol))
+            b.append(converter.identifyElements(hook, i, tol, rtol))
         return b
     else:
         # if len(a) == 5: a = convertArray2Hexa(a)
-        return converter.identifyElements(hook, a, tol)
+        return converter.identifyElements(hook, a, tol, rtol)
 
 #=============================================================================
 def identifySolutions(coordsRcv, solDnr, hookDnr, vars=[], tol=1.e6):
@@ -1946,8 +1952,7 @@ def createSockets(nprocs=1, port=15555):
 #==============================================================================
 def listen(s):
     """Listen for sends."""
-    import socket
-    import Compressor
+    from KCore.restrictedUnpickler import restrictedPickleLoads
     while True:
         #s.listen(5)
         s.setblocking(1)
@@ -1956,7 +1961,7 @@ def listen(s):
         nb = client.recv(255)
         if nb != b"":
             nb = nb.rstrip()
-            (size,sizeBuf) = Compressor.unpack(nb, method=0)
+            size, sizeBuf = restrictedPickleLoads(nb)
             data = b''
             nbytes = 0
             while nbytes < size:
@@ -1965,7 +1970,7 @@ def listen(s):
                 else:
                     received = client.recv(size-nbytes)
                 data += received; nbytes += len(received)
-            data = Compressor.unpack(data, method=0)
+            data = restrictedPickleLoads(data)
             client.close()
             return data
 

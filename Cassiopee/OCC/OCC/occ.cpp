@@ -48,6 +48,9 @@ static PyMethodDef Pyocc [] =
   {"getFaceNameInOCAF", K_OCC::getFaceNameInOCAF, METH_VARARGS},
   {"getFaceNameInOCAF2", K_OCC::getFaceNameInOCAF2, METH_VARARGS},
   {"getEdgeNameInOCAF2", K_OCC::getEdgeNameInOCAF2, METH_VARARGS},
+  {"getFaceNos", K_OCC::getFaceNos, METH_VARARGS},
+  {"getEdgeNos", K_OCC::getEdgeNos, METH_VARARGS},
+  {"changeLabelNameInOCAF", K_OCC::changeLabelNameInOCAF, METH_VARARGS},
 
   {"bottle", K_OCC::bottle, METH_VARARGS},
   {"addSphere", K_OCC::addSphere, METH_VARARGS},
@@ -107,6 +110,7 @@ static PyMethodDef Pyocc [] =
 
   {"fixShape", K_OCC::fixShape, METH_VARARGS},
   {"sewing", K_OCC::sewing, METH_VARARGS},
+  {"reverse", K_OCC::reverse, METH_VARARGS},
 
   {"fillHole", K_OCC::fillHole, METH_VARARGS},
   {"addFillet", K_OCC::addFillet, METH_VARARGS},

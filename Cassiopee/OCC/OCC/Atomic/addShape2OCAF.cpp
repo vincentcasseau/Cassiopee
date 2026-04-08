@@ -26,15 +26,15 @@
 #include "TopExp_Explorer.hxx"
 #include "BRep_Builder.hxx"
 
-#include "XCAFDoc_ShapeTool.hxx"
 #include "XCAFDoc_DocumentTool.hxx"
+#include "XCAFDoc_ShapeTool.hxx"
 #include "XCAFDoc_ShapeMapTool.hxx"
 #include "TDocStd_Document.hxx"
 #include "TDataStd_Name.hxx"
 #include "TDF_Tool.hxx"
 
 //=====================================================================
-// Add a shape (shape, compound) to OCAF
+// Add a shape (shape, compound) to OCAF at the end
 //=====================================================================
 void K_OCC::addShape2OCAF(TopoDS_Shape& shape, char* labelName, TDocStd_Document& doc)
 {
@@ -94,7 +94,6 @@ void K_OCC::addShape2OCAF(TopoDS_Shape& shape, char* labelName, TDocStd_Document
         builder.Add(compound, E);
       }
     }
-
     {
       TopTools_IndexedMapOfShape sf = TopTools_IndexedMapOfShape();
       TopExp::MapShapes(shape, TopAbs_FACE, sf);

@@ -38,6 +38,7 @@ PyObject* K_OCC::offset(PyObject* self, PyObject* args)
   PyObject* listFaces; 
   if (!PYPARSETUPLE_(args, O_ R_ O_, &hook, &distance, &listFaces)) return NULL;
 
+  GETPACKET;
   GETSHAPE;
   GETMAPSURFACES;
   
@@ -105,6 +106,15 @@ PyObject* K_OCC::offset(PyObject* self, PyObject* args)
     }
     *newshp = shc2;
   }
+
+#ifdef USEXCAF
+  GETDOC;
+  std::map< E_Int, std::vector<E_Int> > label2Faces;
+  std::map< E_Int, std::vector<E_Int> > label2Edges;
+  getLabel2Edges(*doc, label2Edges);
+  getLabel2Faces(*doc, label2Faces);
+  copyTopShape2OCAF(*newshp, label2Edges, label2Faces, *doc);
+#endif
 
   // Rebuild the hook
   delete shape;

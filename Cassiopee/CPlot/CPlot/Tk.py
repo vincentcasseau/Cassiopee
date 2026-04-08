@@ -277,21 +277,22 @@ def buildCPlotArrays(a, topTree=[]):
 
     ap = Internal.copyRef(a)
 
-    # Oneovern for structured grids
+    # for structured grids, do ONEOVERN on zones
     if __ONEOVERN__ > 1:
         for z in Internal.getZones(ap):
             if Internal.getZoneType(z) == 1:
                 T._oneovern(z, (__ONEOVERN__,__ONEOVERN__,__ONEOVERN__))
 
-    # Transmet les maillages contenant les borders elts pour les zones volumiques
+    # for unstructured, use exteriorFaces or exteriorElts on zones
     if __ONEOVERN__ > 0:
         for z in Internal.getZones(ap):
             dimz = Internal.getZoneDim(z)
             if dimz[0] == 'Unstructured' and dimz[4] == 3:
-                if dimz[3] == "NGON":
-                    P._exteriorFaces(z)
+                if dimz[3] == "NGON": P._exteriorFaces(z)
                 else:
                     P._exteriorElts(z)
+                    #if ',' not in dimz[3]: P._exteriorFaces(z)
+                    #else: P._exteriorElts(z)
 
     if __FIELD__ == '__all__':
         arrays = C.getAllFields(ap, 'nodes', api=3)
@@ -353,7 +354,7 @@ def display(t, dim=-1,
     if mainTree <= 0 and __MAINTREE__ == 1:
         __MAINACTIVEZONES__ = CP.getActiveZones()
     if location != 'unchanged': CPlot.__LOCATION__ = location
-    zoneNames = C.getZoneNames(t)
+    zoneNames = C.getZoneNames(t, prefixByBase=True)
     renderTags = CPlot.getRenderTags(t)
     arrays = buildCPlotArrays(t)
     CP.display(arrays, dim, mode, scalarField, vectorField1, vectorField2,
