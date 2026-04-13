@@ -4551,21 +4551,6 @@ def _recoverBCs(t, BCInfo, tol=1.e-11, removeBC=True, indices=None):
                         elif b[0] == 'VertexList':  # e.g., a connectivity w/o offsets
                             pointList = b[1] - 1
                         elif b[0] == 'tuple':  # (zone, node)
-                            array2 = getFields('GridCoordinates', b[1][0], api=3)[0]
-                            if indicesF is None:
-                                indicesF = []
-                                P.exteriorFaces(z, indices=indicesF)
-                                indicesF = indicesF[0]
-                            fmap = converter.identifyFacesTopo(
-                                array, array2,
-                                indices, indicesF
-                            )
-                            if numpy.any(fmap == -1):
-                                raise ValueError(
-                                    "_recoverBCs: topologic identication of "
-                                    "boundary faces failed."
-                                )
-                            print(fmap)
                             bcElt = Internal.getNodeFromType1(b[1][1], "Elements_t")
                             bcEC = Internal.getNodeFromName2(bcElt, "ElementConnectivity")
                             pointList = bcEC[1] - 1
@@ -4588,24 +4573,44 @@ def _recoverBCs(t, BCInfo, tol=1.e-11, removeBC=True, indices=None):
                         _addBC2Zone(z, BCNames[c], BCTypes[c], pointList=pointList)
 
                     # Recover BCDataSets
-                    if b[0] != 'tuple': continue  # can't recover BCDataSets
-                    continue
-                    fsc = Internal.getNodeFromName(b[1][0], Internal.__FlowSolutionCenters__)
-                    if fsc is not None:
-                        newBCName = getLastBCName(BCNames[c])
-                        bcz = Internal.getNodeFromNameAndType(z, newBCName, 'BC_t')
-                        ds = Internal.newBCDataSet(name='BCDataSet', value='UserDefined',
-                                                   gridLocation='FaceCenter', parent=bcz)
-                        d = Internal.newBCData('NeumannData', parent=ds)
-                        for node in Internal.getChildren(fsc):
-                            if Internal.isType(node, 'DataArray_t'):
-                                val0 = Internal.getValue(node)
-                                if isinstance(val0, numpy.ndarray):
-                                    val0 = numpy.reshape(val0, val0.size, order='F')
-                                else:
-                                    val0 = numpy.array([val0])
-                                val1 = val0[validIds]
-                                Internal._createUniqueChild(d, node[0], 'DataArray_t', value=val1)
+                    # Redo this part:
+                    # - do not delete faceCenter BCDatasets
+                    # - swap face positions only fmap
+                    # - will preserve non-Neumann datasets
+                    # - at last, no need to pass a zone using selectConnectivity, just an array
+                    if isinstance(b, tuple) and len(b) == 2 and b[0] == 'tuple':
+                        fsc = Internal.getNodeFromName(b[1][0], Internal.__FlowSolutionCenters__)
+                        if fsc is not None:
+                            array2 = getFields('GridCoordinates', b[1][0], api=3)[0]
+                            print("faceList", faceList)  # Assume dim[3] == 'NGON'
+                            # if indicesF is None:
+                            #     indicesF = []
+                            #     P.exteriorFaces(z, indices=indicesF)
+                            #     indicesF = indicesF[0]
+                            fmap = converter.identifyFacesTopo(
+                                array, array2,
+                                indices, faceList
+                            )
+                            if numpy.any(fmap == -1):
+                                raise ValueError(
+                                    "_recoverBCs: topologic identication of "
+                                    "boundary faces failed."
+                                )
+                            print("fmap", fmap)
+                            # newBCName = getLastBCName(BCNames[c])
+                            # bcz = Internal.getNodeFromNameAndType(z, newBCName, 'BC_t')
+                            # ds = Internal.newBCDataSet(name='BCDataSet', value='UserDefined',
+                            #                         gridLocation='FaceCenter', parent=bcz)
+                            # d = Internal.newBCData('NeumannData', parent=ds)
+                            # for node in Internal.getChildren(fsc):
+                            #     if Internal.isType(node, 'DataArray_t'):
+                            #         val0 = Internal.getValue(node)
+                            #         if isinstance(val0, numpy.ndarray):
+                            #             val0 = numpy.reshape(val0, val0.size, order='F')
+                            #         else:
+                            #             val0 = numpy.array([val0])
+                            #         val1 = val0[validIds]
+                            #         Internal._createUniqueChild(d, node[0], 'DataArray_t', value=val1)
 
         if method == "geometric": freeHook(hook)
     return None
