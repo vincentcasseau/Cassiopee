@@ -56,7 +56,7 @@ for i in range(np-1):
     P1 = (xp[ind1],yp[ind1],zp[ind1])
     P2 = (xp[ind2],yp[ind2],zp[ind2])
     v = Vector.cross(Vector.sub(P1,PF), Vector.sub(P2,PF))
-    nF = Vector.add(nF, v)    
+    nF = Vector.add(nF, v)
 nF = Vector.mul(1./np, nF)
 print(nF)
 
@@ -79,4 +79,3 @@ print(PE)
 # produit scalaire
 prod = Vector.dot(nF, Vector.sub(PE, PF))
 if prod < 0: T._reorder(zp, (-1,))
-

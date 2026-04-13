@@ -82,4 +82,3 @@ else:
         Pmpi._computeDiv2(t, var='centers:Velocity', rmVar=False)
         Pmpi._computeGrad2(t, var='centers:Density')
         Cmpi.convertPyTree2File(t, f"parCases/par{meshType}2.cgns")
-
