@@ -224,7 +224,7 @@ namespace K_CONNECT
      IN: cEV: Elts-Vertex connectivity.
      IN: keepDuplicates: whether to keep duplicates of internal faces.*/
   E_Int connectEV2FE(const char* eltType, K_FLD::FldArrayI& cEV,
-                     K_FLD::FldArrayI& cFE, E_Bool keepDuplicates=false);
+                     K_FLD::FldArrayI& cFE, E_Bool keepDuplicates=true);
   /* Change HO EV connectivity to LO EV connectivity.
      mode=0: sub-select, mode=1: tesselate */
   E_Int connectHO2LO(const char* eltTypeHO, K_FLD::FldArrayI& cEVHO,
