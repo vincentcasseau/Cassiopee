@@ -1,6 +1,6 @@
 """OpenCascade definition module.
 """
-__version__ = '4.1'
+__version__ = '4.2'
 __author__ = "Sam Landier, Christophe Benoit"
 
 from . import occ
@@ -16,14 +16,15 @@ __all__ = ['convertCAD2Arrays',
            'meshSTRUCT', 'meshSTRUCT__', 'meshTRI', 'meshTRI__', 'meshTRIU__',
            'meshTRIHO', 'meshQUAD', 'meshQUAD__', 'meshQUADHO', 'meshQUADHO__',
            'ultimate', 'meshAllEdges', 'meshAllFacesTri', 'meshAllFacesStruct',
-           'meshAllFacesTri', 'meshFaceWithMetric', 'meshAllOCC',
+           'meshAllFacesTri', 'meshFaceWithMetric',
+           'meshAllOCC', 'meshAllEdgesOCC', 'meshAllFacesTriOCC',
            'identifyTags__',
            'readCAD', 'writeCAD', 'createEmptyCAD', 'freeHook',
            'getNbEdges', 'getNbFaces', 'getFileAndFormat',
            'printOCAF', 'getFaceNameInOCAF', 'getEdgeNameInOCAF',
-           'getFaceNos', 'getEdgeNos', 'getFaceArea', 'getBoundingBox',
-           '_translate', '_rotate', '_scale', '_sewing', '_reverse',
-
+           'getFaceNos', 'getEdgeNos',
+           'getFaceArea', 'getFaceVolume', 'getFaceMassCenter', 'getBoundingBox',
+           '_translate', '_rotate', '_scale', '_fixShape', '_sewing', '_reverse',
            '_splitFaces', '_mergeFaces', '_trimFaces', '_removeFaces',
            '_fillHole', '_addFillet', '_offset', 'mergeCAD', '_mergeCAD',
            '_splitEdge',
@@ -795,6 +796,14 @@ def meshAllOCC(hook, hausd, angularDeflection=28.):
     dfaces = ret[1]
     return dedges, dfaces
 
+def meshAllEdgesOCC(hook, hausd, angularDeflection=28.):
+    ret = occ.occmesh(hook, hausd, angularDeflection)
+    return ret[0]
+
+def meshAllFacesTriOCC(hook, hausd, angularDeflection=28.):
+    ret = occ.occmesh(hook, hausd, angularDeflection)
+    return ret[1]
+
 #=============================================================================
 # CAD information
 #=============================================================================
@@ -870,6 +879,16 @@ def getFaceArea(hook, faceList=None):
     """Return the area of given faces."""
     faceList = getFaceList__(hook, faceList)
     return occ.getFaceArea(hook, faceList)
+
+def getFaceVolume(hook, faceList=None):
+    """Return the volume of given closed faces."""
+    faceList = getFaceList__(hook, faceList)
+    return occ.getFaceVolume(hook, faceList)
+
+def getFaceMassCenter(hook, faceList=None):
+    """Return the center of mass of given closed faces."""
+    faceList = getFaceList__(hook, faceList)
+    return occ.getFaceMassCenter(hook, faceList)
 
 # Return the bounding box of specified faces
 def getBoundingBox(hook, faceList=None):
@@ -1006,7 +1025,7 @@ def _addDomain(hook, dfar=10., type="box", plane=None):
             _trimFaces(hook2, [1], [2], mode=2, algo=1)
             _removeFaces(hook2, [2,3,4,6,7])
             _sewing(hook2, tol=1.e-7)
-            writeCAD(hook2, 'temp.step')
+            #writeCAD(hook2, 'temp.step')
             _mergeCAD([hook, hook2])
             freeHook(hook2)
             nf = getNbFaces(hook)
@@ -1095,6 +1114,12 @@ def _scale(hook, factor, X, faceList=None):
     occ.scale(hook, factor, X, faceList)
     return None
 
+# fix shape, wire and unify edges and faces if possible
+def _fixShape(hook, fixShape=0, fixWires=0, unify=0, tol=1.e-6):
+    """Fix shape, wires and unify them when possible."""
+    occ.fixShape(hook, fixShape, fixWires, unify, tol)
+    return None
+
 # sew a set of faces
 # faces: face list numbers
 def _sewing(hook, tol=1.e-6, faceList=None):
@@ -1116,7 +1141,7 @@ def _addFillet(hook, edges, radius, new2OldEdgeMap=[], new2OldFaceMap=[]):
     occ.addFillet(hook, edges, radius, new2OldEdgeMap, new2OldFaceMap)
     return None
 
-# offset surfce of fiven distance
+# offset surfce of given distance
 def _offset(hook, distance, faceList=None):
     """Offset surface of given distance."""
     faceList = getFaceList__(hook, faceList)

@@ -391,3 +391,9 @@ for_srcs = [
     'KCore/Metric/CompVolOfTetraCellF.for', # called in BlkInterp.cpp, Interp.cpp, and commonTypesForExtrapAndInterp.h (k6compvoloftetracell_)
     'KCore/Metric/CompUnstrSurfF.for', # required for CompVolOfTetraCellF.for
 ]
+
+#==============================================================================
+# Fichiers AD
+#==============================================================================
+adolc_srcs = ["KCore/Metric/compSurfStruct.cpp",
+              "KCore/Metric/compSurfUnstruct.cpp"]
