@@ -1543,7 +1543,6 @@ def _computeGrad2(t, var, ghostCells=False, withCellN=True, withTNC=False):
         allMatchTNC = {}
 
     for z in zones:
-
         # Test if vol present
         cont = Internal.getNodeFromName1(z, Internal.__FlowSolutionCenters__)
         if cont is not None:
@@ -1712,13 +1711,11 @@ def _computeDiv2(t, var, ghostCells=False, withTNC=False, rmVar=False):
         allMatch = {}; allMatchTNC = {}
 
     for z in zones:
-
         # Test if vol present
         cont = Internal.getNodeFromName1(z, Internal.__FlowSolutionCenters__)
         vol  = Internal.getNodeFromName1(cont, 'vol')
         if vol is not None: vol = vol[1]
-
-        cellN  = Internal.getNodeFromName1(cont, 'cellN')
+        cellN = Internal.getNodeFromName1(cont, 'cellN')
         if cellN is not None: cellN = cellN[1]
 
         flist, f = [], []
@@ -2493,35 +2490,35 @@ def probeLocations(tprobe, tcase):
     ##Create list of Probes for tprobe
     interDict = X.getIntersectingDomains(tprobe,tcase)
 
-    list_save_zones=[]
-    list_save_i    =[]
-    list_save_j    =[]
-    list_save_k    =[]
+    list_save_zones = []
+    list_save_i = []
+    list_save_j = []
+    list_save_k = []
     ##In intersection zone get i,j,k for smallest distance
     for p in Internal.getZones(tprobe):
-        xnode=Internal.getNodeFromName(p,'CoordinateX')
-        ynode=Internal.getNodeFromName(p,'CoordinateY')
-        znode=Internal.getNodeFromName(p,'CoordinateZ')
+        xnode = Internal.getNodeFromName(p, 'CoordinateX')
+        ynode = Internal.getNodeFromName(p, 'CoordinateY')
+        znode = Internal.getNodeFromName(p, 'CoordinateZ')
 
-        x_loc=Internal.getValue(xnode)
-        y_loc=Internal.getValue(ynode)
-        z_loc=Internal.getValue(znode)
+        x_loc = Internal.getValue(xnode)
+        y_loc = Internal.getValue(ynode)
+        z_loc = Internal.getValue(znode)
 
         isave = 0
         jsave = 0
         ksave = 0
-        z=interDict[p[0]]
+        z = interDict[p[0]]
 
         if z:
             z2=Internal.getNodeFromName(tcase, z[0])
             C._initVars(z2,'dist=sqrt(({CoordinateX}-%g)**2+({CoordinateY}-%g)**2+({CoordinateZ}-%g)**2)'%(x_loc,y_loc,z_loc))
             dist_array = Internal.getNodeByName(z2,'dist')[1]
 
-            dim   = Internal.getZoneDim(z2)
-            ni    = dim[1]
-            nj    = dim[2]
-            nk    = dim[3]
-            pnt   = numpy.where(dist_array == numpy.amin(dist_array))
+            dim = Internal.getZoneDim(z2)
+            ni = dim[1]
+            nj = dim[2]
+            nk = dim[3]
+            pnt = numpy.where(dist_array == numpy.amin(dist_array))
 
             list_save_zones.append(z[0])
             list_save_i.append(pnt[0][0])

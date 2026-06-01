@@ -820,9 +820,8 @@ PyObject* K_POST::selectCellCentersBoth(PyObject* self, PyObject* args)
       nes[ithread] = 0;  
       E_Int cprev  = 0;
       E_Int cprev2 = 0;
-      E_Int* cnt        = ptr[ithread];
+      E_Int* cnt = ptr[ithread];
       E_Float* ftcenter = ptrF[ithread];
-      E_Int ii = 0 ; 
       
 #pragma omp for
       for (E_Int i = 0; i < ne; i++)
@@ -840,7 +839,6 @@ PyObject* K_POST::selectCellCentersBoth(PyObject* self, PyObject* args)
             E_Float* fcpl = fC->begin(k);
             ftcenter[cprev2+(k-1)]  = fcpl[i];
           }
-          ii++;
           cprev += nt; cprev2 +=nfldC; nes[ithread]++;
         }
       }
@@ -913,7 +911,7 @@ PyObject* K_POST::selectCellCentersBoth(PyObject* self, PyObject* args)
     E_Int size2 = 0;                   // compteur pour la nouvelle connectivite
     E_Int next=0;                      // nbre d'elts selectionnes
     E_Int nbFaces = cnpp[0];       // nombre de faces de l'ancienne connectivite;
-    E_Int ii = 0 ;
+    E_Int ii = 0;
 
     E_Int newNumFace = 0;  
     FldArrayI new_pg_ids;
