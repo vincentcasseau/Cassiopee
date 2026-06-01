@@ -79,6 +79,8 @@ srcs = ['OCC/import_OCC_CAD_wrapper.cpp',
 
         'OCC/Atomic/analyse.cpp',
         'OCC/Atomic/getFaceArea.cpp',
+        'OCC/Atomic/getFaceVolume.cpp',
+        'OCC/Atomic/getFaceMassCenter.cpp',
         'OCC/Atomic/getBoundingBox.cpp',
         'OCC/Atomic/areEdgeIdentical.cpp',
 
@@ -87,7 +89,7 @@ srcs = ['OCC/import_OCC_CAD_wrapper.cpp',
         'OCC/Atomic/mergeFaces.cpp',
         'OCC/Atomic/mergeEdges.cpp',
 
-        'OCC/Atomic/fix.cpp',
+        'OCC/Atomic/fixShape.cpp',
         'OCC/Atomic/sewing.cpp',
         'OCC/Atomic/reverse.cpp',
 

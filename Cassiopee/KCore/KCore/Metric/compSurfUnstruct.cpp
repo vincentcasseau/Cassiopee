@@ -19,13 +19,14 @@
 # include "metric.h"
 # include "Array/Array.h"
 #include "Connect/connect.h"
+#include "kadolc.h"
 
 //=============================================================================
 // Calcul des normales pour un maillage Multi-Elements.
 // Les normales aux surfaces sont orientees vers l'exterieur de l'element.
 // IN: xt, yt, zt: pointeurs sur les coordonnees du maillage
 //=============================================================================
-void K_METRIC::compSurfUnstruct(
+void K_METRIC::__AD(compSurfUnstruct)(
   K_FLD::FldArrayI& cn, const char* eltType,
   const E_Float* xt, const E_Float* yt, const E_Float* zt,
   E_Float* surfnx, E_Float* surfny, E_Float* surfnz, E_Float* surface
@@ -90,7 +91,7 @@ void K_METRIC::compSurfUnstruct(
   for (size_t ic = 0; ic < eltTypes.size(); ic++) delete [] eltTypes[ic];
 }
 
-void K_METRIC::compTriSurf(
+void K_METRIC::__AD(compTriSurf)(
   K_FLD::FldArrayI& cm, const E_Int fctOffset,
   const E_Float* xt, const E_Float* yt, const E_Float* zt,
   E_Float* surfnx, E_Float* surfny, E_Float* surfnz, E_Float* surface
@@ -128,7 +129,7 @@ void K_METRIC::compTriSurf(
   }
 }
 
-void K_METRIC::compQuadSurf(
+void K_METRIC::__AD(compQuadSurf)(
   K_FLD::FldArrayI& cm, const E_Int fctOffset,
   const E_Float* xt, const E_Float* yt, const E_Float* zt,
   E_Float* surfnx, E_Float* surfny, E_Float* surfnz, E_Float* surface
@@ -186,7 +187,7 @@ void K_METRIC::compQuadSurf(
   }
 }
 
-void K_METRIC::compTetraSurf(
+void K_METRIC::__AD(compTetraSurf)(
   K_FLD::FldArrayI& cm, const E_Int fctOffset,
   const E_Float* xt, const E_Float* yt, const E_Float* zt,
   E_Float* surfnx, E_Float* surfny, E_Float* surfnz, E_Float* surface
@@ -279,7 +280,7 @@ void K_METRIC::compTetraSurf(
   }
 }
 
-void K_METRIC::compPyraSurf(
+void K_METRIC::__AD(compPyraSurf)(
   K_FLD::FldArrayI& cm, const E_Int fctOffset,
   const E_Float* xt, const E_Float* yt, const E_Float* zt,
   E_Float* surfnx, E_Float* surfny, E_Float* surfnz, E_Float* surface
@@ -421,7 +422,7 @@ void K_METRIC::compPyraSurf(
   }
 }
 
-void K_METRIC::compPentaSurf(
+void K_METRIC::__AD(compPentaSurf)(
   K_FLD::FldArrayI& cm, const E_Int fctOffset,
   const E_Float* xt, const E_Float* yt, const E_Float* zt,
   E_Float* surfnx, E_Float* surfny, E_Float* surfnz, E_Float* surface
@@ -443,43 +444,7 @@ void K_METRIC::compPentaSurf(
     ind5 = cm(i, 5) - 1;  // A5
     ind6 = cm(i, 6) - 1;  // A6
 
-    // First face: triangle A1A2A3
-    l1x = xt[ind1] - xt[ind2];
-    l1y = yt[ind1] - yt[ind2];
-    l1z = zt[ind1] - zt[ind2];
-    l2x = xt[ind3] - xt[ind2];
-    l2y = yt[ind3] - yt[ind2];
-    l2z = zt[ind3] - zt[ind2];
-    surfx = l1y * l2z - l1z * l2y;
-    surfy = l1z * l2x - l1x * l2z;
-    surfz = l1x * l2y - l1y * l2x;
-    surf = sqrt(surfx * surfx + surfy * surfy + surfz * surfz);
-
-    pos = fctOffset + i * nfpe;
-    surfnx[pos] = K_CONST::ONE_HALF * surfx;
-    surfny[pos] = K_CONST::ONE_HALF * surfy;
-    surfnz[pos] = K_CONST::ONE_HALF * surfz;
-    surface[pos] = K_CONST::ONE_HALF * surf;
-
-    // Second face: triangle A4A5A6
-    l1x = xt[ind5] - xt[ind4];
-    l1y = yt[ind5] - yt[ind4];
-    l1z = zt[ind5] - zt[ind4];
-    l2x = xt[ind6] - xt[ind4];
-    l2y = yt[ind6] - yt[ind4];
-    l2z = zt[ind6] - zt[ind4];
-    surfx = l1y * l2z - l1z * l2y;
-    surfy = l1z * l2x - l1x * l2z;
-    surfz = l1x * l2y - l1y * l2x;
-    surf = sqrt(surfx * surfx + surfy * surfy + surfz * surfz);
-
-    pos += 1;
-    surfnx[pos] = K_CONST::ONE_HALF * surfx;
-    surfny[pos] = K_CONST::ONE_HALF * surfy;
-    surfnz[pos] = K_CONST::ONE_HALF * surfz;
-    surface[pos] = K_CONST::ONE_HALF * surf;
-
-    // Third face: quad 1254
+    // First face: quad 1254
     l1x = xt[ind2] - xt[ind1];
     l1y = yt[ind2] - yt[ind1];
     l1z = zt[ind2] - zt[ind1];
@@ -505,13 +470,13 @@ void K_METRIC::compPentaSurf(
     surfz = surf1z + surf2z;
     surf = sqrt(surfx * surfx + surfy * surfy + surfz * surfz);
 
-    pos += 1;
+    pos = fctOffset + i * nfpe;
     surfnx[pos] = K_CONST::ONE_HALF * surfx;
     surfny[pos] = K_CONST::ONE_HALF * surfy;
     surfnz[pos] = K_CONST::ONE_HALF * surfz;
     surface[pos] = K_CONST::ONE_HALF * surf;
 
-    // Fourth face: quad 2365
+    // Second face: quad 2365
     l1x = xt[ind3] - xt[ind2];
     l1y = yt[ind3] - yt[ind2];
     l1z = zt[ind3] - zt[ind2];
@@ -543,7 +508,7 @@ void K_METRIC::compPentaSurf(
     surfnz[pos] = K_CONST::ONE_HALF * surfz;
     surface[pos] = K_CONST::ONE_HALF * surf;
 
-    // Fifth face: quad 3146
+    // Third face: quad 3146
     l1x = xt[ind1] - xt[ind3];
     l1y = yt[ind1] - yt[ind3];
     l1z = zt[ind1] - zt[ind3];
@@ -574,10 +539,46 @@ void K_METRIC::compPentaSurf(
     surfny[pos] = K_CONST::ONE_HALF * surfy;
     surfnz[pos] = K_CONST::ONE_HALF * surfz;
     surface[pos] = K_CONST::ONE_HALF * surf;
+
+    // Fourth face: triangle A1A2A3
+    l1x = xt[ind1] - xt[ind2];
+    l1y = yt[ind1] - yt[ind2];
+    l1z = zt[ind1] - zt[ind2];
+    l2x = xt[ind3] - xt[ind2];
+    l2y = yt[ind3] - yt[ind2];
+    l2z = zt[ind3] - zt[ind2];
+    surfx = l1y * l2z - l1z * l2y;
+    surfy = l1z * l2x - l1x * l2z;
+    surfz = l1x * l2y - l1y * l2x;
+    surf = sqrt(surfx * surfx + surfy * surfy + surfz * surfz);
+
+    pos += 1;
+    surfnx[pos] = K_CONST::ONE_HALF * surfx;
+    surfny[pos] = K_CONST::ONE_HALF * surfy;
+    surfnz[pos] = K_CONST::ONE_HALF * surfz;
+    surface[pos] = K_CONST::ONE_HALF * surf;
+
+    // Fifth face: triangle A4A5A6
+    l1x = xt[ind5] - xt[ind4];
+    l1y = yt[ind5] - yt[ind4];
+    l1z = zt[ind5] - zt[ind4];
+    l2x = xt[ind6] - xt[ind4];
+    l2y = yt[ind6] - yt[ind4];
+    l2z = zt[ind6] - zt[ind4];
+    surfx = l1y * l2z - l1z * l2y;
+    surfy = l1z * l2x - l1x * l2z;
+    surfz = l1x * l2y - l1y * l2x;
+    surf = sqrt(surfx * surfx + surfy * surfy + surfz * surfz);
+
+    pos += 1;
+    surfnx[pos] = K_CONST::ONE_HALF * surfx;
+    surfny[pos] = K_CONST::ONE_HALF * surfy;
+    surfnz[pos] = K_CONST::ONE_HALF * surfz;
+    surface[pos] = K_CONST::ONE_HALF * surf;
   }
 }
 
-void K_METRIC::compHexaSurf(
+void K_METRIC::__AD(compHexaSurf)(
   K_FLD::FldArrayI& cm, const E_Int fctOffset,
   const E_Float* xt, const E_Float* yt, const E_Float* zt,
   E_Float* surfnx, E_Float* surfny, E_Float* surfnz, E_Float* surface
@@ -601,7 +602,7 @@ void K_METRIC::compHexaSurf(
     ind7 = cm(i, 7) - 1;  // A7
     ind8 = cm(i, 8) - 1;  // A8
 
-    // premiere facette A1A2A3A4
+    // First face: A1A2A3A4
     // A2A1 x A2A3
     l1x = xt[ind1] - xt[ind2];
     l1y = yt[ind1] - yt[ind2];
@@ -639,121 +640,7 @@ void K_METRIC::compHexaSurf(
     surfnz[pos] = K_CONST::ONE_HALF * surfz;
     surface[pos] = K_CONST::ONE_HALF * surf;
 
-    // deuxieme facette A5A6A7A8
-    // A5A6 x A5A7
-    l1x = xt[ind6] - xt[ind5];
-    l1y = yt[ind6] - yt[ind5];
-    l1z = zt[ind6] - zt[ind5];
-
-    l2x = xt[ind7] - xt[ind5];
-    l2y = yt[ind7] - yt[ind5];
-    l2z = zt[ind7] - zt[ind5];
-
-    surf1x = (l1y * l2z - l1z * l2y);
-    surf1y = (l1z * l2x - l1x * l2z);
-    surf1z = (l1x * l2y - l1y * l2x);
-
-    // A5A7 x A5A8
-    l1x = xt[ind7] - xt[ind5];
-    l1y = yt[ind7] - yt[ind5];
-    l1z = zt[ind7] - zt[ind5];
-
-    l2x = xt[ind8] - xt[ind5];
-    l2y = yt[ind8] - yt[ind5];
-    l2z = zt[ind8] - zt[ind5];
-
-    surf2x = (l1y * l2z - l1z * l2y);
-    surf2y = (l1z * l2x - l1x * l2z);
-    surf2z = (l1x * l2y - l1y * l2x);
-
-    surfx = surf1x + surf2x;
-    surfy = surf1y + surf2y;
-    surfz = surf1z + surf2z;
-    surf = sqrt(surfx * surfx + surfy * surfy + surfz * surfz);
-
-    pos += 1;
-    surfnx[pos] = K_CONST::ONE_HALF * surfx;
-    surfny[pos] = K_CONST::ONE_HALF * surfy;
-    surfnz[pos] = K_CONST::ONE_HALF * surfz;
-    surface[pos] = K_CONST::ONE_HALF * surf;
-
-    // troisieme facette 4158
-    // A4A1 x A4A5
-    l1x = xt[ind1] - xt[ind4];
-    l1y = yt[ind1] - yt[ind4];
-    l1z = zt[ind1] - zt[ind4];
-
-    l2x = xt[ind5] - xt[ind4];
-    l2y = yt[ind5] - yt[ind4];
-    l2z = zt[ind5] - zt[ind4];
-
-    surf1x = (l1y * l2z - l1z * l2y);
-    surf1y = (l1z * l2x - l1x * l2z);
-    surf1z = (l1x * l2y - l1y * l2x);
-
-    // A4A5 x A4A8
-    l1x = xt[ind5] - xt[ind4];
-    l1y = yt[ind5] - yt[ind4];
-    l1z = zt[ind5] - zt[ind4];
-
-    l2x = xt[ind8] - xt[ind4];
-    l2y = yt[ind8] - yt[ind4];
-    l2z = zt[ind8] - zt[ind4];
-
-    surf2x = (l1y * l2z - l1z * l2y);
-    surf2y = (l1z * l2x - l1x * l2z);
-    surf2z = (l1x * l2y - l1y * l2x);
-
-    surfx = surf1x + surf2x;
-    surfy = surf1y + surf2y;
-    surfz = surf1z + surf2z;
-    surf = sqrt(surfx * surfx + surfy * surfy + surfz * surfz);
-
-    pos += 1;
-    surfnx[pos] = K_CONST::ONE_HALF * surfx;
-    surfny[pos] = K_CONST::ONE_HALF * surfy;
-    surfnz[pos] = K_CONST::ONE_HALF * surfz;
-    surface[pos] = K_CONST::ONE_HALF * surf;
-
-    // quatrieme facette A2A3A7A6
-    // A2A3x A2A7
-    l1x = xt[ind3] - xt[ind2];
-    l1y = yt[ind3] - yt[ind2];
-    l1z = zt[ind3] - zt[ind2];
-
-    l2x = xt[ind7] - xt[ind2];
-    l2y = yt[ind7] - yt[ind2];
-    l2z = zt[ind7] - zt[ind2];
-
-    surf1x = (l1y * l2z - l1z * l2y);
-    surf1y = (l1z * l2x - l1x * l2z);
-    surf1z = (l1x * l2y - l1y * l2x);
-
-    // A2A7 x A2A6
-    l1x = xt[ind7] - xt[ind2];
-    l1y = yt[ind7] - yt[ind2];
-    l1z = zt[ind7] - zt[ind2];
-
-    l2x = xt[ind6] - xt[ind2];
-    l2y = yt[ind6] - yt[ind2];
-    l2z = zt[ind6] - zt[ind2];
-
-    surf2x = (l1y * l2z - l1z * l2y);
-    surf2y = (l1z * l2x - l1x * l2z);
-    surf2z = (l1x * l2y - l1y * l2x);
-
-    surfx = surf1x + surf2x;
-    surfy = surf1y + surf2y;
-    surfz = surf1z + surf2z;
-    surf = sqrt(surfx * surfx + surfy * surfy + surfz * surfz);
-
-    pos += 1;
-    surfnx[pos] = K_CONST::ONE_HALF * surfx;
-    surfny[pos] = K_CONST::ONE_HALF * surfy;
-    surfnz[pos] = K_CONST::ONE_HALF * surfz;
-    surface[pos] = K_CONST::ONE_HALF * surf;
-
-    // cinquieme facette A1A2A6A5
+    // Second face: A1A2A6A5
     // A1A2 x A1A6
     l1x = xt[ind2] - xt[ind1];
     l1y = yt[ind2] - yt[ind1];
@@ -791,7 +678,45 @@ void K_METRIC::compHexaSurf(
     surfnz[pos] = K_CONST::ONE_HALF * surfz;
     surface[pos] = K_CONST::ONE_HALF * surf;
 
-    // sixieme facette A3A4A8A7
+    // Third face: A2A3A7A6
+    // A2A3x A2A7
+    l1x = xt[ind3] - xt[ind2];
+    l1y = yt[ind3] - yt[ind2];
+    l1z = zt[ind3] - zt[ind2];
+
+    l2x = xt[ind7] - xt[ind2];
+    l2y = yt[ind7] - yt[ind2];
+    l2z = zt[ind7] - zt[ind2];
+
+    surf1x = (l1y * l2z - l1z * l2y);
+    surf1y = (l1z * l2x - l1x * l2z);
+    surf1z = (l1x * l2y - l1y * l2x);
+
+    // A2A7 x A2A6
+    l1x = xt[ind7] - xt[ind2];
+    l1y = yt[ind7] - yt[ind2];
+    l1z = zt[ind7] - zt[ind2];
+
+    l2x = xt[ind6] - xt[ind2];
+    l2y = yt[ind6] - yt[ind2];
+    l2z = zt[ind6] - zt[ind2];
+
+    surf2x = (l1y * l2z - l1z * l2y);
+    surf2y = (l1z * l2x - l1x * l2z);
+    surf2z = (l1x * l2y - l1y * l2x);
+
+    surfx = surf1x + surf2x;
+    surfy = surf1y + surf2y;
+    surfz = surf1z + surf2z;
+    surf = sqrt(surfx * surfx + surfy * surfy + surfz * surfz);
+
+    pos += 1;
+    surfnx[pos] = K_CONST::ONE_HALF * surfx;
+    surfny[pos] = K_CONST::ONE_HALF * surfy;
+    surfnz[pos] = K_CONST::ONE_HALF * surfz;
+    surface[pos] = K_CONST::ONE_HALF * surf;
+
+    // Fourth face: A3A4A8A7
     // A3A4 x A3A8
     l1x = xt[ind4] - xt[ind3];
     l1y = yt[ind4] - yt[ind3];
@@ -828,10 +753,86 @@ void K_METRIC::compHexaSurf(
     surfny[pos] = K_CONST::ONE_HALF * surfy;
     surfnz[pos] = K_CONST::ONE_HALF * surfz;
     surface[pos] = K_CONST::ONE_HALF * surf;
+
+    // Fifth face: A4A1A5A8
+    // A4A1 x A4A5
+    l1x = xt[ind1] - xt[ind4];
+    l1y = yt[ind1] - yt[ind4];
+    l1z = zt[ind1] - zt[ind4];
+
+    l2x = xt[ind5] - xt[ind4];
+    l2y = yt[ind5] - yt[ind4];
+    l2z = zt[ind5] - zt[ind4];
+
+    surf1x = (l1y * l2z - l1z * l2y);
+    surf1y = (l1z * l2x - l1x * l2z);
+    surf1z = (l1x * l2y - l1y * l2x);
+
+    // A4A5 x A4A8
+    l1x = xt[ind5] - xt[ind4];
+    l1y = yt[ind5] - yt[ind4];
+    l1z = zt[ind5] - zt[ind4];
+
+    l2x = xt[ind8] - xt[ind4];
+    l2y = yt[ind8] - yt[ind4];
+    l2z = zt[ind8] - zt[ind4];
+
+    surf2x = (l1y * l2z - l1z * l2y);
+    surf2y = (l1z * l2x - l1x * l2z);
+    surf2z = (l1x * l2y - l1y * l2x);
+
+    surfx = surf1x + surf2x;
+    surfy = surf1y + surf2y;
+    surfz = surf1z + surf2z;
+    surf = sqrt(surfx * surfx + surfy * surfy + surfz * surfz);
+
+    pos += 1;
+    surfnx[pos] = K_CONST::ONE_HALF * surfx;
+    surfny[pos] = K_CONST::ONE_HALF * surfy;
+    surfnz[pos] = K_CONST::ONE_HALF * surfz;
+    surface[pos] = K_CONST::ONE_HALF * surf;
+
+    // Sixth face: A5A6A7A8
+    // A5A6 x A5A7
+    l1x = xt[ind6] - xt[ind5];
+    l1y = yt[ind6] - yt[ind5];
+    l1z = zt[ind6] - zt[ind5];
+
+    l2x = xt[ind7] - xt[ind5];
+    l2y = yt[ind7] - yt[ind5];
+    l2z = zt[ind7] - zt[ind5];
+
+    surf1x = (l1y * l2z - l1z * l2y);
+    surf1y = (l1z * l2x - l1x * l2z);
+    surf1z = (l1x * l2y - l1y * l2x);
+
+    // A5A7 x A5A8
+    l1x = xt[ind7] - xt[ind5];
+    l1y = yt[ind7] - yt[ind5];
+    l1z = zt[ind7] - zt[ind5];
+
+    l2x = xt[ind8] - xt[ind5];
+    l2y = yt[ind8] - yt[ind5];
+    l2z = zt[ind8] - zt[ind5];
+
+    surf2x = (l1y * l2z - l1z * l2y);
+    surf2y = (l1z * l2x - l1x * l2z);
+    surf2z = (l1x * l2y - l1y * l2x);
+
+    surfx = surf1x + surf2x;
+    surfy = surf1y + surf2y;
+    surfz = surf1z + surf2z;
+    surf = sqrt(surfx * surfx + surfy * surfy + surfz * surfz);
+
+    pos += 1;
+    surfnx[pos] = K_CONST::ONE_HALF * surfx;
+    surfny[pos] = K_CONST::ONE_HALF * surfy;
+    surfnz[pos] = K_CONST::ONE_HALF * surfz;
+    surface[pos] = K_CONST::ONE_HALF * surf;
   }
 }
 
-void K_METRIC::compBarSurf(
+void K_METRIC::__AD(compBarSurf)(
   K_FLD::FldArrayI& cm, const E_Int fctOffset,
   const E_Float* xt, const E_Float* yt, const E_Float* zt,
   E_Float* surface
