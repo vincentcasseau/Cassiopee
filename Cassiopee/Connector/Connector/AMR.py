@@ -149,7 +149,7 @@ def prepareAMRData(t_case, t, IBM_parameters=None, check=False, dim=3, localDir=
     Cmpi.trace("Extract front faces of IBM target points [end]   ", master=True, cpu=False)
 
     Cmpi.trace(" Removing blanked cells [start]", master=True, cpu=False)
-    t = P.selectCells(t,"{cellN}==1.", strict=1)
+    t = P.selectCells(t, "{cellN}==1.", strict=1)
     Internal._rmNodesFromName(t,"FlowSolution")
     for node in Internal.getNodesFromType(t, "Elements_t"):
         if node[0] != "GridElements":
@@ -207,14 +207,14 @@ def prepareAMRData(t_case, t, IBM_parameters=None, check=False, dim=3, localDir=
 
     if VPM == False:
         Cmpi.trace(" Extracting front of the donor points [start]", master=True, cpu=False)
-        if frontTypeDP=="1":
+        if frontTypeDP == "1":
             frontDP_gath = extractFrontDP(t, frontIP_gath, dim, sym3D, check, localDir=localDir)
         else:
             frontDP_gath = None
         del frontIP_gath
         Cmpi.trace(" Extracting front of the donor points [end]  ", master=True, cpu=False)
 
-        if dimfrontIP>0:
+        if dimfrontIP > 0:
             if IBM_parameters["spatial discretization"]["type"] == "FV":
                 Cmpi.trace(" Computing normals via project ortho [start]", master=False, cpu=False)
                 _computeNormalsViaProjectOrtho__(frontIP, tb2)
@@ -245,7 +245,14 @@ def prepareAMRData(t_case, t, IBM_parameters=None, check=False, dim=3, localDir=
         if different_front_flag == False: #True is default
             Internal._rmNodesFromName(t, "TurbulentDistance")
             Internal._renameNode(t, "TurbulentDistanceForCFDComputation","TurbulentDistance")
-    if OPT:
+
+    # Catch 22: IBM prep needs dist2wall at the nodes (dist2wall@Node). blanking, ibm point location, etc. is doing using dist2wall@Node
+    #           CODA needs dist2wall at the cell centers. CODA doesnt recalculate this for IBM runs and must therefore be provided.
+    # Chosen approach: OPT=True - use only the dist2wall@Node for the IBM prep & if needed recalculate the dist2wall@Centers at the end of the function.
+    #                  Options for OPT=False have not been tested but do not seem like the appropriate solution : calcs on dist2wall@Centers + center2Node is counterintuitive
+    # TODO: Remove OPT=False options ONLY after testing with IBM Local options. F. Basile prototype did some operations with dist2wall@Centers.
+    node = Internal.getZones(t) #select cells after blanking may yields an empty zone - yields empty list or list with elements
+    if OPT and node:
         varnames = C.getVarNames(t, loc="centers")[0]
         if "TurbulentDistance" not in varnames:
             DTW._distance2Walls(t, tb2, type='ortho', signed=0, dim=dim, loc='centers')
@@ -402,18 +409,18 @@ def extractIBMPoints(tb, frontIP, frontIP_C, frontDP, bbo, IBM_parameters, check
             nzonesR         = len(allInterpPts)
 
             nameZone = ['IBM', 'Wall', 'Image']
-            tLocal3   = C.newPyTree(nameZone)
-            tLocal4   = C.newPyTree(nameZone)
-            isWrite3  = 0
-            isWrite4  = 0
+            tLocal3 = C.newPyTree(nameZone)
+            tLocal4 = C.newPyTree(nameZone)
+            isWrite3 = 0
+            isWrite4 = 0
             allProjectPts = res[3]
             allProjectPts = Converter.extractVars(allProjectPts, ['ProjectionType'])
             outputProjection3 = [[],[],[],[],[],[],[],[],[]]
             outputProjection4 = [[],[],[],[],[],[],[],[],[]]
             for noz in range(nzonesR):
                 arrayLocal = allProjectPts[noz][1][0]
-                type_3     = numpy.count_nonzero(arrayLocal==3)
-                type_4     = numpy.count_nonzero(arrayLocal==4)
+                type_3 = numpy.count_nonzero(arrayLocal==3)
+                type_4 = numpy.count_nonzero(arrayLocal==4)
 
                 if type_3 > 0: X_IBM._prepOutputProject__(outputProjection3, 3, arrayLocal, allCorrectedPts[noz][1], allWallPts[noz][1], allInterpPts[noz][1])
                 if type_4 > 0: X_IBM._prepOutputProject__(outputProjection4, 4, arrayLocal, allCorrectedPts[noz][1], allWallPts[noz][1], allInterpPts[noz][1])
@@ -972,26 +979,51 @@ def _computeTurbulentDistanceForDG__(t, tb, IBM_parameters):
     return None
 
 ## IMPORTANT NOTE:: this is a template of a python wrapper. Not to be used. It is a placeholder and is very likely to change in subsequent version.
-def prepareAMRIBM(tb, levelMax, vmins, dim, IBM_parameters, toffset=None, check=False, opt=False, octreeMode=1,
+def prepareAMRIBM(tb, vmins, dim, IBM_parameters, levelMax=0, toffset=None, check=False, opt=False, octreeMode=1,
                   snears=0.01, dfars=10, loadBalancing=False, OutputAMRMesh=False,
-                  localDir='./', fileName=None, tbox=None, vminsTbox=None, tbv2=None, forceAlignment=False):
+                  localDir='./', fileName=None, tbox=None, vminsTbox=None, tbv2=None, forceAlignment=False,
+                  tIn=None):
     """Generate AMR IBM mesh and prepare AMR IBM data for CODA simulation. 
     Usage: prepareAMRIBM(tb, levelMax, vmins, dim, IBM_parameters, toffset, check, opt, octreeMode,
                          snears, dfars, loadBalancing, OutputAMRMesh, localDir, fileName, tbox, vminsTbox, tbv2, forceAlignment)"""
 
+    ## =========================
+    ## ==== Mesh Generation ====
+    ## =========================
     t_AMR = G_AMR.generateAMRMesh(tb=tb, levelMax=levelMax, vmins=vmins, dim=dim,
                                   toffset=toffset, check=check, opt=opt, octreeMode=octreeMode, localDir=localDir,
-                                  snears=0.01, dfars=10, loadBalancing=loadBalancing, tbox=tbox, vminsTbox=vminsTbox, tbv2=tbv2)
+                                  snears=0.01, dfars=10, loadBalancing=loadBalancing,
+                                  tbox=tbox, vminsTbox=vminsTbox, tbv2=tbv2,
+                                  tIn=tIn)
 
     Cmpi.trace('AMR Mesh Dist2Walls...start', master=True)
+    tb2  = Internal.copyTree(tb)
     if dim == 2: tb2 = T.addkplane(tb)
+    else:
+        baseSYM = Internal.getNodesFromName1(tb2, "SYM")
+        if baseSYM:
+            tb2 = Internal.rmNodesByNameAndType(tb2, 'SYM', 'CGNSBase_t')
+            tb2 = Internal.rmNodesByNameAndType(tb2, '*_sym*', 'Zone_t')
+            tb  = Internal.copyTree(tb2)
     DTW._distance2Walls(t_AMR, tb2, type='ortho', signed=0, dim=dim, loc='centers')
     DTW._distance2Walls(t_AMR, tb2, type='ortho', signed=0, dim=dim, loc='nodes')
     del tb2
     Cmpi.trace('AMR Mesh Dist2Walls...end', master=True)
 
     if OutputAMRMesh: Cmpi.convertPyTree2File(t_AMR, localDir+'tAMRMesh.cgns')
+    ## Ncells output
+    Ncells = C.getNCells(t_AMR)
+    Ncells = Cmpi.allreduce(Ncells, op=Cmpi.SUM)
+    if Cmpi.master: print("[MESH GEN.] Number of Cells::%ge06"%(Ncells/1e06), flush=True)
+
+    ## ==================
+    ## ==== IBM Prep ====
+    ## ==================
     t_AMR = prepareAMRData(tb, t_AMR, IBM_parameters=IBM_parameters, dim=dim, check=check, localDir=localDir, forceAlignment=forceAlignment)
+    ## Ncells output
+    Ncells = C.getNCells(t_AMR)
+    Ncells = Cmpi.allreduce(Ncells, op=Cmpi.SUM)
+    if Cmpi.master: print("[IBM PREP.] Number of Cells::%ge06"%(Ncells/1e06), flush=True)
 
     if fileName is not None:
         Cmpi.convertPyTree2File(t_AMR, localDir+fileName)

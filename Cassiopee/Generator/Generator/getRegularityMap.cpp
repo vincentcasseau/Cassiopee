@@ -51,16 +51,6 @@ inline E_Float ratioMax6(E_Float v, E_Float v1, E_Float v2, E_Float v3, E_Float 
   return K_FUNC::E_max(ratioMax3(v, v1, v2, v3), ratioMax3(v, v4, v5, v6));
 }
 
-extern "C"
-{
-  void k6compunstrmetric_(E_Int& npts, E_Int& nelts, E_Int& nedges, 
-                          E_Int& nnodes, E_Int* cn, 
-                          E_Float* coordx, E_Float* coordy, E_Float* coordz, 
-                          E_Float* xint, E_Float* yint, E_Float* zint, 
-                          E_Float* snx, E_Float* sny, E_Float* snz, 
-                          E_Float* surf, E_Float* vol);
-}
-
 // ============================================================================
 /* Return regularity map */
 // ============================================================================
@@ -216,99 +206,39 @@ PyObject* K_GENERATOR::getRegularityMap(PyObject* self, PyObject* args)
     // calcul de la regularite
     #pragma omp parallel
     {
-      E_Int ithread = __CURRENT_THREAD__;
+      //E_Int ithread = __CURRENT_THREAD__;
       // variables locales pour les indices
       E_Int ind, ind1, ind2, ind3, ind4, ind5, ind6;
+      E_Int iprev, jprev, kprev, inext, jnext, knext;
       if (dimC == 1) // dimension 1D
       {
-        // Aux frontieres, traitement degenere.
-        if (ithread == 0)
-        {
-          reg[0] = ratioMax1(vol[0], vol[1]);
-          reg[ni1-1] = ratioMax1(vol[ni1-1], vol[ni1-2]);
-        }
-
-        // Boucle sur les indices
         #pragma omp for
-        for (E_Int i = 1; i < ni1-1; i++)
+        for (E_Int i = 0; i < ni1; i++)
         {
-          reg[i] = ratioMax2(vol[i], vol[i-1], vol[i+1]);
+          inext = K_FUNC::E_min(i+1, ni1-1);
+          iprev = K_FUNC::E_max(i-1, 0);
+
+          reg[i] = ratioMax2(vol[i], vol[iprev], vol[inext]);
         }
       }
       else if (dimC == 2) // dimension = 2D
       {
         E_Float etVol;
-        // Aux coins, traitement degenere.
-        if (ithread == 0)
-        {
-          // imin, jmin
-          reg[0] = ratioMax2(vol[0], vol[1], vol[ni1]);
-          // imax, jmin
-          ind  = ni1-1;
-          ind1 = ind-1;
-          ind2 = ind+ni1;
-          reg[ind] = ratioMax2(vol[ind], vol[ind1], vol[ind2]);
-          // imin, jmax
-          ind  = (nj1-1)*ni1;
-          ind1 = ind+1;
-          ind2 = ind-ni1;
-          reg[ind] = ratioMax2(vol[ind], vol[ind1], vol[ind2]);
-          // imax, jmax
-          ind  = nj1*ni1-1;
-          ind1 = ind-1;
-          ind2 = ind-ni1;
-          reg[ind] = ratioMax2(vol[ind], vol[ind1], vol[ind2]);
-        }
-        
-        // Aux aretes, traitement degenere.
-        #pragma omp for nowait
-        for (E_Int i = 1; i < ni1-1; i++)
-        {
-          // jmin
-          ind  = i;
-          ind1 = ind-1;
-          ind2 = ind+1;
-          ind3 = ind + ni1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax3(etVol, vol[ind1], vol[ind2], vol[ind3]);
-          // jmax
-          ind  = (nj1-1)*ni1 + i;
-          ind1 = ind-1;
-          ind2 = ind+1;
-          ind3 = ind - ni1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax3(etVol, vol[ind1], vol[ind2], vol[ind3]);
-        }
 
-        #pragma omp for nowait
-        for (E_Int j = 1; j < nj1-1; j++)
-        {
-          // imin
-          ind  = j*ni1;
-          ind1 = ind + 1;
-          ind2 = ind - ni1;
-          ind3 = ind + ni1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax3(etVol, vol[ind1], vol[ind2], vol[ind3]);
-          // imax
-          ind  = j*ni1 + ni1-1;
-          ind1 = ind - 1;
-          ind2 = ind - ni1;
-          ind3 = ind + ni1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax3(etVol, vol[ind1], vol[ind2], vol[ind3]);
-        }
-
-        // Boucle generale sur les indices des cellules interieures
         #pragma omp for collapse(2)
-        for (E_Int j = 1; j < nj1-1; j++)
-        for (E_Int i = 1; i < ni1-1; i++)
+        for (E_Int j = 0; j < nj1; j++)
+        for (E_Int i = 0; i < ni1; i++)
         {
+          inext = K_FUNC::E_min(i+1, ni1-1);
+          iprev = K_FUNC::E_max(i-1, 0);
+          jnext = K_FUNC::E_min(j+1, nj1-1);
+          jprev = K_FUNC::E_max(j-1, 0);
+
           ind  = j*ni1 + i;
-          ind1 = ind - 1;
-          ind2 = ind + 1;
-          ind3 = ind - ni1;
-          ind4 = ind + ni1;
+          ind1 = j*ni1 + iprev;
+          ind2 = j*ni1 + inext;
+          ind3 = jprev*ni1 + i;
+          ind4 = jnext*ni1 + i;
           etVol = vol[ind];
           reg[ind] = ratioMax4(etVol,vol[ind1],vol[ind2],vol[ind3],vol[ind4]);
         }
@@ -317,268 +247,26 @@ PyObject* K_GENERATOR::getRegularityMap(PyObject* self, PyObject* args)
       {	      
         E_Int ni1nj1 = ni1*nj1;
         E_Float etVol;
-        // Aux coins, traitement degenere.
-        if (ithread == 0)
-        {
-          // imin, jmin, kmin
-          ind  = 0;
-          ind1 = ind + 1;
-          ind2 = ind + ni1;
-          ind3 = ind + ni1nj1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax3(etVol,vol[ind1],vol[ind2],vol[ind3]);
-          // imax, jmin, kmin
-          ind  = ni1 - 1;
-          ind1 = ind - 1;
-          ind2 = ind + ni1;
-          ind3 = ind + ni1nj1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax3(etVol,vol[ind1],vol[ind2],vol[ind3]);
-          // imin, jmax, kmin
-          ind  = (nj1-1)*ni1;
-          ind1 = ind + 1;
-          ind2 = ind - ni1;
-          ind3 = ind + ni1nj1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax3(etVol,vol[ind1],vol[ind2],vol[ind3]);
-          // imax, jmax, kmin
-          ind  = ni1nj1 - 1;
-          ind1 = ind - 1;
-          ind2 = ind - ni1;
-          ind3 = ind + ni1nj1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax3(etVol,vol[ind1],vol[ind2],vol[ind3]);
-          // imin, jmin, kmax
-          ind  = ni1nj1*(nk1-1);
-          ind1 = ind + 1;
-          ind2 = ind + ni1;
-          ind3 = ind - ni1nj1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax3(etVol,vol[ind1],vol[ind2],vol[ind3]);
-          // imax, jmin, kmax
-          ind  = ni1nj1*(nk1-1)+ni1-1;
-          ind1 = ind - 1;
-          ind2 = ind + ni1;
-          ind3 = ind - ni1nj1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax3(etVol,vol[ind1],vol[ind2],vol[ind3]);
-          // imin, jmax, kmax
-          ind  = ni1nj1*(nk1-1)+(nj1-1)*ni1;
-          ind1 = ind + 1;
-          ind2 = ind - ni1;
-          ind3 = ind - ni1nj1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax3(etVol,vol[ind1],vol[ind2],vol[ind3]);
-          // imax, jmax, kmax
-          ind  = ni1nj1*(nk1-1)+ni1nj1 - 1;
-          ind1 = ind - 1;
-          ind2 = ind - ni1;
-          ind3 = ind - ni1nj1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax3(etVol,vol[ind1],vol[ind2],vol[ind3]);
-        }
-    
-        // Aux aretes, traitement degenere.
-        #pragma omp for nowait
-        for (E_Int i=1; i<ni1-1; i++)
-        {
-          // jmin, kmin
-          ind  = i;
-          ind1 = ind + 1;
-          ind2 = ind - 1;
-          ind3 = ind + ni1nj1;
-          ind4 = ind + ni1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax4(etVol,vol[ind1],vol[ind2],vol[ind3],vol[ind4]);
-          // jmax, kmin
-          ind  = (nj1-1)*ni1+i;
-          ind1 = ind + 1;
-          ind2 = ind - 1;
-          ind3 = ind + ni1nj1;
-          ind4 = ind - ni1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax4(etVol,vol[ind1],vol[ind2],vol[ind3],vol[ind4]);
-          // jmin, kmax
-          ind  = ni1nj1*(nk1-1)+i;
-          ind1 = ind + 1;
-          ind2 = ind - 1;
-          ind3 = ind - ni1nj1;
-          ind4 = ind + ni1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax4(etVol,vol[ind1],vol[ind2],vol[ind3],vol[ind4]);
-          // jmax, kmax
-          ind  = ni1nj1*(nk1-1)+(nj1-1)*ni1+i;
-          ind1 = ind + 1;
-          ind2 = ind - 1;
-          ind3 = ind - ni1nj1;
-          ind4 = ind - ni1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax4(etVol,vol[ind1],vol[ind2],vol[ind3],vol[ind4]);
-        }
 
-        #pragma omp for nowait
-        for (E_Int j=1; j< nj1-1; j++)
-        {
-          // imin, kmin
-          ind  = j*ni1;
-          ind1 = ind + 1;
-          ind2 = ind + ni1nj1;
-          ind3 = ind - ni1;
-          ind4 = ind + ni1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax4(etVol,vol[ind1],vol[ind2],vol[ind3],vol[ind4]);
-          // imax, kmin
-          ind  = j*ni1 + ni1-1;
-          ind1 = ind - 1;
-          ind2 = ind + ni1nj1;
-          ind3 = ind - ni1;
-          ind4 = ind + ni1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax4(etVol,vol[ind1],vol[ind2],vol[ind3],vol[ind4]);
-          // imin, kmax
-          ind  = ni1nj1*(nk1-1)+j*ni1;
-          ind1 = ind + 1;
-          ind2 = ind - ni1nj1;
-          ind3 = ind - ni1;
-          ind4 = ind + ni1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax4(etVol,vol[ind1],vol[ind2],vol[ind3],vol[ind4]);
-          // imax, kmax
-          ind  = ni1nj1*(nk1-1)+j*ni1 + ni1-1;
-          ind1 = ind - 1;
-          ind2 = ind - ni1nj1;
-          ind3 = ind - ni1;
-          ind4 = ind + ni1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax4(etVol,vol[ind1],vol[ind2],vol[ind3],vol[ind4]);
-        }
-
-        #pragma omp for nowait
-        for (E_Int k = 1; k < nk1-1; k++)
-        {
-          // imin, jmin
-          ind  = k*ni1nj1;
-          ind1 = ind + 1;
-          ind2 = ind + ni1;
-          ind3 = ind - ni1nj1;
-          ind4 = ind + ni1nj1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax4(etVol,vol[ind1],vol[ind2],vol[ind3],vol[ind4]);
-          // imax, jmin
-          ind = k*ni1nj1 + ni1-1;
-          ind1 = ind - 1;
-          ind2 = ind + ni1;
-          ind3 = ind - ni1nj1;
-          ind4 = ind + ni1nj1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax4(etVol,vol[ind1],vol[ind2],vol[ind3],vol[ind4]);
-          // imin, jmax
-          ind = k*ni1nj1+ni1*(nj1-1);
-          ind1 = ind + 1;
-          ind2 = ind - ni1;
-          ind3 = ind - ni1nj1;
-          ind4 = ind + ni1nj1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax4(etVol,vol[ind1],vol[ind2],vol[ind3],vol[ind4]);
-          // imax, jmax
-          ind = k*ni1nj1+ni1nj1 -1;
-          ind1 = ind - 1;
-          ind2 = ind - ni1;
-          ind3 = ind - ni1nj1;
-          ind4 = ind + ni1nj1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax4(etVol,vol[ind1],vol[ind2],vol[ind3],vol[ind4]);
-        }
-
-        // Aux faces, traitement degenere.
-        #pragma omp for nowait collapse(2)
-        for (E_Int k=1; k < nk1-1; k++)
-        for (E_Int j=1; j < nj1-1; j++)
-        {
-          // face imin
-          ind  = k*ni1nj1 + j*ni1;
-          ind1 = ind + 1;
-          ind2 = ind + ni1;
-          ind3 = ind - ni1;
-          ind4 = ind + ni1nj1;
-          ind5 = ind - ni1nj1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax5(etVol,vol[ind1],vol[ind2],vol[ind3],vol[ind4],vol[ind5]);
-
-          // face imax
-          ind  = k*ni1nj1 + j*ni1 + ni1 - 1;
-          ind1 = ind - 1;
-          ind2 = ind + ni1;
-          ind3 = ind - ni1;
-          ind4 = ind + ni1nj1;
-          ind5 = ind - ni1nj1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax5(etVol,vol[ind1],vol[ind2],vol[ind3],vol[ind4],vol[ind5]);
-        }
-
-        #pragma omp for nowait collapse(2)
-        for (E_Int k = 1; k < nk1-1; k++)
-        for (E_Int i = 1; i < ni1-1; i++)
-        {
-          // face jmin
-          ind  = k*ni1nj1 + i;
-          ind1 = ind - 1;
-          ind2 = ind + 1;
-          ind3 = ind + ni1;
-          ind4 = ind - ni1nj1;
-          ind5 = ind + ni1nj1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax5(etVol,vol[ind1],vol[ind2],vol[ind3],vol[ind4],vol[ind5]);
-
-          // face jmax
-          ind  = k*ni1nj1 + (nj1-1)*ni1 + i;
-          ind1 = ind - 1;
-          ind2 = ind + 1;
-          ind3 = ind - ni1;
-          ind4 = ind - ni1nj1;
-          ind5 = ind + ni1nj1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax5(etVol,vol[ind1],vol[ind2],vol[ind3],vol[ind4],vol[ind5]);
-        }
-
-        #pragma omp for nowait collapse(2)
-        for (E_Int j = 1; j < nj1-1; j++)
-        for (E_Int i = 1; i < ni1-1; i++)
-        {
-          // face kmin
-          ind  =  j*ni1 + i;
-          ind1 = ind - 1;
-          ind2 = ind + 1;
-          ind3 = ind - ni1;
-          ind4 = ind + ni1;
-          ind5 = ind + ni1nj1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax5(etVol,vol[ind1],vol[ind2],vol[ind3],vol[ind4],vol[ind5]);
-
-          // face kmax
-          ind  = (nk1-1)*ni1nj1 + j*ni1 + i;
-          ind1 = ind - 1;
-          ind2 = ind + 1;
-          ind3 = ind - ni1;
-          ind4 = ind + ni1;
-          ind5 = ind - ni1nj1;
-          etVol = vol[ind];
-          reg[ind] = ratioMax5(etVol,vol[ind1],vol[ind2],vol[ind3],vol[ind4],vol[ind5]);
-        }
-
-        // Boucle generale sur les indices des cellules interieures
         #pragma omp for collapse(3)
-        for (E_Int k = 1; k < nk1-1; k++)
-        for (E_Int j = 1; j < nj1-1; j++)
-        for (E_Int i = 1; i < ni1-1; i++)
+        for (E_Int k = 0; k < nk1; k++)
+        for (E_Int j = 0; j < nj1; j++)
+        for (E_Int i = 0; i < ni1; i++)
         {
+          inext = K_FUNC::E_min(i+1, ni1-1);
+          iprev = K_FUNC::E_max(i-1, 0);
+          jnext = K_FUNC::E_min(j+1, nj1-1);
+          jprev = K_FUNC::E_max(j-1, 0);
+          knext = K_FUNC::E_min(k+1, nk1-1);
+          kprev = K_FUNC::E_max(k-1, 0);
+
           ind  = k*ni1nj1 + j*ni1 + i;
-          ind1 = ind - 1;
-          ind2 = ind + 1;
-          ind3 = ind - ni1;
-          ind4 = ind + ni1;
-          ind5 = ind - ni1nj1;
-          ind6 = ind + ni1nj1;
+          ind1 = k*ni1nj1 + j*ni1 + iprev;
+          ind2 = k*ni1nj1 + j*ni1 + inext;
+          ind3 = k*ni1nj1 + jprev*ni1 + i;
+          ind4 = k*ni1nj1 + jnext*ni1 + i;
+          ind5 = kprev*ni1nj1 + j*ni1 + i;
+          ind6 = knext*ni1nj1 + j*ni1 + i;
           etVol = vol[ind];
           reg[ind] = ratioMax6(etVol,vol[ind1],vol[ind2],vol[ind3],vol[ind4],vol[ind5],vol[ind6]);
         }
@@ -591,265 +279,109 @@ PyObject* K_GENERATOR::getRegularityMap(PyObject* self, PyObject* args)
   }
   else // cas non structure
   {
-    E_Float etVol; E_Int eti; E_Int indi;
-    E_Int nelts = cn->getSize(); // nb d'elements
-    E_Int nnodes = cn->getNfld();
-
-    // Construction du tableau numpy stockant le ratio max de volumes entre elements voisins, 
-    // definissant la regularite
-    PyObject* tpl = K_ARRAY::buildArray3(1, "regularity", npts, *cn, eltType, 1, api, true);
-    FldArrayF* f2;
+    // Construction du tableau numpy stockant le ratio max de volumes entre
+    // elements voisins, definissant la regularite
+    tpl = K_ARRAY::buildArray3(
+      1, "regularity", npts, *cn, eltType, 1, api, true
+    );
     K_ARRAY::getFromArray3(tpl, f2);
     E_Float* reg = f2->begin(1);
 
-    // Calcul de la connectivite vertex->elements
-    std::vector< std::vector<E_Int> > cVE(npts); 
-    K_CONNECT::connectEV2VE(*cn, cVE);
-  
-    // Rapport MAX de volumes entre un element et ses voisins. Resultat au "centre"
-    if (strcmp(eltType, "TRI") == 0)
+    if (strcmp(eltType, "NGON") == 0)
     {
-      E_Float maxratio;
-      // Calcul du volume des elements
-      FldArrayF snx(nelts);
-      FldArrayF sny(nelts);
-      FldArrayF snz(nelts);
-      FldArrayF vol(nelts);
-      FldArrayF volDummy(nelts);
-      E_Int nedges = 1;
-      //tableau local au fortran
-      FldArrayF xint(nelts,nedges);
-      FldArrayF yint(nelts,nedges);
-      FldArrayF zint(nelts,nedges);
-      //
-      k6compunstrmetric_(npts, nelts, nedges, nnodes, cn->begin(), 
-                         xp, yp, zp, xint.begin(), yint.begin(), zint.begin(),
-                         snx.begin(), sny.begin(), 
-                         snz.begin(), vol.begin(), volDummy.begin());
-      
-      // Calcul du ratio maximum 
-      // entre les volumes des elements voisins et celui de l'element courant
-      for (E_Int et = 0; et < nelts; et++)
-      {
-        etVol = vol[et];
-        maxratio = 0;
-        for (E_Int i = 0; i < nedges; i++)
-        {
-          E_Int* cni = cn->begin(i+1);
-          indi = cni[et]-1;
-          std::vector<E_Int>& cVEi = cVE[indi]; E_Int sizei = cVEi.size();
-          for (E_Int noeti = 0; noeti < sizei; noeti++)
-          {
-            eti = cVEi[noeti];
-            maxratio = K_FUNC::E_max(maxratio,K_FUNC::E_abs(vol[eti]-etVol)/K_FUNC::E_max(etVol,K_CONST::E_GEOM_CUTOFF));
-          }
-        }
-        reg[et] = maxratio;
-      }
-    }
-    else if (strcmp(eltType, "QUAD") == 0)
-    {
-      E_Float maxratio;
-      // Calcul du volume des elements
-      FldArrayF snx(nelts);
-      FldArrayF sny(nelts);
-      FldArrayF snz(nelts);
-      FldArrayF vol(nelts);
-      FldArrayF volDummy(nelts);
-      E_Int nedges = 1;
-      // tableau local au fortran
-      FldArrayF xint(nelts,nedges);
-      FldArrayF yint(nelts,nedges);
-      FldArrayF zint(nelts,nedges);
-      //
-      k6compunstrmetric_(npts, nelts, nedges, nnodes, cn->begin(), 
-                         xp, yp, zp,
-                         xint.begin(), yint.begin(), zint.begin(),
-                         snx.begin(), sny.begin(), 
-                         snz.begin(), vol.begin(), volDummy.begin());
-
-      // Calcul du ratio maximum 
-      // entre les volumes des elements voisins et celui de l'element courant
-      for (E_Int et = 0; et < nelts; et++)
-      {
-        etVol = vol[et];
-        maxratio = 0;
-        for (E_Int i = 0; i < nedges; i++)
-        {
-          E_Int* cni = cn->begin(i+1);
-          indi = cni[et]-1;
-          std::vector<E_Int>& cVEi = cVE[indi]; E_Int sizei = cVEi.size();
-          for (E_Int noeti = 0; noeti < sizei; noeti++)
-          {
-            eti = cVEi[noeti];
-            maxratio = K_FUNC::E_max(maxratio,K_FUNC::E_abs(vol[eti]-etVol)/K_FUNC::E_max(etVol,K_CONST::E_GEOM_CUTOFF));
-          }
-        }
-        reg[et] = maxratio;
-      }
-   }
-    else if (strcmp(eltType, "TETRA") == 0)
-    {
-      E_Int nedges = 4;
-      E_Float maxratio;
-      // Calcul du volume des elements
-      FldArrayF snx(nelts, nedges);
-      FldArrayF sny(nelts, nedges);
-      FldArrayF snz(nelts, nedges);
-      FldArrayF surf(nelts, nedges);
-      FldArrayF vol(nelts);
-      //tableau local au fortran
-      FldArrayF xint(nelts,nedges);
-      FldArrayF yint(nelts,nedges);
-      FldArrayF zint(nelts,nedges);
-      //
-      k6compunstrmetric_(npts, nelts, nedges, nnodes, cn->begin(), 
-                         xp, yp, zp,
-                         xint.begin(), yint.begin(), zint.begin(),
-                         snx.begin(), sny.begin(), 
-                         snz.begin(), surf.begin(), vol.begin());
-      
-      // Calcul du ratio maximum 
-      // entre les volumes des elements voisins et celui de l'element courant
-      for (E_Int et = 0; et < nelts; et++)
-      {
-        etVol = vol[et];
-        maxratio = 0;
-        for (E_Int i = 0; i < nedges; i++)
-        {
-          E_Int* cni = cn->begin(i+1);
-          indi = cni[et]-1;
-          std::vector<E_Int>& cVEi = cVE[indi]; E_Int sizei = cVEi.size();
-          for (E_Int noeti = 0; noeti < sizei; noeti++)
-          {
-            eti = cVEi[noeti];
-            maxratio = K_FUNC::E_max(maxratio,K_FUNC::E_abs(vol[eti]-etVol)/K_FUNC::E_max(etVol,K_CONST::E_GEOM_CUTOFF));
-          }
-        }
-        reg[et] = maxratio;
-      }
-    }
-    else if (strcmp(eltType, "PYRA") == 0)
-    {
-      // volume computation not implemented for PYRA
       PyErr_SetString(PyExc_TypeError,
-                      "getRegularityMap: not yet implemented for PYRA.");
+                      "getRegularityMap: not implemented for NGON arrays.");
       RELEASESHAREDS(tpl, f2);
-      RELEASESHAREDU(array, f, cn); 
+      RELEASESHAREDU(array, f, cn);
       return NULL;
     }
-    else if (strcmp(eltType, "PENTA") == 0)
-    {
-      E_Int nedges = 5;
-      E_Float maxratio;
 
-      // Calcul du volume des elements
-      FldArrayF snx(nelts, nedges);
-      FldArrayF sny(nelts, nedges);
-      FldArrayF snz(nelts, nedges);
-      FldArrayF surf(nelts, nedges);
-      FldArrayF vol(nelts);
-      //tableau local au fortran
-      FldArrayF xint(nelts,nedges);
-      FldArrayF yint(nelts,nedges);
-      FldArrayF zint(nelts,nedges);
-      //
-      k6compunstrmetric_(npts, nelts, nedges, nnodes, cn->begin(), 
-                         xp, yp, zp,
-                         xint.begin(), yint.begin(), zint.begin(),
-                         snx.begin(), sny.begin(), 
-                         snz.begin(), surf.begin(), vol.begin());
+    // Pre-compute total number of elements and facets
+    E_Int ierr;
+    E_Int ntotFacets = 0, ntotElts = 0;
+    E_Int nc = cn->getNConnect();
 
-      // Calcul du ratio maximum 
-      // entre les volumes des elements voisins et celui de l'element courant
-      for (E_Int et = 0; et < nelts; et++)
-      {
-        etVol = vol[et];
-        maxratio = 0;
-        for (E_Int i = 0; i < nedges; i++)
-        {
-          E_Int* cni = cn->begin(i+1);
-          indi = cni[et]-1;
-          std::vector<E_Int>& cVEi = cVE[indi]; E_Int sizei = cVEi.size();
-          for (E_Int noeti = 0; noeti < sizei; noeti++)
-          {
-            eti = cVEi[noeti];
-            maxratio = K_FUNC::E_max(maxratio,K_FUNC::E_abs(vol[eti]-etVol)/K_FUNC::E_max(etVol,K_CONST::E_GEOM_CUTOFF));
-          }
-        }
-        reg[et] = maxratio;
-      }
-   }
-    else if (strcmp(eltType, "HEXA") == 0)
+    // Number of facets per element
+    std::vector<E_Int> nfpe;
+    ierr = K_CONNECT::getNFPE(nfpe, eltType, false);
+    if (ierr != 0)
     {
-      E_Int nedges = 6;
-      E_Float maxratio;
-      // Calcul du volume des elements
-      FldArrayF snx(nelts, nedges);
-      FldArrayF sny(nelts, nedges);
-      FldArrayF snz(nelts, nedges);
-      FldArrayF surf(nelts, nedges);
-      FldArrayF vol(nelts);
-      //tableau local au fortran
-      FldArrayF xint(nelts,nedges);
-      FldArrayF yint(nelts,nedges);
-      FldArrayF zint(nelts,nedges);
-      //
-      k6compunstrmetric_(npts, nelts, nedges, nnodes, cn->begin(), 
-                         xp, yp, zp,
-                         xint.begin(), yint.begin(), zint.begin(),
-                         snx.begin(), sny.begin(), 
-                         snz.begin(), surf.begin(), vol.begin());
-      
-      // Calcul du ratio maximum 
-      // entre les volumes des elements voisins et celui de l'element courant
-      for (E_Int et = 0; et < nelts; et++)
-      {
-        etVol = vol[et];
-        maxratio = 0;
-        for (E_Int i = 0; i < nedges; i++)
-        {
-          E_Int* cni = cn->begin(i+1);
-          indi = cni[et]-1;
-          std::vector<E_Int>& cVEi = cVE[indi]; E_Int sizei = cVEi.size();
-          for (E_Int noeti = 0; noeti < sizei; noeti++)
-          {
-            eti = cVEi[noeti];
-            maxratio = K_FUNC::E_max(maxratio,K_FUNC::E_abs(vol[eti]-etVol)/K_FUNC::E_max(etVol,K_CONST::E_GEOM_CUTOFF));
-          }
-        }
-        reg[et] = maxratio;
-      }
+      PyErr_SetString(PyExc_TypeError,
+                      "getRegularityMap: Error computing nfpe.");
+      RELEASESHAREDS(tpl, f2);
+      RELEASESHAREDU(array, f, cn);
+      return NULL;
     }
-    else if (strcmp(eltType, "BAR") == 0)
+
+    // Total number of elements/facets
+    for (E_Int ic = 0; ic < nc; ic++)
     {
-      // Calcul du volume des elements
-      E_Int* cn1 = cn->begin(1);
-      E_Int* cn2 = cn->begin(2);
-      FldArrayF vol(nelts);
-      E_Int ind1, ind2;
-      E_Float dx, dy, dz;
-      for (E_Int i = 0; i < nelts; i++)
-      {
-        ind1 = cn1[i]-1; 
-        ind2 = cn2[i]-1;
-        dx = xp[ind2]-xp[ind1];
-        dy = yp[ind2]-yp[ind1];
-        dz = zp[ind2]-zp[ind1];
-        vol[i] = sqrt(dx*dx + dy*dy + dz*dz);
-      } 
+      K_FLD::FldArrayI& cm = *(cn->getConnect(ic));
+      E_Int nelts = cm.getSize();
+      ntotFacets += nfpe[ic]*nelts;
+      ntotElts += nelts;
     }
-    else
+
+    // Calcul de la connectivite element -> elements voisins
+    std::vector<std::vector<E_Int> > cEEN(ntotElts);
+    ierr = K_CONNECT::connectEV2EENbrs(eltType, npts, *cn, cEEN);
+    if (ierr == 0)
     {
-        PyErr_SetString(PyExc_TypeError,
-                        "getRegularityMap: unknown type of element.");
-        RELEASESHAREDS(tpl, f2);
-        RELEASESHAREDU(array, f, cn);
-        return NULL;
+      PyErr_SetString(PyExc_TypeError,
+                      "getRegularityMap: Error computing cEEN.");
+      RELEASESHAREDS(tpl, f2);
+      RELEASESHAREDU(array, f, cn);
+      return NULL;
     }
+
+    // Get dimensionality
+    E_Int dim = K_CONNECT::getDimME(eltType);
     
+    K_FLD::FldArrayF snx(ntotFacets), sny(ntotFacets), snz(ntotFacets);
+    K_FLD::FldArrayF surf(ntotFacets);
+    K_FLD::FldArrayF vol(ntotElts);
+
+    if (dim == 3)
+    {
+      K_METRIC::compMetricUnstruct(
+        *cn, eltType, xp, yp, zp,
+        snx.begin(), sny.begin(), snz.begin(), surf.begin(), vol.begin()
+      );
+    }
+    else // 1D/2D
+    {
+      K_METRIC::compSurfUnstruct(
+        *cn, eltType, xp, yp, zp,
+        snx.begin(), sny.begin(), snz.begin(), vol.begin()
+      );
+    }
+
+    // Calcul du ratio maximum 
+    // entre les volumes des elements voisins et celui de l'element courant
+    #pragma omp parallel
+    {
+      E_Int nneis, inei;
+      E_Float maxr, voli;
+
+      #pragma omp for
+      for (E_Int i = 0; i < ntotElts; i++)
+      {
+        maxr = 0.;
+        voli = vol[i];
+        // Loop over neighbouring elements
+        const std::vector<E_Int>& cEENi = cEEN[i];
+        nneis = cEENi.size(); // number of neighboring cells
+        for (E_Int n = 0; n < nneis; n++)
+        {
+          inei = cEENi[n]; // neighbor index
+          maxr = K_FUNC::E_max(maxr, ratioMax1(voli, vol[inei]));
+        }
+        reg[i] = maxr;
+      }
+    }     
+
     RELEASESHAREDS(tpl, f2);
-    RELEASESHAREDU(array, f, cn); 
+    RELEASESHAREDU(array, f, cn);
     return tpl;
   }
 }

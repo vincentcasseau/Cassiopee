@@ -1,6 +1,6 @@
 """OpenCascade definition module.
 """
-__version__ = '4.1'
+__version__ = '4.2'
 __author__ = "Sam Landier, Christophe Benoit"
 
 from . import occ
@@ -16,14 +16,15 @@ __all__ = ['convertCAD2Arrays',
            'meshSTRUCT', 'meshSTRUCT__', 'meshTRI', 'meshTRI__', 'meshTRIU__',
            'meshTRIHO', 'meshQUAD', 'meshQUAD__', 'meshQUADHO', 'meshQUADHO__',
            'ultimate', 'meshAllEdges', 'meshAllFacesTri', 'meshAllFacesStruct',
-           'meshAllFacesTri', 'meshFaceWithMetric', 'meshAllOCC',
+           'meshAllFacesTri', 'meshFaceWithMetric',
+           'meshAllOCC', 'meshAllEdgesOCC', 'meshAllFacesTriOCC',
            'identifyTags__',
            'readCAD', 'writeCAD', 'createEmptyCAD', 'freeHook',
            'getNbEdges', 'getNbFaces', 'getFileAndFormat',
            'printOCAF', 'getFaceNameInOCAF', 'getEdgeNameInOCAF',
-           'getFaceNos', 'getEdgeNos', 'getFaceArea', 'getBoundingBox',
-           '_translate', '_rotate', '_scale', '_sewing', '_reverse',
-
+           'getFaceNos', 'getEdgeNos',
+           'getFaceArea', 'getFaceVolume', 'getFaceMassCenter', 'getBoundingBox',
+           '_translate', '_rotate', '_scale', '_fixShape', '_sewing', '_reverse',
            '_splitFaces', '_mergeFaces', '_trimFaces', '_removeFaces',
            '_fillHole', '_addFillet', '_offset', 'mergeCAD', '_mergeCAD',
            '_splitEdge',
@@ -60,14 +61,21 @@ def convertCAD2Arrays(fileName, format=None,
         a = occ.meshGlobalEdges(hook, h)
     return a
 
-# IN: edges: liste d'arrays STRUCT possedant x,y,z,u,v
-# OUT: liste d'arrays STRUCT ayant uv dans x,y et z=0
+# IN: edges: liste d'arrays STRUCT/BAR/TRI possedant x,y,z,u,v
+# OUT: liste d'arrays STRUCT/BAR/TRI ayant uv dans x,y et z=0
 def switch2UV(edges):
     """Switch uv to coordinates."""
     out = []
     for e in edges:
-        ni = e[2]; nj = e[3]; nk = e[4]
-        uv = Converter.array('x,y,z',ni,nj,nk)
+        if len(e) == 5:
+            ni = e[2]; nj = e[3]; nk = e[4]
+            uv = Converter.array('x,y,z',ni,nj,nk)
+        else:
+            np = e[1].shape[1]
+            ne = e[2].shape[1]
+            uv = Converter.array('x,y,z',np,ne,e[3])
+            uv[2][:,:] = e[2][:,:]
+
         uv[1][0,:] = e[1][3,:]
         uv[1][1,:] = e[1][4,:]
         uv[1][2,:] = 0.
@@ -650,7 +658,7 @@ def meshFaceWithPointedHat(hook, i, edges, close, mesh):
     return True
 
 # mesh all CAD edges with hmin, hmax, hausd
-def meshAllEdges(hook, hmin, hmax, hausd, N, edgeList=None):
+def meshAllEdges(hook, hmin, hmax, hausd, N, edgeList=None, order=1):
     """Mesh all CAD edges with hmin, hmax, hausd."""
     if edgeList is None:
         nbEdges = occ.getNbEdges(hook)
@@ -660,6 +668,12 @@ def meshAllEdges(hook, hmin, hmax, hausd, N, edgeList=None):
         e = occ.meshOneEdge(hook, i, hmin, hmax, hausd, N, None)
         dedges.append(e)
     dedges = Generator.zip(dedges, tol=hmin/100.) # safe and necessary for corner/seam points
+    #if order > 1:
+    #    dedges = switch2UV(dedges)
+    #    for i, e in enumerate(dedges):
+    #        e = Converter.convertLO2HO(e, order=order)
+    #        dedges[i] = occ.evalEdge(hook, e, i+1)
+
     return dedges
 
 #=================================================================
@@ -674,7 +688,7 @@ def meshAllEdges(hook, hmin, hmax, hausd, N, edgeList=None):
 # IN: close: if true, close meshes
 # IN: aniso: if true, anisotropic mesher
 #==================================================================
-def meshAllFacesTri(hook, dedges, metric=True, faceList=[], hList=[], close=True, aniso=False):
+def meshAllFacesTri(hook, dedges, metric=True, faceList=[], hList=[], close=True, aniso=False, order=1):
     nbFaces = len(faceList)
     FAILED1 = []; FAILED2 = []; dfaces = []
     for c, i in enumerate(faceList):
@@ -709,6 +723,12 @@ def meshAllFacesTri(hook, dedges, metric=True, faceList=[], hList=[], close=True
             edges = edgesSav
             #dfaces.append(None)
             SUCCESS = meshFaceWithPointedHat(hook, i, edges, close, dfaces)
+
+    if order > 1:
+        dfaces = switch2UV(dfaces)
+        for i, f in enumerate(dfaces):
+            f = Converter.convertLO2HO(f, order=order)
+            dfaces[i] = occ.evalFace(hook, f, i+1)
 
     FAIL1 = len(FAILED1)
     print("METRICFAILURE = %d / %d"%(FAIL1, nbFaces))
@@ -775,6 +795,14 @@ def meshAllOCC(hook, hausd, angularDeflection=28.):
     dedges = ret[0]
     dfaces = ret[1]
     return dedges, dfaces
+
+def meshAllEdgesOCC(hook, hausd, angularDeflection=28.):
+    ret = occ.occmesh(hook, hausd, angularDeflection)
+    return ret[0]
+
+def meshAllFacesTriOCC(hook, hausd, angularDeflection=28.):
+    ret = occ.occmesh(hook, hausd, angularDeflection)
+    return ret[1]
 
 #=============================================================================
 # CAD information
@@ -851,6 +879,16 @@ def getFaceArea(hook, faceList=None):
     """Return the area of given faces."""
     faceList = getFaceList__(hook, faceList)
     return occ.getFaceArea(hook, faceList)
+
+def getFaceVolume(hook, faceList=None):
+    """Return the volume of given closed faces."""
+    faceList = getFaceList__(hook, faceList)
+    return occ.getFaceVolume(hook, faceList)
+
+def getFaceMassCenter(hook, faceList=None):
+    """Return the center of mass of given closed faces."""
+    faceList = getFaceList__(hook, faceList)
+    return occ.getFaceMassCenter(hook, faceList)
 
 # Return the bounding box of specified faces
 def getBoundingBox(hook, faceList=None):
@@ -987,7 +1025,7 @@ def _addDomain(hook, dfar=10., type="box", plane=None):
             _trimFaces(hook2, [1], [2], mode=2, algo=1)
             _removeFaces(hook2, [2,3,4,6,7])
             _sewing(hook2, tol=1.e-7)
-            writeCAD(hook2, 'temp.step')
+            #writeCAD(hook2, 'temp.step')
             _mergeCAD([hook, hook2])
             freeHook(hook2)
             nf = getNbFaces(hook)
@@ -1076,6 +1114,12 @@ def _scale(hook, factor, X, faceList=None):
     occ.scale(hook, factor, X, faceList)
     return None
 
+# fix shape, wire and unify edges and faces if possible
+def _fixShape(hook, fixShape=0, fixWires=0, unify=0, tol=1.e-6):
+    """Fix shape, wires and unify them when possible."""
+    occ.fixShape(hook, fixShape, fixWires, unify, tol)
+    return None
+
 # sew a set of faces
 # faces: face list numbers
 def _sewing(hook, tol=1.e-6, faceList=None):
@@ -1097,7 +1141,7 @@ def _addFillet(hook, edges, radius, new2OldEdgeMap=[], new2OldFaceMap=[]):
     occ.addFillet(hook, edges, radius, new2OldEdgeMap, new2OldFaceMap)
     return None
 
-# offset surfce of fiven distance
+# offset surfce of given distance
 def _offset(hook, distance, faceList=None):
     """Offset surface of given distance."""
     faceList = getFaceList__(hook, faceList)
