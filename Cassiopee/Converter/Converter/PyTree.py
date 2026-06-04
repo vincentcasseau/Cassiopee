@@ -4609,7 +4609,7 @@ def _recoverBCs(t, BCInfo, tol=1.e-11, removeBC=True, indices=None):
                             newBCName = getLastBCName(BCNames[c])
                             bcz = Internal.getNodeFromNameAndType(z, newBCName, 'BC_t')
                             ds = Internal.newBCDataSet(name='BCDataSet', value='UserDefined',
-                                                    gridLocation='FaceCenter', parent=bcz)
+                                                       gridLocation='FaceCenter', parent=bcz)
                             d = Internal.newBCData('NeumannData', parent=ds)
                             for node in Internal.getChildren(fsc):
                                 if Internal.isType(node, 'DataArray_t'):
