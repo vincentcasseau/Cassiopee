@@ -4606,20 +4606,20 @@ def _recoverBCs(t, BCInfo, tol=1.e-11, removeBC=True, indices=None):
                                     "boundary faces failed."
                                 )
                             print("fmap", fmap)
-                            # newBCName = getLastBCName(BCNames[c])
-                            # bcz = Internal.getNodeFromNameAndType(z, newBCName, 'BC_t')
-                            # ds = Internal.newBCDataSet(name='BCDataSet', value='UserDefined',
-                            #                         gridLocation='FaceCenter', parent=bcz)
-                            # d = Internal.newBCData('NeumannData', parent=ds)
-                            # for node in Internal.getChildren(fsc):
-                            #     if Internal.isType(node, 'DataArray_t'):
-                            #         val0 = Internal.getValue(node)
-                            #         if isinstance(val0, numpy.ndarray):
-                            #             val0 = numpy.reshape(val0, val0.size, order='F')
-                            #         else:
-                            #             val0 = numpy.array([val0])
-                            #         val1 = val0[validIds]
-                            #         Internal._createUniqueChild(d, node[0], 'DataArray_t', value=val1)
+                            newBCName = getLastBCName(BCNames[c])
+                            bcz = Internal.getNodeFromNameAndType(z, newBCName, 'BC_t')
+                            ds = Internal.newBCDataSet(name='BCDataSet', value='UserDefined',
+                                                    gridLocation='FaceCenter', parent=bcz)
+                            d = Internal.newBCData('NeumannData', parent=ds)
+                            for node in Internal.getChildren(fsc):
+                                if Internal.isType(node, 'DataArray_t'):
+                                    val0 = Internal.getValue(node)
+                                    if isinstance(val0, numpy.ndarray):
+                                        val0 = numpy.reshape(val0, val0.size, order='F')
+                                    else:
+                                        val0 = numpy.array([val0])
+                                    val1 = val0[validIds]
+                                    Internal._createUniqueChild(d, node[0], 'DataArray_t', value=val1)
 
         if method == "geometric": freeHook(hook)
     return None

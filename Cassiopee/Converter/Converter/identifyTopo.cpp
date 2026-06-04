@@ -128,7 +128,7 @@ PyObject* K_CONVERTER::identifyFacesTopo(PyObject* self, PyObject* args)
         fidx = listFaceIndicesp[i]-1;
         E_Int* face = cn1->getFace(fidx, nv, ngon1, indPG1);
         F.set(face, nv);
-        faceMap.insert(std::make_pair(F, i));
+        faceMap.insert(std::make_pair(F, fidx));
       }
     }
   }
