@@ -17,15 +17,14 @@
     along with Cassiopee.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-# include "transform.h"
+# include "converter.h"
 # include "Connect/connect.h"
 #include <unordered_map>
 
 using namespace K_FLD;
-using namespace std;
 
 //=============================================================================
-PyObject* K_TRANSFORM::breakElements(PyObject* self, PyObject* args)
+PyObject* K_CONVERTER::convertArray2Unstruct(PyObject* self, PyObject* args)
 {
   PyObject* array;
   if (!PYPARSETUPLE_(args, "O", &array)) return NULL;
@@ -37,35 +36,37 @@ PyObject* K_TRANSFORM::breakElements(PyObject* self, PyObject* args)
   res = K_ARRAY::getFromArray3(array, varString,
                                f, ni, nj, nk, cnl, eltType);
 
-  if (res != 2)
+  if (res != 1 and res != 2)
   {
-    if (res == 1) RELEASESHAREDS(array, f);
     PyErr_SetString(PyExc_TypeError,
-                    "breakElements: array is invalid.");
+                    "convertArray2Unstruct: array is invalid.");
     return NULL;
   }
 
-  if (strcmp(eltType, "NGON") != 0 && strcmp(eltType, "MIXED") != 0)  // BE/ME
+  PyObject* l = NULL;
+  if (res == 1)
   {
-    RELEASESHAREDU(array, f, cnl);
-    return array;
+    PyObject* tpl = convertStruct2Hexa(*f, varString);
+    RELEASESHAREDS(array, f);
+    PyList_Append(l, tpl); Py_DECREF(tpl);
+    return l;
   }
 
-  E_Int posx = K_ARRAY::isCoordinateXPresent(varString); posx++;
-  E_Int posy = K_ARRAY::isCoordinateYPresent(varString); posy++;
-  E_Int posz = K_ARRAY::isCoordinateZPresent(varString); posz++;
-
-  PyObject* l;
-  if (strcmp(eltType, "NGON") == 0) l = breakNGonElements(*f, *cnl, varString);
-  else l = breakMixedElements(*f, *cnl, varString);
-
-  RELEASESHAREDU(array, f, cnl);
+  if (K_STRING::cmp(eltType, 4, "NGON") == 0)
+    l = convertNGon2Unstruct(*f, *cnl, varString);
+  if (K_STRING::cmp(eltType, 5, "MIXED") == 0)
+    l = convertMixed2Unstruct(*f, *cnl, varString);
+  else  // BE/ME
+  {
+    RELEASESHAREDU(array, f, cnl); // TODO return a copy?
+    return array;
+  }
   return l;
 }
 
 //=============================================================================
-PyObject* K_TRANSFORM::breakNGonElements(FldArrayF& field, FldArrayI& cNG,
-                                         char* varString)
+PyObject* K_CONVERTER::convertNGon2Unstruct(FldArrayF& field, FldArrayI& cNG,
+                                            char* varString)
 {
   E_Int nfld = field.getNfld();
   E_Int npts = field.getSize();
@@ -79,7 +80,7 @@ PyObject* K_TRANSFORM::breakNGonElements(FldArrayF& field, FldArrayI& cNG,
   E_Int shift = 1; if (ngonType == 3) shift = 0;
 
   // Connectivity Element->Vertex
-  std::vector<vector<E_Int> > cEVNGon(nelts);
+  std::vector<std::vector<E_Int> > cEVNGon(nelts);
   K_CONNECT::connectNG2EV(cNG, cEVNGon);
 
   PyObject* l = PyList_New(0);

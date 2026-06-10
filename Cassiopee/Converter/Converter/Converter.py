@@ -1403,9 +1403,26 @@ def mergeByEltType(array):
         return b
     else: return converter.mergeByEltType(array)
 
+def convertArray2Unstruct__(array):
+    try: sub = array[3]
+    except: raise TypeError("convertArray2Unstruct__: arg must be an array.")
+    if isinstance(sub, str): t = sub
+    else: t = 'STRUCT'
+    if t in ['STRUCT', 'NGON']: return converter.convertArray2Unstruct(array)
+    else: return array
+
+def convertArray2Unstruct(array):
+    """Convert an array in an unstructured (Multi-Element) array.
+    Usage: convertArray2Unstruct(array)"""
+    if isinstance(array[0], list):
+        b = []
+        for i in array: b.append(convertArray2Unstruct__(i))
+        return b
+    else: return convertArray2Unstruct__(array)
+
 def convertArray2NGon__(array, indices=None, api=1):
     try: sub = array[3]
-    except: raise TypeError("convertArray2NGon: arg must be an array.")
+    except: raise TypeError("convertArray2NGon__: arg must be an array.")
     if isinstance(sub, str): t = sub
     else: t = 'STRUCT'
     if t == 'STRUCT': return converter.convertStruct2NGon(array, indices, api)

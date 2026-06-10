@@ -3588,6 +3588,20 @@ def _convertArray2Hexa(t):
     _TZA1(t, 'both', 'nodes', True, Converter.convertArray2Hexa)
     return None
 
+# -- convertArray2Unstruct
+def convertArray2Unstruct(t):
+    """Convert a zone to an unstructured (Multi-Element) zone.
+    Usage: convertArray2Unstruct(t)"""
+    tp = Internal.copyRef(t)
+    _convertArray2Unstruct(tp)
+    return tp
+
+def _convertArray2Unstruct(t):
+    _deleteZoneBC__(t)
+    _deleteGridConnectivity__(t)
+    _TZA3(t, 'both', 'nodes', True, Converter.convertArray2Unstruct)
+    return None
+
 # -- convertArray2NGon
 def convertArray2NGon(t, recoverBC=True, api=1, method="geometric"):
     """Convert a zone to a NGON zone.
