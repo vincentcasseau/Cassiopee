@@ -25,7 +25,7 @@ def readHLAero():
 
 
 if __name__ == "__main__":
-    for meshName in ["mesh_1d", "mesh_2d", "mesh_3d", "mesh"]:
-        a = C.convertFile2PyTree(meshName+".vtu", api=3)
-        C.convertPyTree2File(a, meshName+".cgns")
-        #Internal.printTree(a, color=True)
+    for eltType in ["BAR", "TRI", "QUAD", "TETRA", "PYRA", "PENTA", "HEXA"]:
+        a = C.convertFile2PyTree(f"./vtu/mesh_{eltType}.vtu", api=1)
+        C.convertPyTree2File(a, f"./vtu/mesh_{eltType}.cgns")
+

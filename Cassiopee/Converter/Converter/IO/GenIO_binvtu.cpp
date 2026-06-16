@@ -18,7 +18,7 @@
 */
 
 // Binary vtu file support
-
+# include <inttypes.h>
 # include <string.h>
 # include <stdio.h>
 # include <zlib.h>
@@ -80,11 +80,11 @@ E_Int base64Decode(const char* in, E_Int inLen, unsigned char*& out)
                         in[inLen-1] == '\r' || in[inLen-1] == '\n'))
     inLen--;
 
-  // printf("base64Decode inLen=%d first4='%.4s'\n", inLen, in);
+  // printf("base64Decode inLen=" SF_D_ " first4='%.4s'\n", inLen, in);
 
   if (inLen <= 0 || inLen % 4 != 0)
   {
-    printf("Warning: base64Decode: invalid input length=%d\n", inLen);
+    printf("Warning: base64Decode: invalid input length=" SF_D_ "\n", inLen);
     out = NULL;
     return 0;
   }
@@ -95,7 +95,7 @@ E_Int base64Decode(const char* in, E_Int inLen, unsigned char*& out)
 
   if (outLen <= 0)
   {
-    printf("Warning: base64Decode: invalid output length=%d\n", outLen);
+    printf("Warning: base64Decode: invalid output length=" SF_D_ "\n", outLen);
     out = NULL;
     return 0;
   }
@@ -120,11 +120,15 @@ E_Int base64Decode(const char* in, E_Int inLen, unsigned char*& out)
 // Read appended data block, handling both compressed and uncompressed cases.
 // Returns a newly allocated buffer in data and its size in bytes in dataSize.
 // Caller is responsible for freeing data.
-void readAppendedBlock(FILE* ptrFile, const long base, const long offset,
+void readAppendedBlock(FILE* ptrFile, const off_t base, const off_t offset,
   const E_Bool compressed, const E_Bool inlineBinary, const char* headerType,
   void*& data, E_Int& dataSize)
 {
   data = NULL; dataSize = 0;
+  printf("DEBUG: base=%jd offset=%jd seek=%jd\n",
+    (intmax_t)base,
+    (intmax_t)offset,
+    (intmax_t)(base + offset));
 
   if (inlineBinary)
   {
@@ -137,7 +141,7 @@ void readAppendedBlock(FILE* ptrFile, const long base, const long offset,
     lineBufVec.push_back('\0');
     E_Int len = (E_Int)lineBufVec.size() - 1;
 
-    // strip trailing \r and spaces
+    // strip trailing spaces and spaces
     while (len > 0 && (lineBufVec[len-1] == '\r' || lineBufVec[len-1] == ' '))
     { lineBufVec[len-1] = '\0'; len--; }
 
@@ -147,7 +151,7 @@ void readAppendedBlock(FILE* ptrFile, const long base, const long offset,
       if (lineBufVec[i] == '<') { lineBufVec[i] = '\0'; len = i; break; }
     }
 
-    // strip ALL whitespace from line to get clean base64 string
+    // strip all whitespace from line to get a clean base64 string
     std::vector<char> cleanBuf;
     cleanBuf.reserve(len);
     for (E_Int i = 0; i < len; i++)
@@ -159,7 +163,7 @@ void readAppendedBlock(FILE* ptrFile, const long base, const long offset,
     cleanBuf.push_back('\0');
     const char* lineBuf = cleanBuf.data();
     len = (E_Int)cleanBuf.size() - 1;
-    // printf("clean base64 line length=%d first8='%.8s'\n", len, lineBuf);
+    // printf("clean base64 line length=" SF_D_ " first8='%.8s'\n", len, lineBuf);
 
     if (!compressed)
     {
@@ -168,11 +172,10 @@ void readAppendedBlock(FILE* ptrFile, const long base, const long offset,
       unsigned char* decodedHeader = NULL;
       base64Decode(lineBuf, headerB64Len, decodedHeader);
       if (decodedHeader == NULL) { printf("Warning: vturead: failed to decode header.\n"); return; }
-      dataSize = (strcmp(headerType, "UInt64") == 0) ?
-        (E_Int)(*(uint64_t*)decodedHeader) :
-        (E_Int)(*(uint32_t*)decodedHeader);
+      if (strcmp(headerType, "UInt64") == 0) dataSize = (E_Int)(*(uint64_t*)decodedHeader);
+      else dataSize = (E_Int)(*(uint32_t*)decodedHeader);
       delete [] decodedHeader;
-      printf("uncompressed dataSize=%d\n", dataSize);
+      printf("uncompressed dataSize=" SF_D_ "\n", dataSize);
 
       unsigned char* decodedData = NULL;
       E_Int dataBlockLen = len - headerB64Len;
@@ -184,7 +187,7 @@ void readAppendedBlock(FILE* ptrFile, const long base, const long offset,
     else
     {
       // header = [nblocks][uncompBlockSize][lastBlockSize][compSize0]...[compSizeN]
-      // first decode just 3 words to get nblocks
+      // decode 3 words to get nblocks
       E_Int headerFixedB64Len = (strcmp(headerType, "UInt64") == 0) ? 32 : 16;
       unsigned char* decodedFixed = NULL;
       base64Decode(lineBuf, headerFixedB64Len, decodedFixed);
@@ -192,7 +195,7 @@ void readAppendedBlock(FILE* ptrFile, const long base, const long offset,
       uint32_t nblocks = *(uint32_t*)decodedFixed;
       delete [] decodedFixed;
 
-      // now decode full header: (3 + nblocks) * sizeof(uint32_t) bytes
+      // decode header: (3 + nblocks) * sizeof(uint32_t) bytes
       E_Int headerBytes = (3 + nblocks) * (E_Int)sizeof(uint32_t);
       E_Int headerB64Len = ((headerBytes + 2) / 3) * 4;
       unsigned char* decodedHeader = NULL;
@@ -209,7 +212,7 @@ void readAppendedBlock(FILE* ptrFile, const long base, const long offset,
       uint32_t* h = (uint32_t*)decodedHeader;
       uint32_t uncompBlockSize = h[1];
       uint32_t lastBlockSize = h[2];
-      printf("nblocks=%d uncompBlockSize=%d lastBlockSize=%d\n",
+      printf("nblocks=%" PRIu32 " uncompBlockSize=%" PRIu32 " lastBlockSize=%" PRIu32 "\n",
              nblocks, uncompBlockSize, lastBlockSize);
 
       dataSize = (nblocks - 1) * (E_Int)uncompBlockSize + (E_Int)lastBlockSize;
@@ -223,7 +226,7 @@ void readAppendedBlock(FILE* ptrFile, const long base, const long offset,
         uLongf destLen = (b < nblocks - 1) ? uncompBlockSize : lastBlockSize;
         int ierr = uncompress(outPtr, &destLen, inPtr, compSize);
         if (ierr != Z_OK)
-          printf("Warning: vturead: zlib uncompress failed (block=%d err=%d).\n", b, ierr);
+          printf("Warning: vturead: zlib uncompress failed (block=%" PRIu32 " err=%d).\n", b, ierr);
         outPtr += destLen;
         inPtr += compSize;
       }
@@ -233,11 +236,11 @@ void readAppendedBlock(FILE* ptrFile, const long base, const long offset,
   }
   else  // appended binary
   {
-    fseek(ptrFile, base + offset, SEEK_SET);
+    fseeko(ptrFile, base + offset, SEEK_SET);
 
     if (!compressed)
     {
-      if (strcmp(headerType, "UInt64") == 0)
+      if (strcmp(headerType, "Int64") == 0)
       {
         uint64_t byteCount;
         fread(&byteCount, sizeof(uint64_t), 1, ptrFile);
@@ -259,7 +262,7 @@ void readAppendedBlock(FILE* ptrFile, const long base, const long offset,
       fread(&nblocks, sizeof(uint32_t), 1, ptrFile);
       fread(&uncompBlockSize, sizeof(uint32_t), 1, ptrFile);
       fread(&lastBlockSize, sizeof(uint32_t), 1, ptrFile);
-      printf("nblocks=%d uncompBlockSize=%d lastBlockSize=%d\n",
+      printf("nblocks%" PRIu32 " uncompBlockSize=%" PRIu32 " lastBlockSize=%" PRIu32 "\n",
              nblocks, uncompBlockSize, lastBlockSize);
 
       uint32_t* compSizes = new uint32_t[nblocks];
@@ -276,7 +279,7 @@ void readAppendedBlock(FILE* ptrFile, const long base, const long offset,
         uLongf destLen = (b < nblocks - 1) ? uncompBlockSize : lastBlockSize;
         int ierr = uncompress(outPtr, &destLen, compBuf, compSizes[b]);
         if (ierr != Z_OK)
-          printf("Warning: vturead: zlib uncompress failed (block=%d err=%d).\n", b, ierr);
+          printf("Warning: vturead: zlib uncompress failed (block=%" PRIu32 " err=%d).\n", b, ierr);
         outPtr += destLen;
         delete [] compBuf;
       }
@@ -287,14 +290,6 @@ void readAppendedBlock(FILE* ptrFile, const long base, const long offset,
 
 //========================================================================
 // read POINTS
-// example:
-// <Points>
-//   <DataArray type="Float64" NumberOfComponents="3" format="ascii">
-//     0 0 0
-//     1 0 0
-//     1 1 0
-//   </DataArray>
-// </Points>
 void readPointsVTU(
   FILE* ptrFile, const E_Bool changeEndian, const E_Bool compressed,
   const char* headerType, const E_Int npts, E_Bool& formatted, double*& coords
@@ -303,7 +298,7 @@ void readPointsVTU(
   const E_Int bufsize = 1024;
   char buf[bufsize]; char type[64] = "";
   char format[64] = "";
-  long offset = 0;
+  off_t offset = 0;
   char* p;
 
   // find <Points>
@@ -318,7 +313,7 @@ void readPointsVTU(
   p = strstr(buf, "format=\"");
   if (p != NULL) sscanf(p, "format=\"%[^\"]\"", format);
   p = strstr(buf, "offset=\"");
-  if (p != NULL) sscanf(p, "offset=\"%ld\"", &offset);
+  if (p != NULL) { intmax_t tmp; sscanf(p, "offset=\"%jd\"", &tmp); offset = (off_t)tmp; }
   E_Bool isDoublePrecision = strcmp(type, "Float64") == 0;
   E_Bool inlineBinary = strcmp(format, "binary") == 0;
   printf("VTU type=%s format=%s\n", type, format);
@@ -338,14 +333,14 @@ void readPointsVTU(
   else if (strcmp(format, "appended") == 0 || strcmp(format, "binary") == 0)
   {
     formatted = false;
-    long base = 0;
+    off_t base = 0;
     if (!inlineBinary)
     {
       // find appended section and base
       while (readLine(ptrFile, buf, bufsize) == 0)
         if (strstr(buf, "<AppendedData")) break;
       while (fgetc(ptrFile) != '_');
-      base = ftell(ptrFile);
+      base = ftello(ptrFile);
     }
     // read raw, appended, or inline binary block
     void* data; E_Int dataSize;
@@ -373,8 +368,8 @@ void readPointsVTU(
     delete [] (unsigned char*)data;
   }
   printf("point0 %lf %lf %lf\n", coords[0], coords[1], coords[2]);
-  printf("point1 %lf %lf %lf\n", coords[3], coords[4], coords[5]);
-  printf("point2 %lf %lf %lf\n", coords[6], coords[7], coords[8]);
+  // printf("point1 %lf %lf %lf\n", coords[3], coords[4], coords[5]);
+  // printf("point2 %lf %lf %lf\n", coords[6], coords[7], coords[8]);
 }
 
 //===========================================================================
@@ -383,13 +378,13 @@ void readCellsVTU(
   FILE* ptrFile,
   const E_Bool changeEndian, const E_Bool compressed, const E_Bool formatted,
   const char* headerType, const E_Int ntotElts,
-  int*& cells, int*& vtuOffsets, std::vector<E_Int>& nepc, char*& eltType,
+  E_Int*& cells, E_Int*& vtuOffsets, std::vector<E_Int>& nepc, char*& eltType,
   std::vector<E_Int>& eltMap, std::vector<E_Int>& offsets
 )
 {
   const E_Int bufsize = 1024;
   char buf[bufsize];
-  long offConn = 0, offOffsets = 0, offTypes = 0;
+  off_t offConn = 0, offOffsets = 0, offTypes = 0;
   char formatConn[64] = "";
   char* p;
   cells = NULL; vtuOffsets = NULL;
@@ -432,8 +427,9 @@ void readCellsVTU(
   };
 
   // find <Cells>
+  rewind(ptrFile);
   while (readLine(ptrFile, buf, bufsize) == 0)
-    if (strstr(buf, "<Cells>")) break;
+    if (strstr(buf, "<Cells")) break;
 
   // read connectivity DataArray header line
   while (readLine(ptrFile, buf, bufsize) == 0)
@@ -442,7 +438,7 @@ void readCellsVTU(
   p = strstr(buf, "format=\"");
   if (p != NULL) sscanf(p, "format=\"%[^\"]\"", formatConn);
   p = strstr(buf, "offset=\"");
-  if (p != NULL) sscanf(p, "offset=\"%ld\"", &offConn);
+  if (p != NULL) { intmax_t tmp; sscanf(p, "offset=\"%jd\"", &tmp); offConn = (off_t)tmp; }
   char connType[64] = "";
   p = strstr(buf, "type=\"");
   if (p != NULL) sscanf(p, "type=\"%[^\"]\"", connType);
@@ -450,28 +446,56 @@ void readCellsVTU(
   printf("inlineBinary=%d connType=%s\n", inlineBinary, connType);
 
   void* data; E_Int dataSize;
-
   if (inlineBinary)
   {
     // read connectivity data line
     readAppendedBlock(ptrFile, 0, 0, compressed, true, headerType, data, dataSize);
-    printf("connectivity dataSize=%d\n", dataSize);
+    printf("connectivity dataSize=" SF_D_ "\n", dataSize);
     if (strcmp(connType, "Int64") == 0)
     {
-      E_Int cnsize = dataSize / sizeof(int64_t);
-      int64_t* tmp64 = (int64_t*)data;
-      cells = new int[cnsize];
-      for (E_Int i = 0; i < cnsize; i++) cells[i] = (int)tmp64[i];
-      delete [] (unsigned char*)data;
+      E_Int cnsize = dataSize/sizeof(int64_t);
+      if (sizeof(E_Int) == sizeof(int64_t))
+      {
+        cells = (E_Int*)data;
+        if (changeEndian)
+          for (E_Int i = 0; i < cnsize; i++) cells[i] = IBE(cells[i]);
+      }
+      else  // Int64 to Int32
+      {
+        int64_t* tmp64 = (int64_t*)data;
+        cells = new E_Int[cnsize];
+        for (E_Int i = 0; i < cnsize; i++)
+        {
+          int64_t v = tmp64[i];
+          if (changeEndian) v = IBE(v);
+          cells[i] = (E_Int)v;
+        }
+        delete [] (unsigned char*)data;
+      }
     }
     else
     {
-      E_Int cnsize = dataSize / sizeof(int);
-      cells = (int*)data;
-      if (changeEndian)
-        for (E_Int i = 0; i < cnsize; i++) cells[i] = IBE(cells[i]);
+      E_Int cnsize = dataSize/sizeof(int32_t);
+      if (sizeof(E_Int) == sizeof(int32_t))
+      {
+        cells = (E_Int*)data;
+        if (changeEndian)
+          for (E_Int i = 0; i < cnsize; i++) cells[i] = IBE(cells[i]);
+      }
+      else  // Int32 to Int64
+      {
+        int32_t* tmp32 = (int32_t*)data;
+        cells = new E_Int[cnsize];
+        for (E_Int i = 0; i < cnsize; i++)
+        {
+          int32_t v = tmp32[i];
+          if (changeEndian) v = IBE(v);
+          cells[i] = (E_Int)v;
+        }
+        delete [] (unsigned char*)data;
+      }
     }
-    printf("first connectivity=%d\n", cells[0]);
+    printf("first connectivity=" SF_D4_ "\n", cells[0], cells[1], cells[2], cells[4]);
 
     // read offsets DataArray header line
     while (readLine(ptrFile, buf, bufsize) == 0)
@@ -485,19 +509,50 @@ void readCellsVTU(
     // read offsets data line
     void* offData; E_Int offDataSize;
     readAppendedBlock(ptrFile, 0, 0, compressed, true, headerType, offData, offDataSize);
-    printf("offsets dataSize=%d\n", offDataSize);
-    vtuOffsets = new int[ntotElts];
+    printf("offsets dataSize=" SF_D_ "\n", offDataSize);
+    vtuOffsets = new E_Int[ntotElts];
     if (strcmp(offType, "Int64") == 0)
     {
-      int64_t* offTmp64 = (int64_t*)offData;
-      for (E_Int i = 0; i < ntotElts; i++) vtuOffsets[i] = (int)offTmp64[i];
+      if (sizeof(E_Int) == sizeof(int64_t))
+      {
+        vtuOffsets = (E_Int*)offData;
+        if (changeEndian)
+          for (E_Int i = 0; i < ntotElts; i++) vtuOffsets[i] = IBE(vtuOffsets[i]);
+      }
+      else  // Int64 to Int32
+      {
+        int64_t* offTmp64 = (int64_t*)offData;
+        vtuOffsets = new E_Int[ntotElts];
+        for (E_Int i = 0; i < ntotElts; i++)
+        {
+          int64_t v = offTmp64[i];
+          if (changeEndian) v = IBE(v);
+          vtuOffsets[i] = (E_Int)v;
+        }
+        delete [] (unsigned char*)offData;
+      }
     }
     else
     {
-      int* offTmp32 = (int*)offData;
-      for (E_Int i = 0; i < ntotElts; i++) vtuOffsets[i] = offTmp32[i];
+      if (sizeof(E_Int) == sizeof(int32_t))
+      {
+        vtuOffsets = (E_Int*)offData;
+        if (changeEndian)
+          for (E_Int i = 0; i < ntotElts; i++) vtuOffsets[i] = IBE(vtuOffsets[i]);
+      }
+      else  // Int32 to Int64
+      {
+        int32_t* offTmp32 = (int32_t*)offData;
+        vtuOffsets = new E_Int[ntotElts];
+        for (E_Int i = 0; i < ntotElts; i++)
+        {
+          int32_t v = offTmp32[i];
+          if (changeEndian) v = IBE(v);
+          vtuOffsets[i] = (E_Int)v;
+        }
+        delete [] (unsigned char*)offData;
+      }
     }
-    delete [] (unsigned char*)offData;
 
     // read types DataArray header line
     while (readLine(ptrFile, buf, bufsize) == 0)
@@ -506,13 +561,14 @@ void readCellsVTU(
 
     // read types data line
     readAppendedBlock(ptrFile, 0, 0, compressed, true, headerType, data, dataSize);
-    printf("types dataSize=%d\n", dataSize);
+    printf("types dataSize=" SF_D_ "\n", dataSize);
   }
   else
   {
     // appended: read offsets and types header lines for their offsets
+    intmax_t tmp;
     p = strstr(buf, "offset=\"");
-    if (p != NULL) sscanf(p, "offset=\"%ld\"", &offConn);
+    if (p != NULL) { sscanf(p, "offset=\"%jd\"", &tmp); offConn = (off_t)tmp; }
 
     while (readLine(ptrFile, buf, bufsize) == 0)
       if (strstr(buf, "Name=\"offsets\"")) break;
@@ -521,60 +577,122 @@ void readCellsVTU(
     p = strstr(buf, "type=\"");
     if (p != NULL) sscanf(p, "type=\"%[^\"]\"", offType);
     p = strstr(buf, "offset=\"");
-    if (p != NULL) sscanf(p, "offset=\"%ld\"", &offOffsets);
+    if (p != NULL) { sscanf(p, "offset=\"%jd\"", &tmp); offOffsets = (off_t)tmp; }
 
     while (readLine(ptrFile, buf, bufsize) == 0)
       if (strstr(buf, "Name=\"types\"")) break;
     printf("types header: %s\n", buf);
     p = strstr(buf, "offset=\"");
-    if (p != NULL) sscanf(p, "offset=\"%ld\"", &offTypes);
+    if (p != NULL) { sscanf(p, "offset=\"%jd\"", &tmp); offTypes = (off_t)tmp; }
 
     // find appended data section
     while (readLine(ptrFile, buf, bufsize) == 0)
       if (strstr(buf, "<AppendedData")) break;
     while (fgetc(ptrFile) != '_');
-    long base = ftell(ptrFile);
-    printf("base=%ld\n", base);
+    off_t base = ftello(ptrFile);
+    printf("base=%jd\n", (intmax_t)base);
 
     // read connectivity
     readAppendedBlock(ptrFile, base, offConn, compressed, false, headerType, data, dataSize);
-    printf("connectivity dataSize=%d\n", dataSize);
+    printf("connectivity dataSize=" SF_D_ "\n", dataSize);
     if (strcmp(connType, "Int64") == 0)
     {
-      E_Int cnsize = dataSize / sizeof(int64_t);
-      int64_t* tmp64 = (int64_t*)data;
-      cells = new int[cnsize];
-      for (E_Int i = 0; i < cnsize; i++) cells[i] = (int)tmp64[i];
-      delete [] (unsigned char*)data;
+      E_Int cnsize = dataSize/sizeof(int64_t);
+      if (sizeof(E_Int) == sizeof(int64_t))
+      {
+        cells = (E_Int*)data;
+        if (changeEndian)
+          for (E_Int i = 0; i < cnsize; i++) cells[i] = IBE(cells[i]);
+      }
+      else  // Int64 to Int32
+      {
+        int64_t* tmp64 = (int64_t*)data;
+        cells = new E_Int[cnsize];
+        for (E_Int i = 0; i < cnsize; i++)
+        {
+          int64_t v = tmp64[i];
+          if (changeEndian) v = IBE(v);
+          cells[i] = (E_Int)v;
+        }
+        delete [] (unsigned char*)data;
+      }
     }
     else
     {
-      E_Int cnsize = dataSize / sizeof(int);
-      cells = (int*)data;
-      if (changeEndian)
-        for (E_Int i = 0; i < cnsize; i++) cells[i] = IBE(cells[i]);
+      E_Int cnsize = dataSize/sizeof(int32_t);
+      if (sizeof(E_Int) == sizeof(int32_t))
+      {
+        cells = (E_Int*)data;
+        if (changeEndian)
+          for (E_Int i = 0; i < cnsize; i++) cells[i] = IBE(cells[i]);
+      }
+      else  // Int32 to Int64
+      {
+        // convert 
+        int32_t* tmp32 = (int32_t*)data;
+        cells = new E_Int[cnsize];
+        for (E_Int i = 0; i < cnsize; i++)
+        {
+          int32_t v = tmp32[i];
+          if (changeEndian) v = IBE(v);
+          cells[i] = (E_Int)v;
+        }
+        delete [] (unsigned char*)data;
+      }
     }
-    printf("first connectivity=%d\n", cells[0]);
+    printf("first connectivity=" SF_D4_ "\n", cells[0], cells[1], cells[2], cells[4]);
 
     // read offsets
-    readAppendedBlock(ptrFile, base, offOffsets, compressed, false, headerType, data, dataSize);
-    printf("offsets dataSize=%d\n", dataSize);
-    vtuOffsets = new int[ntotElts];
+    void* offData; E_Int offDataSize;
+    readAppendedBlock(ptrFile, base, offOffsets, compressed, false, headerType, offData, offDataSize);
+    printf("offsets dataSize=" SF_D_ "\n", offDataSize);
+    vtuOffsets = new E_Int[ntotElts];
     if (strcmp(offType, "Int64") == 0)
     {
-      int64_t* offTmp64 = (int64_t*)data;
-      for (E_Int i = 0; i < ntotElts; i++) vtuOffsets[i] = (int)offTmp64[i];
+      if (sizeof(E_Int) == sizeof(int64_t))
+      {
+        vtuOffsets = (E_Int*)offData;
+        if (changeEndian)
+          for (E_Int i = 0; i < ntotElts; i++) vtuOffsets[i] = IBE(vtuOffsets[i]);
+      }
+      else  // Int64 to Int32
+      {
+        int64_t* offTmp64 = (int64_t*)offData;
+        vtuOffsets = new E_Int[ntotElts];
+        for (E_Int i = 0; i < ntotElts; i++)
+        {
+          int64_t v = offTmp64[i];
+          if (changeEndian) v = IBE(v);
+          vtuOffsets[i] = (E_Int)v;
+        }
+        delete [] (unsigned char*)offData;
+      }
     }
     else
     {
-      int* offTmp32 = (int*)data;
-      for (E_Int i = 0; i < ntotElts; i++) vtuOffsets[i] = offTmp32[i];
+      if (sizeof(E_Int) == sizeof(int32_t))
+      {
+        vtuOffsets = (E_Int*)offData;
+        if (changeEndian)
+          for (E_Int i = 0; i < ntotElts; i++) vtuOffsets[i] = IBE(vtuOffsets[i]);
+      }
+      else  // Int32 to Int64
+      {
+        int32_t* offTmp32 = (int32_t*)offData;
+        vtuOffsets = new E_Int[ntotElts];
+        for (E_Int i = 0; i < ntotElts; i++)
+        {
+          int32_t v = offTmp32[i];
+          if (changeEndian) v = IBE(v);
+          vtuOffsets[i] = (E_Int)v;
+        }
+        delete [] (unsigned char*)offData;
+      }
     }
-    delete [] (unsigned char*)data;
 
     // read types
     readAppendedBlock(ptrFile, base, offTypes, compressed, false, headerType, data, dataSize);
-    printf("types dataSize=%d\n", dataSize);
+    printf("types dataSize=" SF_D_ "\n", dataSize);
   }
 
   // process types (common to both paths)
@@ -586,7 +704,7 @@ void readCellsVTU(
     tmp_nepc[cellTypes[i]]++;
   }
   delete [] (unsigned char*)data;
-  printf("cellTypes[0]=%d\n", cellTypes[0]);
+  printf("cellTypes[0]=" SF_D_ "\n", cellTypes[0]);
 
   // set eltType and compress nepc
   nepc.clear(); nepc.reserve(nmaxVTKTypes);
@@ -856,7 +974,7 @@ E_Int K_IO::GenIO::binvturead(
   // Find Piece line, then number of vertices and elements
   while (readLine(ptrFile, buf, bufsize) == 0)
     if (strstr(buf, "<Piece")) break;
-  printf("Piece: %s\n", buf);
+  // printf("Piece: %s\n", buf);
   E_Int npts = 0;
   E_Int ntotElts = 0;
   p = strstr(buf, "NumberOfPoints=\"");
@@ -871,7 +989,7 @@ E_Int K_IO::GenIO::binvturead(
   readPointsVTU(ptrFile, changeEndian, compressed, headerType, npts, formatted, coords);
 
   // Read elements
-  int* cells; int* vtuOffsets;
+  E_Int* cells; E_Int* vtuOffsets;
   char* eltString = new char[K_ARRAY::VARSTRINGLENGTH];
   std::vector<E_Int> nepc, eltMap, offsets;
   readCellsVTU(ptrFile, changeEndian, compressed, formatted, headerType,
@@ -880,50 +998,49 @@ E_Int K_IO::GenIO::binvturead(
   // Close file
   fclose(ptrFile);
 
-  // print coords
-  printf("coords:\n");
-  for (E_Int i = 0; i < npts; i++)
-    printf("  point%d: %lf %lf %lf\n", i, coords[3*i], coords[3*i+1], coords[3*i+2]);
+  // // print coords
+  // printf("coords:\n");
+  // for (E_Int i = 0; i < npts; i++)
+  //   printf("  point%d: %lf %lf %lf\n", i, coords[3*i], coords[3*i+1], coords[3*i+2]);
 
-  // print cells
-  E_Int cnsize = 0;
-  for (E_Int i = 0; i < (E_Int)nepc.size(); i++) cnsize += nepc[i] * /* nvpe */ 1;
-  // safer: recompute from offsets
-  printf("ntotElts=%d\n", ntotElts);
-  printf("eltString=%s\n", eltString);
+  // // print cells
+  // E_Int cnsize = 0;
+  // for (E_Int i = 0; i < (E_Int)nepc.size(); i++) cnsize += nepc[i] * /* nvpe */ 1;
+  // printf("ntotElts=%d\n", ntotElts);
+  // printf("eltString=%s\n", eltString);
 
-  // print nepc
-  printf("nepc (number of elements per connectivity, size=%d):\n", (int)nepc.size());
-  for (E_Int i = 0; i < (E_Int)nepc.size(); i++)
-    printf("  nepc[%d]=%d\n", i, nepc[i]);
+  // // print nepc
+  // printf("nepc (number of elements per connectivity, size=%d):\n", (int)nepc.size());
+  // for (E_Int i = 0; i < (E_Int)nepc.size(); i++)
+  //   printf("  nepc[%d]=%d\n", i, nepc[i]);
 
-  // print offsets
-  printf("offsets (size=%d):\n", (int)offsets.size());
-  for (E_Int i = 0; i < (E_Int)offsets.size(); i++)
-    printf("  offsets[%d]=%d\n", i, offsets[i]);
+  // // print offsets
+  // printf("offsets (size=%d):\n", (int)offsets.size());
+  // for (E_Int i = 0; i < (E_Int)offsets.size(); i++)
+  //   printf("  offsets[%d]=%d\n", i, offsets[i]);
 
-  // print eltMap
-  printf("eltMap (size=%d):\n", (int)eltMap.size());
-  for (E_Int i = 0; i < (E_Int)eltMap.size(); i++)
-    printf("  eltMap[%d]=%d\n", i, eltMap[i]);
+  // // print eltMap
+  // printf("eltMap (size=%d):\n", (int)eltMap.size());
+  // for (E_Int i = 0; i < (E_Int)eltMap.size(); i++)
+  //   printf("  eltMap[%d]=%d\n", i, eltMap[i]);
 
-  // print cells — we need total connectivity size
-  printf("cells:\n");
-  E_Int cellIdx = 0;
-  for (E_Int ic = 0; ic < (E_Int)nepc.size(); ic++)
-  {
-    // find the vtk type for this connectivity block
-    // eltString contains comma-separated names, nepc[ic] elements
-    printf("  connectivity block %d (%d elements):\n", ic, nepc[ic]);
-    for (E_Int i = 0; i < nepc[ic]; i++)
-    {
-      printf("    cell%d: ", i);
-      // we don't know nvpe here without parsing eltString
-      // print raw cells starting from cellIdx
-      printf("cells[%d]=%d\n", cellIdx, cells[cellIdx]);
-      cellIdx++;
-    }
-  }
+  // // print cells — we need total connectivity size
+  // printf("cells:\n");
+  // E_Int cellIdx = 0;
+  // for (E_Int ic = 0; ic < (E_Int)nepc.size(); ic++)
+  // {
+  //   // find the vtk type for this connectivity block
+  //   // eltString contains comma-separated names, nepc[ic] elements
+  //   printf("  connectivity block %d (%d elements):\n", ic, nepc[ic]);
+  //   for (E_Int i = 0; i < nepc[ic]; i++)
+  //   {
+  //     printf("    cell%d: ", i);
+  //     // we don't know nvpe here without parsing eltString
+  //     // print raw cells starting from cellIdx
+  //     printf("cells[%d]=%d\n", cellIdx, cells[cellIdx]);
+  //     cellIdx++;
+  //   }
+  // }
 
   // Build ME connectivity
   E_Int nc = nepc.size();
@@ -964,8 +1081,9 @@ E_Int K_IO::GenIO::binvturead(
       for (E_Int i = 0; i < nepc[ic]; i++)
       {
         elt = eltMap[off+i];  // original element index
-        ind = (elt == 0) ? 0 : vtuOffsets[elt-1];
-        std::cout << ic << ", " << i << ", " << elt << ", " << ind << std::endl;
+        if (elt == 0) ind = 0;
+        else ind = vtuOffsets[elt-1];
+        // std::cout << ic << ", " << i << ", " << elt << ", " << ind << std::endl;
         for (E_Int j = 0; j < nvpe[ic]; j++) cm2(i,j+1) = (E_Int)cells[ind+j] + 1;  // starts at 1
       }
     }
@@ -976,11 +1094,11 @@ E_Int K_IO::GenIO::binvturead(
     FldArrayI& cm2 = *(cn2->getConnect(ic));
     E_Int off = offsets[ic];
     std::cout << "offsets[ic] = " << offsets[ic] << std::endl;
-    for (E_Int i = 0; i < nepc[ic]; i++)
-    {
-      for (E_Int j = 0; j < nvpe[ic]; j++) std::cout << "cm2("<<i<<","<<j+1<<")" << cm2(i,j+1) << std::endl;
-    }
-    std::cout << "eltIds[ic] = " << eltIds[ic] << std::endl;
+    // for (E_Int i = 0; i < nepc[ic]; i++)
+    // {
+    //   for (E_Int j = 0; j < nvpe[ic]; j++) std::cout << "cm2("<<i<<","<<j+1<<")" << cm2(i,j+1) << std::endl;
+    // }
+    // std::cout << "eltIds[ic] = " << eltIds[ic] << std::endl;
   }
 
   eltType.clear();
@@ -999,7 +1117,7 @@ E_Int K_IO::GenIO::binvturead(
     {
       unstructField.push_back(f2);
       connect.push_back(cn2->getConnect(ic));
-      eltType.push_back({eltIds[ic]});
+      eltType[ic].push_back({eltIds[ic]});
     }
   }
 
