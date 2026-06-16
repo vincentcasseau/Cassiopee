@@ -28,4 +28,3 @@ if __name__ == "__main__":
     for eltType in ["BAR", "TRI", "QUAD", "TETRA", "PYRA", "PENTA", "HEXA"]:
         a = C.convertFile2PyTree(f"./vtu/mesh_{eltType}.vtu", api=1)
         C.convertPyTree2File(a, f"./vtu/mesh_{eltType}.cgns")
-
