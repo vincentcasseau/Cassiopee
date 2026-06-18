@@ -32,10 +32,7 @@ using namespace std;
 PyObject* K_TRANSFORM::splitConnexity(PyObject* self, PyObject* args)
 {
   PyObject* array;
-  if (!PYPARSETUPLE_(args, O_, &array))
-  {
-    return NULL;
-  }
+  if (!PYPARSETUPLE_(args, O_, &array)) return NULL;
 
   // Check array
   E_Int im, jm, km;
@@ -92,16 +89,15 @@ PyObject* K_TRANSFORM::splitConnexity(PyObject* self, PyObject* args)
   }
   posx++; posy++; posz++;
 
-  PyObject* out;
+  PyObject* tpl;
   if (K_STRING::cmp(eltType, "NGON") == 0)
-    out = splitConnexityNGon(f, cn, varString, posx, posy, posz);
+    tpl = splitConnexityNGon(f, cn, varString, posx, posy, posz);
   else if (K_STRING::cmp(eltType, "NODE") == 0)
-    out = splitConnexityNODE(f, cn, eltType, varString, posx, posy, posz);
-  else out = splitConnexityBasics(f, cn, eltType, varString,
-                                  posx, posy, posz);
+    tpl = splitConnexityNODE(f, cn, eltType, varString, posx, posy, posz);
+  else tpl = splitConnexityBasics(f, cn, eltType, varString, posx, posy, posz);
 
   RELEASESHAREDU(array, f, cn);
-  return out;
+  return tpl;
 }
 
 //=============================================================================
@@ -110,28 +106,29 @@ PyObject* K_TRANSFORM::splitConnexityBasics(
   char* eltType, char* varString,
   E_Int posx, E_Int posy, E_Int posz)
 {
-  vector< vector<E_Int> > cEEN(cn->getSize());
-  K_CONNECT::connectEV2EENbrs(eltType, f->getSize(), *cn, cEEN);
-
   E_Int api = f->getApi();
+  E_Int npts = f->getSize();
   E_Int nt = cn->getNfld();
-  E_Int ne = cn->getSize(); // nbre d'elements
+  E_Int nelts = cn->getSize(); // nbre d'elements
+
+  vector<vector<E_Int> > cEEN(nelts);
+  K_CONNECT::connectEV2EENbrs(eltType, npts, *cn, cEEN);
+
   E_Int nev = 0; // nbre d'elements deja visites
-  char* isVisited = (char*)calloc(ne, sizeof(char)); // elt deja visite?
-  E_Int* mustBeVisited = (E_Int*)malloc(ne * sizeof(E_Int));
-  E_Int mbv, p, i, ie, elt, curr;
-  unsigned int iv;
+  char* isVisited = (char*)calloc(nelts, sizeof(char)); // elt deja visite?
+  E_Int* mustBeVisited = (E_Int*)malloc(nelts * sizeof(E_Int));
+  E_Int mbv, ie, elt, curr;
   vector<FldArrayI*> components;
 
   mbv = 0;
 
-  while (nev < ne)
+  while (nev < nelts)
   {
     // Recherche le premier elt pas encore visite
-    for (p = 0; (isVisited[p] != 0); p++);
+    for (E_Int p = 0; (isVisited[p] != 0); p++);
 
     // C'est un nouveau composant connexe
-    FldArrayI* c = new FldArrayI(ne, nt);
+    FldArrayI* c = new FldArrayI(nelts, nt);
 
     mustBeVisited[mbv] = p;
     mbv++; nev++;
@@ -142,10 +139,10 @@ PyObject* K_TRANSFORM::splitConnexityBasics(
     {
       mbv--;
       elt = mustBeVisited[mbv];
-      for (i = 1; i <= nt; i++) (*c)(curr,i) = (*cn)(elt,i);
+      for (E_Int i = 1; i <= nt; i++) (*c)(curr,i) = (*cn)(elt,i);
       curr++;
 
-      for (iv = 0; iv < cEEN[elt].size(); iv++)
+      for (size_t iv = 0; iv < cEEN[elt].size(); iv++)
       {
         ie = cEEN[elt][iv];
         if (isVisited[ie] == 0)
@@ -167,8 +164,7 @@ PyObject* K_TRANSFORM::splitConnexityBasics(
   PyObject* tpl;
   PyObject* l = PyList_New(0);
 
-  E_Int size = components.size();
-  for (i = 0; i < size; i++)
+  for (size_t i = 0; i < components.size(); i++)
   {
     FldArrayF* f0 = new FldArrayF(*f);
     FldArrayF& fp = *f0;
@@ -191,7 +187,7 @@ PyObject* K_TRANSFORM::splitConnexityNGon(
   E_Int api = f->getApi();
   E_Int* ptr = cn->begin();
   E_Int sf = ptr[1];
-  E_Int ne = ptr[2+sf]; // nbre d'elements
+  E_Int nelts = ptr[2+sf]; // nbre d'elements
 
   FldArrayI cFE;
   K_CONNECT::connectNG2FE(*cn, cFE);
@@ -201,15 +197,15 @@ PyObject* K_TRANSFORM::splitConnexityNGon(
   E_Int* ptrElts = ptr + (sf+4);
   E_Int se = ptr[3+sf]; // taille connectivite elements/faces
   E_Int nev = 0; // nbre d'elements deja visites
-  char* isVisited = (char*)calloc(ne, sizeof(char)); // elt deja visite?
-  E_Int* mustBeVisited = (E_Int*)malloc(ne * sizeof(E_Int));
+  char* isVisited = (char*)calloc(nelts, sizeof(char)); // elt deja visite?
+  E_Int* mustBeVisited = (E_Int*)malloc(nelts * sizeof(E_Int));
   E_Int mbv, p, i, ie, elt, curr, necurr, lt, iv;
   vector<FldArrayI*> components; // connectivite EF locale
   FldArrayI pos; K_CONNECT::getPosElts(*cn, pos);
   E_Int e1, e2, nf;
 
   mbv = 0;
-  while (nev < ne)
+  while (nev < nelts)
   {
     // Recherche le premier elt pas encore visite
     for (p = 0; (isVisited[p] != 0); p++);

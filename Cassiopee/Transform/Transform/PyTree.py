@@ -2709,7 +2709,7 @@ def splitCurvatureAngle(t, sensibility):
 def splitConnexity(t):
     """Split zone into connex zones.
     Usage: splitConnexity(t)"""
-    a = C.getAllFields(t, 'nodes', api=1)[0]
+    a = C.getAllFields(t, 'nodes', api=3)[0]
     A = Transform.splitConnexity(a)
     zones = []
     for i in A:
@@ -3020,7 +3020,7 @@ def splitMultiplePts(t, dim=3):
 def splitBAR(t, N, N2=-1):
     """Split a BAR at index N (start 0).
     Usage: splitBAR(t, N)"""
-    a = C.getAllFields(t, 'nodes', api=1)[0]
+    a = C.getAllFields(t, 'nodes', api=3)[0]
     A = Transform.splitBAR(a, N, N2)
     zones = []
     for i in A:
