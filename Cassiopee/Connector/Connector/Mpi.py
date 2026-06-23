@@ -187,7 +187,7 @@ def _connectMatchNGon(z, tol=1.e-6, method=1):
             inverse.setdefault(dst, []).append(src)
 
     Cmpi.print0("inverse", inverse)
-    
+
     data = [zu, indicesE]
 
     # Custom sendRecv
@@ -207,7 +207,7 @@ def _connectMatchNGon(z, tol=1.e-6, method=1):
 
     Cmpi.printA(rcvData)
     Cmpi.abort(0)
-    
+
     zu, indicesE = rcvData
     if zu is None:
         C.freeHook(hook)
@@ -227,7 +227,7 @@ def _connectMatchNGon(z, tol=1.e-6, method=1):
         faceList = indicesF[idsValid]
         faceListDonor = indicesE[ids2]
         C._addBC2Zone(z, 'match', 'BCMatch', faceList=faceList,
-                    zoneDonor=zu[0], faceListDonor=faceListDonor)
+                      zoneDonor=zu[0], faceListDonor=faceListDonor)
 
     C.freeHook(hook)
     return None
@@ -263,8 +263,8 @@ def _connectMatchNGon(z, tol=1.e-6, method=1):
                 faceList = indicesF[idsValid]
                 faceListDonor = indicesE[ids2]
                 C._addBC2Zone(z, 'match', 'BCMatch', faceList=faceList,
-                            zoneDonor=zu[0], faceListDonor=faceListDonor)
-    
+                              zoneDonor=zu[0], faceListDonor=faceListDonor)
+
     elif method == 2:  # reduction in zu every time
         for _ in range(Cmpi.size-1):
             data = [zu, indicesE]
@@ -286,7 +286,7 @@ def _connectMatchNGon(z, tol=1.e-6, method=1):
                 faceList = indicesF[idsValid]
                 faceListDonor = indicesE[ids2]
                 C._addBC2Zone(z, 'match', 'BCMatch', faceList=faceList,
-                            zoneDonor=zu[0], faceListDonor=faceListDonor)
+                              zoneDonor=zu[0], faceListDonor=faceListDonor)
 
                 # Reduce zu to accelerate subsequent calls to C.identifyElements
                 fracFound = float(sizebc)/len(indicesE)
@@ -299,7 +299,7 @@ def _connectMatchNGon(z, tol=1.e-6, method=1):
                         zu[0] = zoneName
                         indicesE = indicesE[mask2]
                     else: zu = None; indicesE = []
-    
+
     elif method == 3:  # reduction in zu if greater than 2% of what's remaining to assign
         for _ in range(Cmpi.size-1):
             data = [zu, indicesE]
@@ -321,7 +321,7 @@ def _connectMatchNGon(z, tol=1.e-6, method=1):
                 faceList = indicesF[idsValid]
                 faceListDonor = indicesE[ids2]
                 C._addBC2Zone(z, 'match', 'BCMatch', faceList=faceList,
-                            zoneDonor=zu[0], faceListDonor=faceListDonor)
+                              zoneDonor=zu[0], faceListDonor=faceListDonor)
 
                 # Reduce zu to accelerate subsequent calls to C.identifyElements
                 fracFound = float(sizebc)/len(indicesE)
