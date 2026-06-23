@@ -574,15 +574,15 @@ def seq(F, *args):
 #==============================================================================
 # Print uniquement du proc 0
 #==============================================================================
-def print0(a):
-    if rank == 0: print(a)
+def print0(*args):
+    if rank == 0: print(*args)
 
 #==============================================================================
 # Print sur tous les procs sequentiellement
 #==============================================================================
-def printA(A):
-    def fprint(A): print(A)
-    seq(fprint, A)
+def printA(*args):
+    def fprint(*args): print(*args)
+    seq(fprint, *args)
 
 #==============================================================================
 # Calcule le dictionnaire des bbox de l'arbre complet, identique
@@ -619,22 +619,25 @@ def createBboxDict(t):
 def computeGraph(t, type='bbox', t2=None, procDict=None, reduction=True,
                  intersectionsDict=None, exploc=False, procDict2=None, it=0, nbpass=1):
     """Return the communication graph for different block relation types."""
-    if not procDict: procDict = getProcDict(t)
+    if procDict is None: procDict = getProcDict(t)
     graph = Distributed.computeGraph(t, type, t2, procDict, rank,
-                                     intersectionsDict, exploc, procDict2, it, reduction=reduction, nbpass=nbpass)
+                                     intersectionsDict, exploc, procDict2, it,
+                                     reduction=reduction, nbpass=nbpass)
+    if not reduction: return graph
 
-    if reduction:
-        # Assure que le graph est le meme pour tous les processeurs
-        g = KCOMM.allgather(graph)
-        graph = {}
-        for i in g:
-            for k in i:
-                if not k in graph: graph[k] = {}
-                for j in i[k]:
-                    if not j in graph[k]: graph[k][j] = []
-                    graph[k][j] += i[k][j]
-                    graph[k][j] = sorted(list(set(graph[k][j])))
+    # Assure que le graph est le meme pour tous les processeurs
+    g = KCOMM.allgather(graph)
+    graph = {}
+    for procg in g:
+        for src, dests in procg.items():
+            mergedSrc = graph.setdefault(src, {})
+            for dst, zoneNames in dests.items():
+                mergedSrc.setdefault(dst, set()).update(zoneNames)
 
+    graph = {
+        src: {dst: sorted(zoneNames) for dst, zoneNames in dests.items()}
+        for src, dests in graph.items()
+    }
     return graph
 
 #=============================================================================
