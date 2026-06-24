@@ -86,7 +86,6 @@ PyObject* K_CONNECT::V_cleanConnectivityNGon(
 {
   E_Bool rmDirtyFaces = (rmDuplicatedFaces || rmDegeneratedFaces);
   E_Bool rmDirtyElts = (rmDuplicatedElts || rmDegeneratedElts);
-  
   PyObject* tpl = NULL;
   E_Int *ngon = cn.getNGon(), *indPG = cn.getIndPG();
   E_Int *nface = cn.getNFace(), *indPH = cn.getIndPH();
@@ -150,6 +149,12 @@ PyObject* K_CONNECT::V_cleanConnectivityNGon(
     E_Int j, itrl, nv, vidx;
     E_Int ind = 0;
     // 1.c Reindex vertices in FN (no change in size)
+<<<<<<< Updated upstream
+=======
+    //     In 1D, EF contains vertex indices, reindex as well
+    for (size_t i = 0; i < indir.size(); i++) std::cout << "indir["<<i<<"]" << indir[i] << std::endl;
+    for (E_Int i = 0; i < cn.getSizeNGon(); i++) std::cout << "ngon["<<i<<"]" << ngon[i] << std::endl;
+>>>>>>> Stashed changes
     for (E_Int i = 0; i < nfaces; i++)
     {
       cn.getFace(i, nv, ngon, indPG);
@@ -160,6 +165,21 @@ PyObject* K_CONNECT::V_cleanConnectivityNGon(
       }
       ind += nv+shift;
     }
+<<<<<<< Updated upstream
+=======
+    if (dim == 1)
+    {
+      ind = 0;
+      for (E_Int i = 0; i < nelts; i++)
+      {
+        ind = i*(2 + shift) + shift;
+        nface[ind] = indir[nface[ind]-1]+1;
+        nface[ind+1] = indir[nface[ind+1]-1]+1;
+      }
+    }
+    for (E_Int i = 0; i < cn.getSizeNGon(); i++) std::cout << "ngon["<<i<<"]" << ngon[i] << std::endl;
+    for (E_Int i = 0; i < cn.getSizeNFace(); i++) std::cout << "nface["<<i<<"]" << nface[i] << std::endl;
+>>>>>>> Stashed changes
 
     // 1.d Reindex and compress fields
     for (E_Int fld = 1; fld <= nfld; fld++)
@@ -363,6 +383,13 @@ PyObject* K_CONNECT::V_cleanConnectivityNGon(
         for (E_Int i = 0; i < nuniqueElts; i++) indPH2[i] = indPH[i];
       }
     }
+
+    std::cout << "vCC: ngon2 = " << std::endl;
+    for (E_Int j = 0; j < sizeFN2; j++) std::cout << ngon2[j] << ", ";
+    std::cout << std::endl;
+    std::cout << "vCC: nface2 = " << std::endl;
+    for (E_Int j = 0; j < sizeEF2; j++) std::cout << nface2[j] << ", ";
+    std::cout << std::endl;
 
     RELEASESHAREDU(tpl, f2, cn2);
   }

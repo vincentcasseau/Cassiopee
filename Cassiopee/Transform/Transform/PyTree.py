@@ -2747,6 +2747,7 @@ def splitSharpEdges(t, alphaRef=30.):
     A = Transform.splitSharpEdges(a, alphaRef)
     zones = []
     for i in A:
+        print(i)
         zone = C.convertArrays2ZoneNode('split',[i])
         zones.append(zone)
     return zones

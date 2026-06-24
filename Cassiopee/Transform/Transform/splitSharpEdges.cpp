@@ -19,16 +19,11 @@
 
 # include "transform.h"
 
-using namespace K_FLD;
-using namespace std;
-
 //=============================================================================
-/*
-   splitSharpEdges:
-   Decoupe un array TRI, QUAD, BAR en partie lisses (angle entre elements
-   inferieur a alphaRef)
-   La connectivite doit etre propre.
-*/
+// splitSharpEdges:
+// Decoupe un array TRI, QUAD, BAR en partie lisses (angle entre elements
+// inferieur a alphaRef)
+// La connectivite doit etre propre.
 //=============================================================================
 PyObject* K_TRANSFORM::splitSharpEdges(PyObject* self, PyObject* args)
 {
@@ -53,7 +48,7 @@ PyObject* K_TRANSFORM::splitSharpEdges(PyObject* self, PyObject* args)
                     "splitSharpEdges: cannot be used on a structured array.");
     return NULL;
   }
-  if (res != 2)
+  else if (res != 2)
   {
     PyErr_SetString(PyExc_TypeError,
                     "splitSharpEdges: unknown type of array.");
@@ -64,14 +59,14 @@ PyObject* K_TRANSFORM::splitSharpEdges(PyObject* self, PyObject* args)
   {
     RELEASESHAREDU(array, f, cn);
     PyErr_SetString(PyExc_TypeError,
-                    "splitSharpEdges: cannot be used on a NODE-array.");
+                    "splitSharpEdges: cannot be used on a NODE array.");
     return NULL;
   }
-  else if (K_STRING::cmp(eltType, "MIX") == 0)
+  else if (K_STRING::cmp(eltType, "MIXED") == 0)
   {
     RELEASESHAREDU(array, f, cn);
     PyErr_SetString(PyExc_TypeError,
-                    "splitSharpEdges: cannot be used on a MIX-array.");
+                    "splitSharpEdges: cannot be used on a MIXED array.");
     return NULL;
   }
 
@@ -96,15 +91,6 @@ PyObject* K_TRANSFORM::splitSharpEdges(PyObject* self, PyObject* args)
   }
   else
   {
-    E_Int dim = K_CONNECT::getDimME(eltType);
-    if (dim == 3)
-    {
-      RELEASESHAREDU(array, f, cn);
-      PyErr_SetString(PyExc_TypeError,
-                      "splitSharpEdges: cannot be used on a 3D ME array.");
-      return NULL;
-    }
-
     tpl = splitSharpEdgesBasics(f, cn, eltType, varString,
                                 posx, posy, posz, alphaRef, dirVect);
   }
@@ -131,6 +117,15 @@ PyObject* K_TRANSFORM::splitSharpEdgesBasics(
   std::vector<char*> eltTypes;
   K_ARRAY::extractVars(eltType, eltTypes);
 
+  E_Int dim = K_CONNECT::getDimME(eltTypes);
+  if (dim == 3)
+  {
+    PyErr_SetString(PyExc_TypeError,
+                    "splitSharpEdges: cannot be used on a 3D ME array.");
+    for (size_t ic = 0; ic < eltTypes.size(); ic++) delete [] eltTypes[ic];
+    return NULL;
+  }
+
   // Compute total number of elements
   E_Int ntotElts = 0;
   for (E_Int ic = 0; ic < nc; ic++)
@@ -140,21 +135,20 @@ PyObject* K_TRANSFORM::splitSharpEdgesBasics(
     ntotElts += nelts;
   }
 
-  vector<vector<E_Int> > cEEN(ntotElts);
+  std::vector<std::vector<E_Int> > cEEN(ntotElts);
   K_CONNECT::connectEV2EENbrs(eltType, npts, *cn, cEEN);
 
   E_Int nev = 0; // nbre d'elements deja visites
   char* isVisited = (char*)calloc(ntotElts, sizeof(char)); // elt deja visite?
   E_Int* mustBeVisited = (E_Int*)malloc(ntotElts * sizeof(E_Int));
   E_Int mbv, ie, elt, curr, p;
-  vector<FldArrayI*> components;
+  std::vector<FldArrayI*> components;
 
   E_Float alpha;
   E_Int ind;
   E_Float pts1[4][3]; E_Float pts2[4][3];
   
-  vector<E_Int> type;
-  E_Int dim = K_CONNECT::getDimME(eltTypes);
+  std::vector<E_Int> type;
   if (dim == 1) type.push_back(0);
   else
   {
@@ -165,10 +159,7 @@ PyObject* K_TRANSFORM::splitSharpEdgesBasics(
     }
   }
 
-  for (size_t ic = 0; ic < eltTypes.size(); ic++)
-  {
-    delete [] eltTypes[ic];
-  }
+  for (size_t ic = 0; ic < eltTypes.size(); ic++) delete [] eltTypes[ic];
 
   K_FLD::FldArrayI& cm = *(cn->getConnect(0));
   E_Int nvpe = cm.getNfld();
@@ -269,7 +260,7 @@ PyObject* K_TRANSFORM::splitSharpEdgesBasics(
 }
 
 //=============================================================================
-// Split sharp edges pour un array NGON de dim=2 ou dim=1
+// Split sharp edges pour un array NGON 1D ou 2D
 //==============================================================================
 PyObject* K_TRANSFORM::splitSharpEdgesNGon(
   FldArrayF* f, FldArrayI* cn, char* varString,
@@ -279,191 +270,266 @@ PyObject* K_TRANSFORM::splitSharpEdgesNGon(
   E_Float* y = f->begin(posy);
   E_Float* z = f->begin(posz);
 
+  E_Int dim = cn->getDim();
+  if (dim == 3)
+  {
+    PyErr_SetString(PyExc_TypeError,
+                    "splitSharpEdges: cannot be used on a 3D NGON array.");
+    return NULL;
+  }
+
   E_Int api = f->getApi();
-  E_Int* ptr = cn->begin();
-  E_Int sf = ptr[1];
-  E_Int ne = ptr[2+sf]; // nbre d'elements
+  E_Int* ngon = cn->getNGon(); E_Int* nface = cn->getNFace();
+  E_Int* indPG = cn->getIndPG(); E_Int* indPH = cn->getIndPH();
+  E_Int nelts = cn->getNElts(); E_Int nfaces = cn->getNFaces();
+  E_Int ngonType = cn->getNGonType();
+  E_Int shift = 1; if (ngonType == 3) shift = 0;
 
   FldArrayI cFE;
   K_CONNECT::connectNG2FE(*cn, cFE);
-
-  E_Int* ptrElts = ptr + (sf+4);
-  E_Int se = ptr[3+sf]; // taille connectivite elements/faces
-  E_Int nev = 0; // nbre d'elements deja visites
-  char* isVisited = (char*)calloc(ne, sizeof(char)); // elt deja visite?
-  E_Int* mustBeVisited = (E_Int*)malloc(ne * sizeof(E_Int));
-  E_Int mbv, p, i, ie, elt, curr, necurr, lt, iv;
-  vector<FldArrayI*> components; // connectivite EF locale
-
-  FldArrayI pos; K_CONNECT::getPosElts(*cn, pos);
-  FldArrayI posFaces; K_CONNECT::getPosFaces(*cn, posFaces);
-
-  // Recupere la dim en se basant sur la premiere face
-  E_Int dim = 3;
-  dim = ptr[2];
-  dim = min(dim, E_Int(3));
-
-  // Commence par calculer alpha
-  E_Int nfaces = ptr[0];
-  FldArrayF alphat(nfaces);
-  E_Float* alphap = alphat.begin();
   E_Int* cFE1 = cFE.begin(1);
   E_Int* cFE2 = cFE.begin(2);
-#pragma omp parallel
-  {
-  E_Int e1, e2;
-  vector<E_Int> indices;
-  vector<E_Float*> pts1; vector<E_Float*> pts2;
-  E_Float alpha;
-  E_Int ind, nvert;
 
-#pragma omp for
-  for (E_Int i = 0; i < nfaces; i++)
+  // Commence par calculer alpha
+  FldArrayF alphat(nfaces);
+  E_Float* alphap = alphat.begin();
+
+  #pragma omp parallel
   {
-    e1 = cFE1[i]-1; e2 = cFE2[i]-1;
-    if (e1 == -1) alpha = -1000.;
-    else if (e2 == -1) alpha = -1000.;
-    else
+    E_Int e1, e2, ind, nv, nf, indf, nvert;
+    E_Float alpha;
+    std::vector<E_Int> indices; indices.reserve(32);
+    std::vector<E_Float*> pts1; pts1.reserve(32);
+    std::vector<E_Float*> pts2; pts2.reserve(32);
+
+    #pragma omp for
+    for (E_Int i = 0; i < nfaces; i++)
     {
-      K_CONNECT::getVertexIndices(cn->begin(), posFaces.begin(), pos[e1], indices);
-      nvert = indices.size();
-      pts1.reserve(nvert);
-      for (E_Int k = 0; k < nvert; k++)
+      alpha = -1000.;
+      e1 = cFE1[i]-1; e2 = cFE2[i]-1;
+      if (e1 != -1 && e2 != -1)
       {
-        E_Float* pt = new E_Float[3];
-        ind = indices[k]-1;
-        pt[0] = x[ind]; pt[1] = y[ind]; pt[2] = z[ind];
-        pts1.push_back(pt);
-      }
-      K_CONNECT::getVertexIndices(cn->begin(), posFaces.begin(), pos[e2], indices);
-      nvert = indices.size();
-      pts2.reserve(nvert);
-      for (E_Int k = 0; k < nvert; k++)
-      {
-        E_Float* pt = new E_Float[3];
-        ind = indices[k]-1;
-        pt[0] = x[ind]; pt[1] = y[ind]; pt[2] = z[ind];
-        pts2.push_back(pt);
-      }
-
-      if (dim == 2)
-      {
-        alpha = K_COMPGEOM::getAlphaAngleBetweenPolygons(pts1, pts2);
-        //printf("mbv=%d, alpha=%f %f\n", mbv, alpha, alphaRef);
-      }
-      else if (dim == 1)
-      {
-        if (pts1.size() == 2 && pts2.size() == 2)
+        // Get vertex indices of the element e1 (unique, sorted)
+        indices.clear();
+        E_Int* elt = cn->getElt(e1, nf, nface, indPH);
+        for (E_Int f = 0; f < nf; f++)
         {
-          alpha = K_COMPGEOM::getAlphaAngleBetweenBars(
-                    pts1[0], pts1[1],
-                    pts2[0], pts2[1], dirVect);
+          indf = elt[f]-1;
+          E_Int* face = cn->getFace(indf, nv, ngon, indPG);
+          for (E_Int k = 0; k < nv; k++) indices.push_back(face[k]);
         }
-        else alpha = 180.;
+        std::sort(indices.begin(), indices.end());
+        indices.erase(std::unique(indices.begin(), indices.end()), indices.end());
+        nvert = indices.size();
+
+        for (E_Int k = 0; k < nvert; k++)
+        {
+          E_Float* pt = new E_Float[3];
+          ind = indices[k]-1;
+          pt[0] = x[ind]; pt[1] = y[ind]; pt[2] = z[ind];
+          pts1.push_back(pt);
+        }
+
+        // Get vertex indices of the element e2 (unique, sorted)
+        indices.clear();
+        elt = cn->getElt(e2, nf, nface, indPH);
+        for (E_Int f = 0; f < nf; f++)
+        {
+          indf = elt[f]-1;
+          E_Int* face = cn->getFace(indf, nv, ngon, indPG);
+          for (E_Int k = 0; k < nv; k++) indices.push_back(face[k]);
+        }
+        std::sort(indices.begin(), indices.end());
+        indices.erase(std::unique(indices.begin(), indices.end()), indices.end());
+        nvert = indices.size();
+
+        for (E_Int k = 0; k < nvert; k++)
+        {
+          E_Float* pt = new E_Float[3];
+          ind = indices[k]-1;
+          pt[0] = x[ind]; pt[1] = y[ind]; pt[2] = z[ind];
+          pts2.push_back(pt);
+        }
+
+        alpha = 180.;
+        if (dim == 1)
+        {
+          if (pts1.size() == 2 && pts2.size() == 2)
+          {
+            alpha = K_COMPGEOM::getAlphaAngleBetweenBars(
+              pts1[0], pts1[1],
+              pts2[0], pts2[1], dirVect
+            );
+          }
+        }
+        else if (dim == 2)
+        {
+          alpha = K_COMPGEOM::getAlphaAngleBetweenPolygons(pts1, pts2);
+        }
+
+        for (size_t k = 0; k < pts1.size(); k++) delete [] pts1[k];
+        for (size_t k = 0; k < pts2.size(); k++) delete [] pts2[k];
+        pts1.clear(); pts2.clear();
       }
-      else alpha = 180.;
 
-      nvert = pts1.size();
-      for (E_Int k = 0; k < nvert; k++) delete [] pts1[k];
-      pts1.clear();
-      nvert = pts2.size();
-      for (E_Int k = 0; k < nvert; k++) delete [] pts2[k];
-      pts2.clear();
+      alphap[i] = alpha;
     }
-    alphap[i] = alpha;
-  }
   }
 
-  E_Int e1, e2, nf;
+  // Assign a component id to each element
+  E_Int* mustBeVisited = (E_Int*)malloc(nelts * sizeof(E_Int));
+  std::vector<E_Int> componentId(nelts, -1);
+  E_Int ncomponents = 0;
+  E_Int nev = 0;  // number of elements visited already
+  E_Int nextSeed = 0;  // first element that has not been visited yet
+  E_Int mbv = 0;  // short for must be visited
+  E_Int e1, e2, nei, nf, nv, seed, ie, indf;
   E_Float alpha;
 
-  // split
-  mbv = 0;
-  while (nev < ne)
+  while (nev < nelts)
   {
-    // Recherche le premier elt pas encore visite
-    for (p = 0; (isVisited[p] != 0); p++);
+    // Find first unvisited element
+    for (seed = nextSeed; componentId[seed] != -1; seed++);
+    nextSeed = seed + 1;
 
-    // C'est un nouveau composant
-    FldArrayI* c = new FldArrayI(se+1);
-    E_Int* pc = c->begin(); // current pointer
-
-    mustBeVisited[mbv] = p;
-    mbv++; nev++;
-    isVisited[p] = 1;
-    curr = 0; necurr = 0;
+    mustBeVisited[mbv++] = seed;
+    componentId[seed] = ncomponents;
+    nev++;
 
     while (mbv > 0)
     {
-      mbv--;
-      elt = mustBeVisited[mbv];
-      // copie elt
-      ptrElts = &ptr[pos[elt]];
-      lt = ptrElts[0];
-      pc[0] = lt;
-      for (i = 1; i <= pc[0]; i++) pc[i] = ptrElts[i];
-      pc += lt+1;
-      curr += lt+1; necurr++;
+      ie = mustBeVisited[--mbv];
+      E_Int* elt = cn->getElt(ie, nf, nface, indPH);
 
-      for (iv = 0; iv < lt; iv++)
+      for (E_Int j = 0; j < nf; j++)
       {
-        nf = ptrElts[iv+1]-1;
-        e1 = cFE1[nf]-1; e2 = cFE2[nf]-1;
-        if (e1 == elt) ie = e2;
-        else ie = e1;
+        indf = elt[j] - 1;
+        e1 = cFE1[indf] - 1;
+        e2 = cFE2[indf] - 1;
+        nei = (e1 == ie) ? e2 : e1;
 
-        if (ie != -1 && isVisited[ie] == 0)
+        if (nei == -1 || componentId[nei] != -1) continue;
+
+        alpha = alphap[indf];
+        if (alpha == -1000. || K_FUNC::E_abs(alpha-180.) <= alphaRef)
         {
-          alpha = alphap[nf];
-          if (alpha == -1000. || K_FUNC::E_abs(alpha-180.) <= alphaRef)
-          {
-            mustBeVisited[mbv] = ie;
-            mbv++; nev++;
-            isVisited[ie] = 1;
-          }
+          mustBeVisited[mbv++] = nei;
+          componentId[nei] = ncomponents;
+          nev++;
         }
       }
     }
 
-    pc[0] = necurr; // sentinelle
-    c->reAlloc(curr+1);
-    components.push_back(c);
+    ncomponents++;
   }
+  std::cout << "dim = " << dim << std::endl;
 
-  free(isVisited);
-  free(mustBeVisited);
+  // Determine output sizes (pc = per component), incl. duplicates
+  std::vector<E_Int> neltspc(ncomponents, 0), nfacespc(ncomponents, 0);
+  std::vector<E_Int> sizeFNpc(ncomponents, 0), sizeEFpc(ncomponents, 0);
 
-  // Formation des arrays de sortie + cleanConnectivity
-  PyObject* tpl;
-  PyObject* l = PyList_New(0);
-  E_Int size = components.size();
+  E_Int cid;
+  E_Int sizeFNIncr = (dim == 1) ? 1 : 2;
 
-  for (i = 0; i < size; i++)
+  for (E_Int i = 0; i < nelts; i++)
   {
-    FldArrayF* f0 = new FldArrayF(*f);
-    FldArrayF& fp = *f0;
-    // nouvelle connectivite
-    E_Int si = components[i]->getSize()-1;
-    E_Int* comp = components[i]->begin();
-    E_Int size = sf+4+si;
-    FldArrayI cnp(size);
-    E_Int* cnpp = cnp.begin();
-    for (E_Int j = 0; j < sf+2; j++) cnpp[j] = ptr[j];
-    cnpp += sf+2;
-    cnpp[0] = comp[si]; cnpp[1] = si; cnpp += 2;
-    for (E_Int j = 0; j < si; j++) cnpp[j] = comp[j];
+    cid = componentId[i];
+    cn->getElt(i, nf, nface, indPH);
 
-    K_CONNECT::cleanConnectivityNGon(posx, posy, posz, 1.e-10,
-                                     fp, cnp);
-    if (dim == 1) // il semble que dans ce cas, il faut l'appeler 2 fois
-      K_CONNECT::cleanConnectivityNGon(posx, posy, posz, 1.e-10,
-                                       fp, cnp);
-    cnp.setNGonType(1);
-    tpl = K_ARRAY::buildArray3(fp, varString, cnp, "NGON", api);
-    delete &fp; delete components[i];
-    PyList_Append(l, tpl);
-    Py_DECREF(tpl);
+    neltspc[cid]++;
+    nfacespc[cid] += nf;
+    sizeEFpc[cid] += nf + shift;
+    for (E_Int j = 0; j < nf; j++) sizeFNpc[cid] += sizeFNIncr + shift;
   }
+
+  // Build new arrays
+  std::cout << "ncomponents = " << ncomponents << std::endl;
+  PyObject* l = PyList_New(0);
+  PyObject* tpl; PyObject* tplClean;
+  FldArrayF* f2; FldArrayI* cn2;
+
+  for (E_Int cid = 0; cid < ncomponents; cid++)
+  {
+    std::cout << "neltspc[cid] = " << neltspc[cid] << std::endl;
+    std::cout << "nfacespc[cid] = " << nfacespc[cid] << std::endl;
+    std::cout << "sizeFNpc[cid] = " << sizeFNpc[cid] << std::endl;
+    std::cout << "sizeEFpc[cid] = " << sizeEFpc[cid] << std::endl;
+    tpl = K_ARRAY::buildArray3(*f, varString, neltspc[cid], nfacespc[cid],
+                               "NGON", sizeFNpc[cid], sizeEFpc[cid],
+                               ngonType, false, api);
+
+    K_ARRAY::getFromArray3(tpl, f2, cn2);
+    E_Int *ngon2 = cn2->getNGon(), *nface2 = cn2->getNFace();
+    E_Int *indPG2 = NULL, *indPH2 = NULL;
+    if (ngonType == 2 || ngonType == 3)
+    {
+      indPG2 = cn2->getIndPG(); indPH2 = cn2->getIndPH();
+    }
+
+    E_Int c1 = 0, c2 = 0, c3 = 0, c4 = 0;
+    if (ngonType == 2 || ngonType == 3) { indPG2[0] = 0; indPH2[0] = 0; }
+    for (E_Int i = 0; i < nelts; i++)
+    {
+      if (componentId[i] != cid) continue;  // TODO build and use an inverse map instead
+      E_Int* elt = cn->getElt(i, nf, nface, indPH);
+
+      nface2[c2] = nf;
+      if (c4 < neltspc[cid]-1 && (ngonType == 2 || ngonType == 3))
+      {
+        indPH2[c4+1] = indPH2[c4] + nf + shift;
+      }
+      for (E_Int j = 0; j < nf; j++)
+      {
+        indf = elt[j];  // 1-based face index
+
+        // Fill NFACE
+        nface2[c2+j+shift] = indf;
+
+        // Fill NGON
+        E_Int* face = cn->getFace(indf-1, nv, ngon, indPG);
+        ngon2[c1] = nv;
+        if (c3 < nfacespc[cid]-1 && (ngonType == 2 || ngonType == 3))
+        {
+          indPG2[c3+1] = indPG2[c3] + nv + shift;
+        }
+        for (E_Int k = 0; k < nv; k++)
+        {
+          ngon2[c1+k+shift] = face[k];
+        }
+        c1 += nv+shift; c3++;
+      }
+      c2 += nf+shift; c4++;
+    }
+
+    std::cout << "ngon2 = " << std::endl;
+    for (E_Int j = 0; j < sizeFNpc[cid]; j++) std::cout << ngon2[j] << ", ";
+    std::cout << std::endl;
+    std::cout << "nface2 = " << std::endl;
+    for (E_Int j = 0; j < sizeEFpc[cid]; j++) std::cout << nface2[j] << ", ";
+    std::cout << std::endl;
+    if (ngonType == 2 || ngonType == 3)
+    {
+      std::cout << "indPG2 = " << std::endl;
+      for (E_Int j = 0; j < nfacespc[cid]; j++) std::cout << indPG2[j] << ", ";
+      std::cout << std::endl;
+      std::cout << "indPH2 = " << std::endl;
+      for (E_Int j = 0; j < neltspc[cid]; j++) std::cout << indPH2[j] << ", ";
+      std::cout << std::endl;
+    }
+
+    tplClean = K_CONNECT::V_cleanConnectivity(
+        varString, *f2, *cn2, "NGON", 1.e-12,
+        false, true,  // rmOrphans
+        true, false,  // rmDuplicatedFaces
+        false, false
+    );
+
+    std::cout << "Done... " << cid << std::endl;
+
+    RELEASESHAREDU(tpl, f2, cn2); Py_DECREF(tpl);
+    PyList_Append(l, tplClean); Py_DECREF(tplClean);
+  }
+  std::cout << "Exiting sharp edges..." << std::endl;
   return l;
 }
 
@@ -554,7 +620,7 @@ PyObject* K_TRANSFORM::splitSharpEdgesList(PyObject* self, PyObject* args)
   char* isVisited = (char*)calloc(nelts, sizeof(char)); // elt deja visite?
   E_Int* mustBeVisited = (E_Int*)malloc(nelts * sizeof(E_Int));
   E_Int mbv, p, ie, elt, necurr, lt;
-  vector<FldArrayI*> components; // liste des index par bloc
+  std::vector<FldArrayI*> components; // liste des index par bloc
 
   // Commence par calculer alpha
   FldArrayF alphat(nfaces);
@@ -565,8 +631,8 @@ PyObject* K_TRANSFORM::splitSharpEdgesList(PyObject* self, PyObject* args)
   #pragma omp parallel
   {
     E_Int e1, e2;
-    vector<E_Int> indices;
-    vector<E_Float*> pts1; vector<E_Float*> pts2;
+    std::vector<E_Int> indices;
+    std::vector<E_Float*> pts1; std::vector<E_Float*> pts2;
     E_Float alpha;
     E_Int ind, nvert;
 
