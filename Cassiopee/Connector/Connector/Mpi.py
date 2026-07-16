@@ -113,7 +113,7 @@ def connectMatchPeriodic(a, rotationCenter=[0.,0.,0.],
 #==============================================================================
 # connect match NGON for only one zone per process
 #==============================================================================
-def _connectMatchNGon(z, tol=1.e-6):
+def _connectMatchNGon(z, tol=1.e-6, method=1):
     """Connect one ngon zone."""
     import Post.PyTree as P
     import Transform.PyTree as T
@@ -161,10 +161,8 @@ def _connectMatchNGon(z, tol=1.e-6):
             indicesE = Converter.converter.diffIndex(indicesF, indicesBC)
 
     zu = T.subzone(z, indicesE, type='faces')
-    zu[0] = z[0]
 
-    for trip in range(Cmpi.size-1):
-        #print("trip number ", trip, flush=True)
+    for _ in range(Cmpi.size-1):
         data = [zu, indicesE]
         data = Cmpi.passNext(data)
         zu, indicesE = data
@@ -172,13 +170,13 @@ def _connectMatchNGon(z, tol=1.e-6):
 
         # Identify faces and build matches
         ids = C.identifyElements(hook, zu, tol, rtol=0.)
-        #print(Cmpi.rank, "done", flush=True)
 
         # Get positions where ids != -1
         mask = ids >= 0
         ids2 = numpy.nonzero(mask)[0].astype(Internal.E_NpyInt)
         sizebc = ids2.size
 
+        data = [None, None, None]
         if sizebc > 0:
             # keep non -1 indices
             idsValid = ids[mask] - 1  # indices de z
@@ -186,18 +184,26 @@ def _connectMatchNGon(z, tol=1.e-6):
             faceListDonor = indicesE[ids2]
             C._addBC2Zone(z, 'match', 'BCMatch', faceList=faceList,
                           zoneDonor=zu[0], faceListDonor=faceListDonor)
+            data = [faceList, z[0], faceListDonor]
 
-            # Reduce zu to accelerate subsequent calls to C.identifyElements
-            fracFound = float(sizebc)/len(indicesE)
-            if fracFound > 0.02:
-                mask2 = ~mask
-                indices = numpy.nonzero(mask2)[0].astype(Internal.E_NpyInt)
-                if indices.size:
-                    zoneName = zu[0]
-                    zu = T.subzone(zu, indices, type='elements')
-                    zu[0] = zoneName
-                    indicesE = indicesE[mask2]
-                else: zu = None; indicesE = []
+        # If a match was found, signal it to the previous rank
+        data = Cmpi.passPrevious(data)
+        faceListDonor, zoneDonor, faceList = data
+        if faceListDonor is not None:
+            C._addBC2Zone(z, 'match', 'BCMatch', faceList=faceList,
+                          zoneDonor=zoneDonor, faceListDonor=faceListDonor)
+
+        if sizebc > 0 or faceListDonor is not None:
+            # Shrink zu to accelerate subsequent calls to C.identifyElements
+            # by reducing the number of nearest-neighbour queries
+            mask2 = ~mask
+            indices = numpy.nonzero(mask2)[0].astype(Internal.E_NpyInt)
+            if indices.size:
+                zoneName = zu[0]
+                zu = T.subzone(zu, indices, type='elements')
+                zu[0] = zoneName
+                indicesE = indicesE[mask2]
+            else: zu = None; indicesE = []
 
     C.freeHook(hook)
     return None
