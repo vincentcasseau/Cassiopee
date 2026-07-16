@@ -25,7 +25,8 @@ __all__ = ['convertCAD2Arrays',
            'getFaceNos', 'getEdgeNos',
            'getFaceArea', 'getFaceVolume', 'getFaceMassCenter', 'getBoundingBox',
            '_translate', '_rotate', '_scale', '_fixShape', '_sewing', '_reverse',
-           '_splitFaces', '_mergeFaces', '_trimFaces', '_removeFaces',
+           '_splitFaces', '_mergeFaces', '_trimFaces', '_untrimFaces',
+           '_removeFaces', '_removeEdges', '_extractFaces',
            '_fillHole', '_addFillet', '_offset', 'mergeCAD', '_mergeCAD',
            '_splitEdge',
            '_addArc', '_addCircle', '_addEllipse',
@@ -33,12 +34,12 @@ __all__ = ['convertCAD2Arrays',
            '_addSquare', '_addSquare2',
            '_addBox', '_addBox2', '_addSphere', '_addCylinder',
            '_addSplineSurface', '_addGordonSurface', '_addDomain',
-           '_revolve', '_sweep', '_loft', '_boolean',
+           '_revolve', '_sweep', '_loft', '_boolean', '_booleanEdges',
            '_projectOnEdges', '_projectOnFaces']
 
-# algo=0: mailleur open cascade (chordal_error)
-# algo=1: algorithme T3mesher (h, chordal_error, growth_ratio)
-# algo=2: algorithme T3mesher (h, chordal_error, growth_ratio, merge_tol)
+# algo=0: Open Cascade mesher (chordal_error)
+# algo=1: T3mesher algorithm (h, chordal_error, growth_ratio)
+# algo=2: T3mesher algorithm (h, chordal_error, growth_ratio, merge_tol)
 def convertCAD2Arrays(fileName, format=None,
                       h=0., chordal_err=0., growth_ratio=0.,
                       merge_tol=-1, algo=1, join=True):
@@ -61,8 +62,9 @@ def convertCAD2Arrays(fileName, format=None,
         a = occ.meshGlobalEdges(hook, h)
     return a
 
-# IN: edges: liste d'arrays STRUCT/BAR/TRI possedant x,y,z,u,v
-# OUT: liste d'arrays STRUCT/BAR/TRI ayant uv dans x,y et z=0
+# switch uv to coordinates
+# IN: edges: list of STRUCT/BAR/TRI arrays having x,y,z,u,v
+# OUT: list of STRUCT/BAR/TRI arrays having uv in x,y and z=0
 def switch2UV(edges):
     """Switch uv to coordinates."""
     out = []
@@ -97,10 +99,10 @@ def switch2UV2(edges):
     return out
 
 # Scale u,v in [0,1]
-# IN: edges: liste d'arrays
+# IN: edges: list of arrays
 # IN: vu: name for u variable
 # IN: vv: name for v variable
-# scale entre 0 et 1 les variables vu et vv
+# scale variables vu and vv between 0 and 1
 def _scaleUV(edges, vu='x', vv='y'):
     """Scale vu and vv in [0,1]."""
     umax = Converter.getMaxValue(edges, vu)
@@ -117,7 +119,7 @@ def _scaleUV(edges, vu='x', vv='y'):
     return (umin,umax,vmin,vmax)
 
 # unscale u,v back
-# IN: edges: liste d'arrays
+# IN: edges: list of arrays
 # IN: T: min max of parameters as returned by scaleUV
 def _unscaleUV(edges, T, vu='x', vv='y'):
     """Unscale vu and vv with given minmax."""
@@ -131,7 +133,7 @@ def _unscaleUV(edges, T, vu='x', vv='y'):
         e[1][pv,:] = e[1][pv,:]*dv+vmin
     return None
 
-# Mailleur structure de CAD
+# Structured CAD mesher
 # IN: N: the number of points for each patch boundary
 def meshSTRUCT(fileName, format='fmt_iges', N=11):
     """Return a STRUCT discretisation of CAD."""
@@ -150,22 +152,22 @@ def meshSTRUCT__(hook, N=11, faceSubset=None, faceNo=None):
     else: flist = faceSubset
     out = []
     for i in flist:
-        # edges de la face i
+        # edges of face i
         edges = occ.meshEdgesByFace(hook, i+1, N, -1., -1.)
         #print("Face %d has %d edges."%(i+1,len(edges)))
-        # edges dans espace uv
+        # edges in uv space
         edges = switch2UV(edges)
         # scale uv
         T = _scaleUV(edges)
-        # force la fermeture des boucles
+        # force loop closure
         edges = Generator.close(edges, 1.e-6) # the weakness
-        # TFI dans espace uv
+        # TFI in uv space
         try:
             als = Generator.allTFI(edges)
             # unscale uv
             _unscaleUV(als, T)
             for a in als:
-                # evaluation sur la CAD
+                # evaluation on CAD
                 o = occ.evalFace(hook, a, i+1)
                 out.append(o)
                 if faceNo is not None: faceNo.append(i+1)
@@ -174,10 +176,10 @@ def meshSTRUCT__(hook, N=11, faceSubset=None, faceNo=None):
             Converter.convertArrays2File(edges, "edgesOfFace%03d.plt"%(i+1))
     return out
 
-# Mailleur CAD non structure TRI
+# Non-structured TRI CAD mesher
 # IN: N: number of points for each face boundary, discarded if < 0
 # IN: hmax: mesh step, discarded if < 0
-# IN: order: ordre du maillage de sortie
+# IN: order: output mesh order
 def meshTRI(fileName, format="fmt_step", N=11, hmax=-1., order=1):
     hook = occ.readCAD(fileName, format)
     return meshTRI__(hook, N, hmax)
@@ -194,9 +196,9 @@ def meshTRI__(hook, N=11, hmax=-1., hausd=-1., order=1, faceSubset=None, faceNo=
     else: out = meshTRIN__(hook, N, order, faceSubset, faceNo)
     return out
 
-# reordonne les edges par face pour que le mailleur TRI puisse mailler l'entre deux
-# les edges interieurs sont numerotes dans le sens inverse de l'edge exterieur
-# limitation : un seul niveau d'edge dans l'edge exterieur
+# reorder edges by face so TRI mesher can mesh the area between
+# interior edges are numbered in the opposite direction of the exterior edge
+# limitation: only one level of edge in the exterior edge
 def reorderEdgesByFace__(edges):
     import Post
     import KCore.Vector as Vector
@@ -206,7 +208,7 @@ def reorderEdgesByFace__(edges):
         print("== Single closed curve")
         return edges
     print("== Multiple closed curves")
-    # classe les edges par surface englobee
+    # sorts edges by enclosed surface
     sortedEdges = []
     for c, e in enumerate(splitEdges):
         #e = Converter.convertBAR2Struct(e)
@@ -219,7 +221,7 @@ def reorderEdgesByFace__(edges):
             #n = Generator.getNormalMap(a)
             #nz = Converter.getMaxValue(n, 'sz')
             #connect = a[2]
-            ## les 3 points du premier triangle
+            ## the 3 points of the first triangle
             #ind0 = connect[0,0]
             #ind1 = connect[1,0]
             #ind2 = connect[2,0]
@@ -281,12 +283,12 @@ def meshTRIN__(hook, N=11, order=1, faceSubset=None, faceNo=None):
     out = []
     for i in flist:
         print("Meshing Face %d ========================================"%(i+1))
-        # maille les edges de la face i avec N pt et parametres
+        # mesh edges of face i with N points and parameters
         edges = occ.meshEdgesByFace(hook, i+1, N, -1., -1.)
-        # edges dans espace uv
+        # edges in uv space
         edges = switch2UV(edges)
         T = _scaleUV(edges)
-        # force la fermeture de la boucle
+        # force loop closure
         edges = Generator.close(edges, 1.e-4) # the weakness
         edges = Converter.convertArray2Tetra(edges)
         edges = Transform.join(edges)
@@ -296,7 +298,7 @@ def meshTRIN__(hook, N=11, order=1, faceSubset=None, faceNo=None):
             a = Generator.T3mesher2D(edges, grading=1.)
             _unscaleUV([a], T)
             if order > 1: a = Converter.convertLO2HO(a, order=order)
-            # evaluation sur la CAD
+            # evaluation on CAD
             o = occ.evalFace(hook, a, i+1)
             out.append(o)
             if faceNo is not None: faceNo.append(i+1)
@@ -305,21 +307,21 @@ def meshTRIN__(hook, N=11, order=1, faceSubset=None, faceNo=None):
             Converter.convertArrays2File(edges, 'edgesOfFace%03d.plt'%(i+1))
     return out
 
-# prend le Ue des edges dans globalEdges
+# takes the Ue of edges from globalEdges
 def meshTRIU__(hook, globalEdges, order=1, faceSubset=None, faceNo=None):
     nbFaces = occ.getNbFaces(hook)
     if faceSubset is None: flist = list(range(nbFaces))
     else: flist = faceSubset
     out = []
     for i in flist:
-        # maille les edges de la face i avec le U de l'edge
+        # mesh edges of face i with the U of the edge
         edges = occ.meshEdgesByFace2(hook, i+1, globalEdges)
-        # edges dans espace uv
+        # edges in uv space
         edges = switch2UV(edges)
         T = _scaleUV(edges)
-        # force la fermeture de la boucle
+        # force loop closure
         edges = Generator.close(edges, 1.e-4) # the weakness
-        # Delaunay dans espace uv
+        # Delaunay in uv space
         edges = Converter.convertArray2Tetra(edges)
         edges = Transform.join(edges)
         edges = Generator.close(edges, 1.e-6)
@@ -327,7 +329,7 @@ def meshTRIU__(hook, globalEdges, order=1, faceSubset=None, faceNo=None):
             a = Generator.T3mesher2D(edges, grading=1.)
             _unscaleUV([a], T)
             if order > 1: a = Converter.convertLO2HO(a, order=order)
-            # evaluation sur la CAD
+            # evaluation on CAD
             o = occ.evalFace(hook, a, i+1)
             out.append(o)
             if faceNo is not None: faceNo.append(i+1)
@@ -343,9 +345,9 @@ def meshTRIH__(hook, hmax=-1., hausd=-1, order=1, faceSubset=None, faceNo=None):
     else: flist = faceSubset
     out = []
     for i in flist:
-        # edges de la face i mailles avec hmax et parametres
+        # edges of face i meshed with hmax and parameters
         edges = occ.meshEdgesByFace(hook, i+1, -1, hmax, hausd)
-        # edges dans espace uv
+        # edges in uv space
         edges = switch2UV(edges)
         T = _scaleUV(edges)
         edges = Generator.close(edges, 1.e-4) # the weakness
@@ -357,7 +359,7 @@ def meshTRIH__(hook, hmax=-1., hausd=-1, order=1, faceSubset=None, faceNo=None):
             a = Generator.T3mesher2D(edges, grading=1.)
             _unscaleUV([a], T)
             if order > 1: a = Converter.convertLO2HO(a, order=order)
-            # evaluation sur la CAD
+            # evaluation on CAD
             o = occ.evalFace(hook, a, i+1)
             out.append(o)
             if faceNo is not None: faceNo.append(i+1)
@@ -381,7 +383,7 @@ def meshTRIH2__(hook, hmax=-1., hausd=-1, order=1, faceSubset=None, faceNo=None)
         edges = Generator.close(edges, 1.e-6)
         #edges = reorderEdgesByFace__(edges)
         try:
-            #edges doit contenir les coords + uv normalises pour entrer dans trimesh
+            #edges must contain coords + normalized uv to enter trimesh
             a = occ.trimesh(hook, edges, i+1, hmax, hausd, 0., 0)
             out.append(a)
             if faceNo is not None: faceNo.append(i+1)
@@ -435,16 +437,16 @@ def meshQUAD__(hook, N=11, order=1, faceSubset=None, faceNo=None):
     else: flist = faceSubset
     out = []
     for i in flist:
-        # edges de la face i
+        # edges of face i
         edges = occ.meshEdgesByFace(hook, i+1, N, -1., -1.)
         #print("Face %d has %d edges."%(i+1,len(edges)))
-        # edges dans espace uv
+        # edges in uv space
         edges = switch2UV(edges)
         # scale uv
         T = _scaleUV(edges)
-        # force la fermeture de la boucle
+        # force loop closure
         edges = Generator.close(edges, 1.e-6) # the weakness
-        # TFI dans espace uv
+        # TFI in uv space
         try:
             als = Generator.allTFI(edges)
             # unscale uv
@@ -452,7 +454,7 @@ def meshQUAD__(hook, N=11, order=1, faceSubset=None, faceNo=None):
             als = Converter.convertArray2Hexa(als)
             if order > 1: als = Converter.convertLO2HO(als, order=order)
             for a in als:
-                # evaluation sur la CAD
+                # evaluation on CAD
                 o = occ.evalFace(hook, a, i+1)
                 out.append(o)
                 if faceNo is not None: faceNo.append(i+1)
@@ -482,8 +484,8 @@ def _enforceEdgesInFace(a, edges):
         c += npts
     return None
 
-# hmax: hmax sur les edges et dans les faces (constant)
-# hausd: erreur de corde, pas pris en compte
+# hmax: hmax on edges and in faces (constant)
+# hausd: chordal error, not taken into account
 def ultimate(hook, hmax, hausd=-1, metric=True):
     mesh = []
     FAILED1 = []; FAILED2 = []
@@ -492,7 +494,7 @@ def ultimate(hook, hmax, hausd=-1, metric=True):
     for i in range(nbFaces):
         print('Meshing face %d ======================'%i)
 
-        # maillage des edges de la Face (sortie par wire)
+        # meshing of Face edges (output by wire)
         wires = occ.meshEdgesByFace3(hook, i+1, hmax, hausd)
 
         # sortie a plat de tous les edges
@@ -500,13 +502,13 @@ def ultimate(hook, hmax, hausd=-1, metric=True):
         #for w in wires: plat += w
         #Converter.convertArrays2File(plat, '%03d_edgeXY.plt'%i)
 
-        # join des edges par wire (structured)
+        # join edges by wire (structured)
         edges = []
         for w in wires:
             e = Transform.join(w)
             edges.append(e)
 
-        # sauvegarde des edges
+        # save edges
         edgesSav = []
         for e in edges: edgesSav.append(Converter.copy(e))
 
@@ -569,10 +571,10 @@ def meshFaceWithMetric(hook, i, edges, hmin, hmax, hausd, close, aniso, mesh, FA
 
     if edges[2].shape[1] == 0: return True # pass
 
-    # supprime les edges collapsed
+    # removes collapsed edges
     #edges2 = Generator.close(edges, 1.e-6)
 
-    # Scale UV des edges
+    # Scale UV of edges
     _scaleUV([edges], vu='u', vv='v')
     try:
         a = occ.trimesh(hook, edges, i, hmin, hmax, hausd, 1.1, aniso)
@@ -587,7 +589,7 @@ def meshFaceWithMetric(hook, i, edges, hmin, hmax, hausd, close, aniso, mesh, FA
     except Exception as e:
         SUCCESS = False
         #edges = switch2UV(edges)
-        Converter.convertArrays2File(edges, '%03d_edgeUV.plt'%i) # pas vraiment UV
+        Converter.convertArrays2File(edges, '%03d_edgeUV.plt'%i) # not really UV
         FAILED.append(i)
 
     return SUCCESS
@@ -599,13 +601,13 @@ def meshFaceInUV(hook, i, edges, grading, close, mesh, FAILED):
     edgesSav = []
     for e in edges: edgesSav.append(Converter.copy(e))
 
-    # Passage des edges dans espace uv
+    # Move edges to uv space
     edges = switch2UV(edges)
     T = _scaleUV(edges)
     edges = Converter.convertArray2Tetra(edges)
     edges = Transform.join(edges)
 
-    # Maillage de la face
+    # Mesh the face
     try:
         a = Generator.T3mesher2D(edges, grading=grading)
         _unscaleUV([a], T)
@@ -631,11 +633,11 @@ def meshFaceWithPointedHat(hook, i, edges, close, mesh):
     #edgesSav = []
     #for e in edges: edgesSav.append(Converter.copy(e))
 
-    # Passage des edges dans espace uv
+    # Move edges to uv space
     edges = switch2UV(edges)
     T = _scaleUV(edges)
 
-    # Maillage l'edge le plus long par pointedhat (no fail)
+    # Mesh the longest edge with pointedhat (no fail)
     lmax = -1.
     for e in edges:
         l = Geom.getLength(e)
@@ -697,13 +699,13 @@ def meshAllFacesTri(hook, dedges, metric=True, faceList=[], hList=[], close=True
 
         wires = occ.meshEdgesOfFace(hook, i, dedges)
 
-        # join des edges par wire (structured)
+        # join edges by wire (structured)
         edges = []
         for w in wires:
             e = Transform.join(w)
             if e != []: edges.append(e)
 
-        # sauvegarde des edges
+        # save edges
         edgesSav = []
         for e in edges: edgesSav.append(Converter.copy(e))
 
@@ -713,7 +715,7 @@ def meshAllFacesTri(hook, dedges, metric=True, faceList=[], hList=[], close=True
             hsize = hList[c]
             SUCCESS = meshFaceWithMetric(hook, i, edges, hsize[0], hsize[1], hsize[2], close, aniso, dfaces, FAILED1)
 
-        if not SUCCESS: # TRIMESH sans metric
+        if not SUCCESS: # TRIMESH without metric
             edges = edgesSav
             if abs(hsize[1]-hsize[0]) < 1.e-6: grading = 1.
             else: grading = 1.2
@@ -747,7 +749,7 @@ def meshAllFacesTri(hook, dedges, metric=True, faceList=[], hList=[], close=True
 def meshAllFacesStruct(hook, dedges, faceList=[]):
     nbFaces = len(faceList)
     FAILED1 = []; dfaces = []
-    nloct = []; nofacet = [] # nbre de grilles pour la face c; no de la face
+    nloct = []; nofacet = [] # number of grids for face c; face number
     for c, i in enumerate(faceList):
 
         print("========== face %d / %d ==========="%(i,nbFaces))
@@ -759,15 +761,15 @@ def meshAllFacesStruct(hook, dedges, faceList=[]):
         edges = switch2UV(edges)
         # scale uv
         T = _scaleUV(edges)
-        # force la fermeture des boucles
+        # force loop closure
         #edges = Generator.close(edges, 1.e-6) # the weakness
-        # TFI dans espace uv
+        # TFI in uv space
         try:
             als = Generator.allTFI(edges)
             # unscale uv
             _unscaleUV(als, T)
             for c, a in enumerate(als):
-                # evaluation sur la CAD
+                # evaluation on CAD
                 o = occ.evalFace(hook, a, i)
                 dfaces.append(o)
                 nofacet.append(i)
@@ -791,16 +793,19 @@ def meshAllFacesStruct(hook, dedges, faceList=[]):
 # mesh using OCC mesher (anisotropic, only hausd)
 #===============================================
 def meshAllOCC(hook, hausd, angularDeflection=28.):
+    """Mesh edges and faces with OCC."""
     ret = occ.occmesh(hook, hausd, angularDeflection)
     dedges = ret[0]
     dfaces = ret[1]
     return dedges, dfaces
 
 def meshAllEdgesOCC(hook, hausd, angularDeflection=28.):
+    """Mesh edges with OCC."""
     ret = occ.occmesh(hook, hausd, angularDeflection)
     return ret[0]
 
 def meshAllFacesTriOCC(hook, hausd, angularDeflection=28.):
+    """Mesh faces with OCC."""
     ret = occ.occmesh(hook, hausd, angularDeflection)
     return ret[1]
 
@@ -899,71 +904,85 @@ def getBoundingBox(hook, faceList=None):
 #=============================================================================
 # CAD modeling
 #=============================================================================
+# add an arc
 def _addArc(hook, P1, P2, P3, name='arc'):
     """Add an arc to hook."""
     occ.addArc(hook, P1, P2, P3, name)
     return None
 
+# add a circle
 def _addCircle(hook, C, axis, R, makeFace=False, name='circle'):
     """Add a circle to hook."""
     occ.addCircle(hook, C, axis, R, makeFace, name)
     return None
 
+# add an ellipse
 def _addEllipse(hook, C, axis, R1, R2, makeFace=False, name='ellipse'):
     """Add an ellipse to hook."""
     occ.addEllipse(hook, C, axis, R1, R2, makeFace, name)
     return None
 
+# add a super ellipse
 def _addSuperEllipse(hook, C, R1, R2, n=4, samples=36, makeFace=False, name='superellipse'):
     """Add a super ellipse to hook."""
     occ.addSuperEllipse(hook, C, R1, R2, n, samples, makeFace, name)
     return None
 
+# add a line
 def _addLine(hook, P1, P2, name='line'):
     """Add a line to hook."""
     occ.addLine(hook, P1, P2, name)
     return None
 
+# add a square
 def _addSquare(hook, P0, width, height, makeFace=False, name='square'):
     """Add a square to hook."""
     occ.addSquare(hook, P0, width, height, makeFace, name)
     return None
 
+# add a square
 def _addSquare2(hook, P1, P2, P3, P4, makeFace=False, name='square'):
     """Add a square to hook."""
     occ.addSquare2(hook, P1, P2, P3, P4, makeFace, name)
     return None
 
+# add spline curve
 def _addSpline(hook, Points, method, degree, name='spline'):
     """Add a spline to hook."""
     occ.addSpline(hook, Points, method, degree, name)
     return None
 
+# add a box
 def _addBox(hook, P0, width, height, depth, reverse=False, name='box'):
     """Add a box to hook."""
     occ.addBox(hook, P0, width, height, depth, reverse, name)
     return None
 
+# add a box
 def _addBox2(hook, P1, P2, P3, P4, P5, P6, P7, P8, name='box2'):
     """Add a box to hook."""
     occ.addBox2(hook, P1, P2, P3, P4, P5, P6, P7, P8, name)
     return None
 
+# add a sphere
 def _addSphere(hook, C, R, reverse=False, name='sphere'):
     """Add a sphere to hook."""
     occ.addSphere(hook, C, R, reverse, name)
     return None
 
+# add a cylinder
 def _addCylinder(hook, C, axis, R, H, name='cylinder'):
     """Add a cylinder to hook."""
     occ.addCylinder(hook, C, axis, R, H, name)
     return None
 
+# add a spline surface
 def _addSplineSurface(hook, points, degree, name='spline'):
     """Add a spline surface to hook."""
     occ.addSplineSurface(hook, points, 2, degree, name)
     return None
 
+# add a gordon surface
 def _addGordonSurface(hook, ucurves, vcurves, name='gordon'):
     """Add a Gordon surface to hook."""
     occ.addGordonSurface(hook, ucurves, vcurves, name)
@@ -1043,28 +1062,39 @@ def _addDomain(hook, dfar=10., type="box", plane=None):
     #nf2 = getNbFaces(hook)
     return None
 
+# revolve edges
 def _revolve(hook, edges, C, axis, angle, name='revolve'):
     """Revolve edges to create surface."""
     edges = getEdgeList__(hook, edges)
     occ.revolve(hook, edges, C, axis, angle, name)
 
+# sweep a set of edges with path edges
 def _sweep(hook, profiles, paths, name='sweep'):
     """Sweep profiles along paths."""
     profiles = getEdgeList__(hook, profiles)
     paths = getEdgeList__(hook, paths)
     occ.sweep(hook, profiles, paths, name)
 
+# loft a set of edges with guide edges
 def _loft(hook, profiles, guides, name='loft'):
     """Loft profiles."""
     profiles = getEdgeList__(hook, profiles)
     guides = getEdgeList__(hook, guides)
     occ.loft(hook, profiles, guides, name)
 
+# boolean operations for faces
 def _boolean(hook, faces1, faces2, op=0, rev1=1, rev2=1):
     """Boolean operation on two surfaces."""
     faces1 = getFaceList__(hook, faces1)
     faces2 = getFaceList__(hook, faces2)
     occ.boolean(hook, faces1, faces2, op, rev1, rev2)
+
+# boolean operation for edges
+def _booleanEdges(hook, edges1, edges2, op=0):
+    """Boolean operation on two wires."""
+    edges1 = getEdgeList__(hook, edges1)
+    edges2 = getFaceList__(hook, edges2)
+    occ.booleanEdges(hook, edges1, edges2, op)
 
 #=============================================================================
 # CAD global operations
@@ -1076,7 +1106,7 @@ def readCAD(fileName, format='fmt_step'):
     h = occ.readCAD(fileName, format)
     return h
 
-# create empty CAD
+# create empty CAD and return CAD hook
 def createEmptyCAD(fileName="None", format='fmt_step'):
     """Create an empty CAD."""
     h = occ.createEmptyCAD(fileName, format)
@@ -1088,12 +1118,13 @@ def writeCAD(hook, fileName, format='fmt_step'):
     occ.writeCAD(hook, fileName, format)
     return None
 
+# free the hook
 def freeHook(hook):
     """Free hook."""
     occ.freeHook(hook)
     return None
 
-# Translate
+# Translate of vector
 def _translate(hook, vector, faceList=None):
     """Translate all or given faces."""
     faceList = getFaceList__(hook, faceList)
@@ -1123,7 +1154,6 @@ def _fixShape(hook, fixShape=0, fixWires=0, unifyEdges=0, unifyFaces=0,
     return None
 
 # sew a set of faces
-# faces: face list numbers
 def _sewing(hook, tol=1.e-6, faceList=None):
     """Sew some faces (suppress redundant edges)."""
     faceList = getFaceList__(hook, faceList)
@@ -1150,11 +1180,26 @@ def _offset(hook, distance, faceList=None):
     occ.offset(hook, distance, faceList)
     return None
 
+# remove a set of faces
 # edgeMap and faceMap are new2old maps
 def _removeFaces(hook, faceList, new2OldEdgeMap=[], new2OldFaceMap=[]):
     """Remove given faces."""
     faceList = getFaceList__(hook, faceList)
     occ.removeFaces(hook, faceList, new2OldEdgeMap, new2OldFaceMap)
+    return None
+
+# remove edges
+def _removeEdges(hook, edgeList):
+    """Remove given edge."""
+    edgeList = getEdgeList__(hook, edgeList)
+    occ.removeEdges(hook, edgeList)
+    return None
+
+# extract a list of faces
+def _extractFaces(hook, faceList):
+    """Extract given faces."""
+    faceList = getFaceList__(hook, faceList)
+    occ.extractFaces(hook, faceList)
     return None
 
 # fill hole from edges
@@ -1165,24 +1210,25 @@ def _fillHole(hook, edges, faceList=None, continuity=0, name="fill"):
     occ.fillHole(hook, edges, faceList, continuity, name)
     return None
 
-# merge faces
+# merge faces if possible
 def _mergeFaces(hook, faceList=None):
     """Merge some faces."""
     faceList = getFaceList__(hook, faceList)
     occ.mergeFaces(hook, faceList)
     return None
 
+# merge all hooks in one
 def mergeCAD(hooks):
     """Merge CAD hooks in one new hook."""
     return occ.mergeCAD(hooks)
 
+# merge all hooks in one
 def _mergeCAD(hooks):
     """Merge CAD hooks in first hook."""
     occ._mergeCAD(hooks)
     return None
 
-# trim two set of surfaces
-# trim two set of surfaces
+# trim a set of faces with another
 # if mode=0, faces2 cut faces1
 # if mode=1, faces1 cut faces2
 # if mode=2, both cut
@@ -1193,12 +1239,20 @@ def _trimFaces(hook, faces1, faces2, mode=2, algo=0):
     occ.trimFaces(hook, faces1, faces2, mode, algo)
     return None
 
+# untrim faces
+def _untrimFaces(hook, faceList):
+    """Untrim a set of faces."""
+    faceList = getFaceList__(hook, faceList)
+    occ.untrimFaces(hook, faceList)
+    return None
+
 # split all faces to be less than area
 def _splitFaces(hook, area):
     """Split all faces to be less than area."""
     occ.splitFaces(hook, area)
     return None
 
+# split an edge at given param or point
 def _splitEdge(hook, edgeNo, param=-999., P=(0,0,0)):
     """Split edge no at param or point P."""
     occ.splitEdge(hook, edgeNo, param, P)

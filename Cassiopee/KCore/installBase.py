@@ -5,18 +5,8 @@
 # additionalIncludePaths, additionalLibs, additionalLibPaths].
 # Paths are list of strings. useOMP, static, useCuda are booleans.
 # Others are strings.
-try:
-    from installBaseUser import installDict as installDictUser
-except ImportError:
-    try:
-        from . import installBaseUser
-        installDictUser = installBaseUser.installDict
-    except:
-        installDictUser = {}
 
 installDict = {
-    **installDictUser,
-
     'WDAAA728Z': {
         'description': 'Windows win64+msys2 (XJ-ONERA)',
         'f77compiler': 'gfortran',
@@ -876,6 +866,27 @@ installDict = {
     },
 
     'juno_coda': {
+        'description': 'Machine dev Juno rocky8 (ONERA) (env. coda)',
+        'f77compiler': 'gfortran',
+        'f90compiler': 'gfortran',
+        'Cppcompiler': 'gcc',
+        'CppAdditionalOptions': [
+            '-DCACHELINE=64',
+            '-DNB_SOCKET=2',
+            '-DCORE_PER_SOCK=48',
+            '-DSIMD=AVX512'
+        ],
+        'f77AdditionalOptions': [],
+        'useOMP': True,
+        'static': False,
+        'additionalIncludePaths': [],
+        'additionalLibs': [],
+        'additionalLibPaths': [],
+        'useCuda': False,
+        'NvccAdditionalOptions': []
+    },
+
+    'juno_coda2': {
         'description': 'Machine dev Juno rocky8 (ONERA) (env. coda)',
         'f77compiler': 'gfortran',
         'f90compiler': 'gfortran',

@@ -214,13 +214,13 @@ def testF(infile, number=1, reference=""):
     if not a:
         print("Can not open file %s for reading."%reference)
         print("Reference file %s has been created."%reference)
-        os.system("cp "+infile+" "+reference)
+        import shutil
+        shutil.copy(infile, reference)
         return True
     else:
         print("Diffing with '"+reference+"'... done.")
         import filecmp
         ret = filecmp.cmp(reference, infile, shallow=False)
-        #ret = os.system("diff "+reference+" "+infile)
         if not ret:
             print("DIFF: with file "+reference+'.')
             return False
@@ -398,12 +398,12 @@ def checkTree__(nodePath, node1, node2):
         diffSet12 = childNamesSet1 - childNamesSet2
         diffSet21 = childNamesSet2 - childNamesSet1
         print('DIFF: longueur des fils differente pour le noeud: %s.'%nodePathl)
-        if len(diffSet12) > 0:
-            print('  - Noms des noeuds de courant qui ne sont pas dans '\
-                  'ref:\n{}.'.format(', '.join(f'{i}' for i in diffSet12)))
-        if len(diffSet21) > 0:
-            print('  - Noms des noeuds de ref qui ne sont pas dans '\
-                  'courant:\n{}.'.format(', '.join(f'{i}' for i in diffSet21)))
+        # if len(diffSet12) > 0:
+        #     print('  - Noms des noeuds de courant qui ne sont pas dans '\
+        #           'ref:\n{}.'.format(', '.join(f'{i}' for i in diffSet12)))
+        # if len(diffSet21) > 0:
+        #     print('  - Noms des noeuds de ref qui ne sont pas dans '\
+        #           'courant:\n{}.'.format(', '.join(f'{i}' for i in diffSet21)))
         if len(diffSet12) == 0 and len(diffSet21) == 0:
             from collections import Counter
             if len(childNamesSet1) != len(childNames1):

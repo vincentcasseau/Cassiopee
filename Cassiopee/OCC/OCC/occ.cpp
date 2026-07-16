@@ -110,6 +110,8 @@ static PyMethodDef Pyocc [] =
   {"mergeFaces", K_OCC::mergeFaces, METH_VARARGS},
   {"mergeEdges", K_OCC::mergeEdges, METH_VARARGS},
   {"removeFaces", K_OCC::removeFaces, METH_VARARGS},
+  {"removeEdges", K_OCC::removeEdges, METH_VARARGS},
+  {"extractFaces", K_OCC::extractFaces, METH_VARARGS},
 
   {"fixShape", K_OCC::fixShape, METH_VARARGS},
   {"sewing", K_OCC::sewing, METH_VARARGS},
@@ -129,7 +131,10 @@ static PyMethodDef Pyocc [] =
 
   {"intersectEdgeFace", K_OCC::intersectEdgeFace, METH_VARARGS},
   {"trimFaces", K_OCC::trimFaces, METH_VARARGS},
+  {"untrimFaces", K_OCC::untrimFaces, METH_VARARGS},
+  
   {"boolean", K_OCC::boolean, METH_VARARGS},
+  {"booleanEdges", K_OCC::booleanEdges, METH_VARARGS},
   
   {"getOppData", K_OCC::getOppData, METH_VARARGS},
   {"identifyTags", K_OCC::identifyTags, METH_VARARGS},

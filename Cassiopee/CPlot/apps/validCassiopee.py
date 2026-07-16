@@ -215,7 +215,7 @@ def getInstallPaths():
                     pyPath = os.path.join(absd, 'py')
                     if os.path.isdir(pyPath):
                         fspluginsDirs.append(os.path.abspath(pyPath))
-    return cassiopeeIncDir, fastIncDir, pmodulesDir, *fspluginsDirs
+    return [cassiopeeIncDir, fastIncDir, pmodulesDir, *fspluginsDirs]
 
 def checkEnvironment():
     # Check environment
@@ -398,12 +398,11 @@ def setPaths():
     # Module paths when the global base is used
     parentDirname = os.path.join('/stck', 'cassiope', 'git')
     if getDBInfo():  # check if a global base exists
-        cassiopeeIncDir = os.path.join(parentDirname, 'Cassiopee', 'Cassiopee')
-        fastIncDir = os.path.join(parentDirname, 'Fast', 'Fast')
-        if not os.path.isdir(fastIncDir): fastIncDir = None
-        pmodulesIncDir = os.path.join(parentDirname, 'PModules')
-        if not os.path.isdir(pmodulesIncDir): pmodulesIncDir = None
-        _setModuleDirs(cassiopeeIncDir, fastIncDir, pmodulesIncDir, loc='GLOBAL')
+        parentDirnameLoc = os.path.dirname(os.path.dirname(allPackageDirs[0]))
+        for i, dirname in enumerate(allPackageDirs):
+            if dirname is not None:
+                allPackageDirs[i] = dirname.replace(parentDirnameLoc, parentDirname)
+        _setModuleDirs(*allPackageDirs, loc='GLOBAL')
 
         # Global valid paths
         VALIDDIR['GLOBAL'] = os.path.join(parentDirname, 'Cassiopee',
@@ -603,7 +602,7 @@ def runSingleUnitaryTest(no, module, test, update=False):
     testr = os.path.splitext(test)
     modulesDir = MODULESDIR[BASE4COMPARE][module]
     path = os.path.join(modulesDir, module, 'test')
-    testName = module+'/'+test
+    testName = os.path.join(module, test)
 
     seq = expTest1.search(test) # seq (True) ou distribue (False)
     nthreads = KCore.kcore.getOmpMaxThreads()
@@ -611,29 +610,36 @@ def runSingleUnitaryTest(no, module, test, update=False):
     env = os.environ.copy()
 
     if mySystem == 'mingw' or mySystem == 'windows':
-        # Commande Dos (sans time)
         path = path.replace('/', '\\')
+    if not seq:
+        # Read the first line of the test. If 'kpython -n...' is found, use that
+        # number of procs
+        ncpus = 2
+        with open(os.path.join(path, test), "r") as f:
+            firstLine = f.readline().strip()
+        if "Usage: kpython -n" in firstLine:
+            try: ncpus = int(firstLine.split("kpython -n")[1].split()[0])
+            except (IndexError, ValueError): pass
+        nthreads = nthreads//ncpus
+        ncpus = str(ncpus)
+    nthreads = str(nthreads)
+
+    env["OMP_NUM_THREADS"] = nthreads
+    if mySystem == 'mingw' or mySystem == 'windows':
         pythonExec = os.getenv('PYTHONEXE', 'python')
         cmd = [pythonExec, test]
-        if seq:
-            env["OMP_NUM_THREADS"] = str(nthreads)
-        else:
-            env["OMP_NUM_THREADS"] = str(nthreads//2)
-            cmd = ["mpiexec", "-np", "2"] + cmd
-
+        if not seq: cmd = ["mpiexec", "-np", ncpus] + cmd
     else:  # Unix
         if seq:
-            env["OMP_NUM_THREADS"] = str(nthreads)
             cmd = ["kpython"]
             if any(USE_ASAN): cmd.append('-s')
             if module.startswith('FS'):
-                cmd += ["-n", "1", "-t", str(nthreads), test]
+                cmd += ["-n", "1", "-t", nthreads, test]
             else:
-                cmd += ["-t", str(nthreads), test]
+                cmd += ["-t", nthreads, test]
         else:
             # LSAN always return a seg fault in parallel
-            env["OMP_NUM_THREADS"] = str(nthreads//2)
-            cmd = ["kpython", "-n", "2", "-t", str(nthreads//2), test]
+            cmd = ["kpython", "-n", ncpus, "-t", nthreads, test]
 
     try:
         t0 = time.perf_counter()
@@ -680,7 +686,10 @@ def runSingleUnitaryTest(no, module, test, update=False):
         success = 1; CPUtime = 'Unknown'; coverage='0%' # Core dump/error
 
     # update le fichier .time (si non present)
-    fileTime = '%s/%s/%s/%s/%s.time'%(MODULESDIR['LOCAL'][module], module, 'test', DATA, testr[0])
+    fileTime = os.path.join(
+        MODULESDIR['LOCAL'][module], module, 'test', DATA,
+        testr[0] + ".time"
+    )
     if not os.access(fileTime, os.F_OK):
         writeTime(fileTime, CPUtime, coverage)
 
@@ -716,7 +725,7 @@ def runSingleCFDTest(no, module, test, update=False):
     global TESTS
     print('Info: Running CFD test %s.'%test)
     path = os.path.join(MODULESDIR[BASE4COMPARE]['CFDBase'], CFDBASEPATH, test)
-    testName = module+'/'+test
+    testName = os.path.join(module, test)
 
     seq = True
     # force mpi test pour certains cas
@@ -732,12 +741,24 @@ def runSingleCFDTest(no, module, test, update=False):
 
     if mySystem == 'mingw' or mySystem == 'windows':
         path = path.replace('/', '\\')
+    if not seq:
+        # Read the first line of the test. If 'kpython -n...' is found, use that
+        # number of procs
+        ncpus = 2
+        with open(os.path.join(path, test), "r") as f:
+            firstLine = f.readline().strip()
+        if "Usage: kpython -n" in firstLine:
+            try: ncpus = int(firstLine.split("kpython -n")[1].split()[0])
+            except (IndexError, ValueError): pass
+        nthreads = nthreads//ncpus
+        ncpus = str(ncpus)
+    nthreads = str(nthreads)
+
+    env["OMP_NUM_THREADS"] = nthreads
     if seq:
-        env["OMP_NUM_THREADS"] = str(nthreads)
         cmd = ["./valid", "check"]
     else:
-        env["OMP_NUM_THREADS"] = str(nthreads//2)
-        cmd = ["./valid", "check", "0", "0", "0", "2", str(nthreads//2)]
+        cmd = ["./valid", "check", "0", "0", "0", ncpus, nthreads]
     try:
         t0 = time.perf_counter()
         output = checkOutput(cmd, path=path, env=env, stderr=subprocess.STDOUT)
@@ -776,7 +797,7 @@ def runSingleCFDTest(no, module, test, update=False):
         success = 1; CPUtime = 'Unknown'; coverage='0%' # Core dump/error
 
     # update le fichier .time (si non present)
-    fileTime = '%s/%s/%s.time'%(path, DATA, test)
+    fileTime = os.path.join(path, DATA, test + ".time")
     if not os.access(fileTime, os.F_OK):
         writeTime(fileTime, CPUtime, coverage)
 
