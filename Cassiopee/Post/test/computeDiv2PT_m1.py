@@ -30,7 +30,7 @@ def _createTest(filepath, meshType="STRUCT", matchNormalTo="X", plane=None, api=
                     ['centers:CoordinateX', 'centers:CoordinateY', 'centers:CoordinateZ'],
                     isVectorized=True
                 )
-    
+
     dim = 3 if plane is None else 2
     if Cmpi.master:
         zones = []
