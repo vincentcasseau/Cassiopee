@@ -226,7 +226,7 @@ def _connectMatchNGon(z, tol=1.e-6):
                 zu = T.subzone(zu, indices, type='elements')
                 zu[0] = zoneName
                 indicesE = indicesE[mask2]
-            else: zu = None; indicesE = []"""
+            else: zu = None; indicesE = []
 
     C.freeHook(hook)
     return None
