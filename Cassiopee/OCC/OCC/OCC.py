@@ -22,8 +22,10 @@ __all__ = ['convertCAD2Arrays',
            'readCAD', 'writeCAD', 'createEmptyCAD', 'freeHook',
            'getNbEdges', 'getNbFaces', 'getFileAndFormat',
            'printOCAF', 'getFaceNameInOCAF', 'getEdgeNameInOCAF',
-           'getFaceNos', 'getEdgeNos',
-           'getFaceArea', 'getFaceVolume', 'getFaceMassCenter', 'getBoundingBox',
+           'getFaceNos', 'getEdgeNos', 'getEdgesByFace',
+           'getEdgeLength', 'getMinMaxEdgeLength', 'getFaceArea',
+           'getFaceVolume', 'getFaceMassCenter', 'getBoundingBox',
+           'checkFaceOverlap',
            '_translate', '_rotate', '_scale', '_fixShape', '_sewing', '_reverse',
            '_splitFaces', '_mergeFaces', '_trimFaces', '_untrimFaces',
            '_removeFaces', '_removeEdges', '_extractFaces',
@@ -541,7 +543,7 @@ def ultimate(hook, hmax, hausd=-1, metric=True):
 # IN: hook: cad hook
 # IN: i: no de la face
 # IN: edges structured one per wire
-# IN: hmax: hmin/hmax/hausd par face
+# IN: hmin/hmax/hausd: par face
 # IN: close: if True, close mesh
 # IN: aniso: if True, anisotropic mesher
 #===============================================================================
@@ -551,9 +553,6 @@ def meshFaceWithMetric(hook, i, edges, hmin, hmax, hausd, close, aniso, mesh, FA
     edgesSav = []
     for e in edges: edgesSav.append(Converter.copy(e))
     #_scaleUV(edgesSav, vu='u', vv='v')
-    #if i == 2:
-    #    Converter.convertArrays2File(edgesSav, 'edgesSav.plt')
-    #    exit(0)
 
     # must close in uv space
     edges = switch2UV2(edges)
@@ -867,6 +866,8 @@ def getFaceList__(hook, faceList):
                 return out
     return faceList
 
+# internal function to get the edgeList
+# when edgeList is a label name or a list of label names
 def getEdgeList__(hook, edgeList):
     if edgeList is not None:
         if isinstance(edgeList, str):
@@ -878,6 +879,11 @@ def getEdgeList__(hook, edgeList):
                 for f in edgeList: out += getEdgeNos(hook, f)
                 return out
     return edgeList
+
+# Return the edge no for a given face
+def getEdgesByFace(hook, noface):
+    edgeNo = occ.getEdgeNoByFace(hook, noface)
+    return edgeNo
 
 # Return the area of specified faces
 def getFaceArea(hook, faceList=None):
@@ -900,6 +906,34 @@ def getBoundingBox(hook, faceList=None):
     """Return the bounding box of given faces."""
     faceList = getFaceList__(hook, faceList)
     return occ.getBoundingBox(hook, faceList)
+
+# Return the length of edges
+def getEdgeLength(hook, edgeList=None):
+    """Return the length by edges."""
+    edgeList = getEdgeList__(hook, edgeList)
+    return occ.getEdgeLength(hook, edgeList)
+
+# Return the min and max edge length by faces
+def getMinMaxEdgeLength(hook, faceList=None):
+    """Return the min and max edge length by faces."""
+    faceList = getFaceList__(hook, faceList)
+    return occ.getMinMaxEdgeLength(hook, faceList)
+
+# Check if face overlaps
+def checkFaceOverlap(hook, face1, face2, tol=1.e-12):
+    """Check if two faces overlpa."""
+    return occ.checkFaceOverlap(hook, face1, face2, tol)
+
+# global CAD check
+def checkCAD(hook):
+    """Check CAD."""
+    # check for collapsed faces or edges
+    nbFaces = getNbFaces(hook)
+    for i in range(nbFaces):
+        area = getFaceArea(hook, [i+1])
+        if area < 1.e-16: print(f"Face {i+1} is collapsed.")
+        ret = getMinMaxEdgeLength(hook, [i+1])
+        if ret[0] < 1.e-16: print(f"Face {i+1} has collapsed edge.")
 
 #=============================================================================
 # CAD modeling
