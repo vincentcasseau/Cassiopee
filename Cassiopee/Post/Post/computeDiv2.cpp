@@ -16,10 +16,9 @@
     You should have received a copy of the GNU General Public License
     along with Cassiopee.  If not, see <http://www.gnu.org/licenses/>.
 */
-# include <string.h>
 # include "post.h"
+
 using namespace K_FLD;
-using namespace std;
 
 //=============================================================================
 /* Compute the divergence of a set of vector fields given in cell centers
@@ -54,7 +53,7 @@ PyObject* K_POST::computeDiv2NGon(PyObject* self, PyObject* args)
                     "computeDiv2: only for NGons.");
     return NULL;
   }
-  E_Int dimPb = 3; // Consider 3-dimensional vector fields even for 2D NGon
+  E_Int dim = cn->getDim();
 
   posx = K_ARRAY::isCoordinateXPresent(varString);
   posy = K_ARRAY::isCoordinateYPresent(varString);
@@ -79,12 +78,12 @@ PyObject* K_POST::computeDiv2NGon(PyObject* self, PyObject* args)
   E_Int ncells = fc->getSize();
   if (cellNc != Py_None) K_NUMPY::getFromNumpyArray(cellNc, cellNp, ncells);
 
-  // Number of vector fields whose divergence to compute (three components for each)
+  // Number of vector fields whose divergence to compute
   E_Int api = fc->getApi();
   E_Int nfld = fc->getNfld(); // total number of scalar fields
-  vector<char*> vars;
+  std::vector<char*> vars;
   K_ARRAY::extractVars(varStringc, vars);
-  if (nfld % dimPb != 0)
+  if (nfld % dim != 0)
   {
     RELEASESHAREDU(array, f, cn);
     RELEASESHAREDU(arrayc, fc, cnc);
@@ -92,14 +91,14 @@ PyObject* K_POST::computeDiv2NGon(PyObject* self, PyObject* args)
                     "computeDiv2: not all components were found for each vector field.");
     return NULL;
   }
-  else nfld /= dimPb;
+  else nfld /= dim;
 
-  vector<char*> varStrings;
+  std::vector<char*> varStrings;
   for (E_Int i = 0; i < nfld; i++)
   {
-    for (E_Int m = 0; m < dimPb-1; m++)
+    for (E_Int m = 0; m < dim-1; m++)
     {
-      if (strncmp(vars[dimPb*i+m], vars[dimPb*i+m+1], strlen(vars[dimPb*i+m])-1) != 0)
+      if (strncmp(vars[dim*i+m], vars[dim*i+m+1], strlen(vars[dim*i+m])-1) != 0)
       {
         RELEASESHAREDU(array, f, cn);
         RELEASESHAREDU(arrayc, fc, cnc);
@@ -108,7 +107,7 @@ PyObject* K_POST::computeDiv2NGon(PyObject* self, PyObject* args)
         return NULL;
       }
     }
-    char* sv0 = vars[dimPb*i]; char* sv1 = vars[dimPb*i+1]; char* sv2 = vars[dimPb*i+2];
+    char* sv0 = vars[dim*i]; char* sv1 = vars[dim*i+1]; char* sv2 = vars[dim*i+2];
     char s0 = sv0[strlen(sv0)-1];
     char s1 = sv1[strlen(sv1)-1];
     char s2 = sv2[strlen(sv2)-1];
@@ -121,7 +120,7 @@ PyObject* K_POST::computeDiv2NGon(PyObject* self, PyObject* args)
       return NULL;
     }
     char* local;
-    computeDivVarsString(vars[i*dimPb], local);
+    computeDivVarsString(vars[i*dim], local);
     varStrings.push_back(local);
   }
   
@@ -155,10 +154,10 @@ PyObject* K_POST::computeDiv2NGon(PyObject* self, PyObject* args)
   E_Int nfaces = cn->getNFaces();
   E_Int nelts = cn->getNElts();
 
-  FldArrayF faceField(nfaces, dimPb*nfld);
+  FldArrayF faceField(nfaces, dim*nfld);
   if (cellNp == NULL)
   {
-    for (E_Int n = 1; n <= dimPb*nfld; n++)
+    for (E_Int n = 1; n <= dim*nfld; n++)
     {
       E_Float* fp = faceField.begin(n);
       E_Float* s = fc->begin(n);
@@ -177,7 +176,7 @@ PyObject* K_POST::computeDiv2NGon(PyObject* self, PyObject* args)
   }
   else // cellN
   {
-    for (E_Int n = 1; n <= dimPb*nfld; n++)
+    for (E_Int n = 1; n <= dim*nfld; n++)
     {
       E_Float* fp = faceField.begin(n);
       E_Float* s = fc->begin(n);
@@ -220,7 +219,7 @@ PyObject* K_POST::computeDiv2NGon(PyObject* self, PyObject* args)
     
     #pragma omp parallel
     {
-      for (E_Int n = 1; n <= dimPb*nfld; n++)
+      for (E_Int n = 1; n <= dim*nfld; n++)
       {
         E_Float* fp = faceField.begin(n);
         E_Int ind;
@@ -340,21 +339,23 @@ PyObject* K_POST::computeDiv2Struct(PyObject* self, PyObject* args)
                                      eltType);
   if (res != 1)
   {
-    if (res == 2) RELEASESHAREDU(array,f,cn);
+    if (res == 2) RELEASESHAREDU(array, f, cn);
     PyErr_SetString(PyExc_TypeError,
                     "computeDiv2: invalid or unstructured array, must be structured.");
     return NULL;
   }
-  E_Int dimPb = 3;
-  if (nk == 1)
+  E_Int dim = 0;
+  if (ni > 1) dim += 1;
+  if (nj > 1) dim += 1;
+  if (nk > 1) dim += 1;
+  std::cout << "ni" << ni << std::endl;
+  std::cout << "nj" << nj << std::endl;
+  std::cout << "nk" << nk << std::endl;
+  if (dim < 2)
   {
-    if (nj > 1) dimPb = 2;
-    else
-    {
-      PyErr_SetString(PyExc_TypeError,
-                      "computeDiv2: not valid for 1D structured arrays.");
-      RELEASESHAREDS(array,f); return NULL;
-    }
+    PyErr_SetString(PyExc_TypeError,
+                    "computeDiv2: not valid for 1D structured arrays.");
+    RELEASESHAREDS(array, f); return NULL;
   }
   posx = K_ARRAY::isCoordinateXPresent(varString);
   posy = K_ARRAY::isCoordinateYPresent(varString);
@@ -363,7 +364,7 @@ PyObject* K_POST::computeDiv2Struct(PyObject* self, PyObject* args)
   {
     PyErr_SetString(PyExc_TypeError,
                     "computeDiv2: coordinates not found in array.");
-    RELEASESHAREDS(array,f); return NULL;
+    RELEASESHAREDS(array, f); return NULL;
   }
   posx++; posy++; posz++;
 
@@ -379,23 +380,23 @@ PyObject* K_POST::computeDiv2Struct(PyObject* self, PyObject* args)
   E_Int ncells = fc->getSize();
   if (cellNc != Py_None) K_NUMPY::getFromNumpyArray(cellNc, cellNp, ncells);
 
-  // Number of vector fields whose divergence to compute (dimPb components for each)
+  // Number of vector fields whose divergence to compute (dim components for each)
   E_Int nfld = fc->getNfld(); // total number of scalar fields
-  vector<char*> vars;
+  std::vector<char*> vars;
   K_ARRAY::extractVars(varStringc, vars);
-  if (nfld % dimPb != 0)
+  if (nfld % dim != 0)
   {
-    RELEASESHAREDB(res,array,f,cn);
-    RELEASESHAREDB(res,arrayc,fc,cnc);
+    RELEASESHAREDS(array, f);
+    RELEASESHAREDS(arrayc, fc);
     PyErr_SetString(PyExc_TypeError,
                     "computeDiv2: not all components were found for each vector field.");
     return NULL;
   }
-  else nfld /= dimPb;
+  else nfld /= dim;
 
-  // Check xyz-plane based only on the first of the given vector fields
+  // Check xyz-plane based only on the first two of the given vector fields
   E_Int ixyz = 0; // =0 XY-plane, =1 XZ-plane, =2 YZ-plane
-  if (dimPb == 2)
+  if (dim == 2)
   {
     char* sv0 = vars[0]; char* sv1 = vars[1];
     char s0 = sv0[strlen(sv0)-1];
@@ -407,14 +408,16 @@ PyObject* K_POST::computeDiv2Struct(PyObject* self, PyObject* args)
     {
       PyErr_SetString(PyExc_TypeError,
                       "computeDiv2: error with the order of given scalar fields.");
+      RELEASESHAREDS(array, f);
+      RELEASESHAREDS(arrayc, fc);
       return NULL;
     }
   }
-  else if (dimPb == 3)
+  else if (dim == 3)
   {
     for (E_Int i = 0; i < nfld; i++)
     {
-      char* sv0 = vars[dimPb*i]; char* sv1 = vars[dimPb*i+1]; char* sv2 = vars[dimPb*i+2];
+      char* sv0 = vars[dim*i]; char* sv1 = vars[dim*i+1]; char* sv2 = vars[dim*i+2];
       char s0 = sv0[strlen(sv0)-1];
       char s1 = sv1[strlen(sv1)-1];
       char s2 = sv2[strlen(sv2)-1];
@@ -422,27 +425,29 @@ PyObject* K_POST::computeDiv2Struct(PyObject* self, PyObject* args)
       {
         PyErr_SetString(PyExc_TypeError,
                         "computeDiv2: error with the order of given scalar fields.");
+        RELEASESHAREDS(array, f);
+        RELEASESHAREDS(arrayc, fc);
         return NULL;
       }
     }
   }
 
-  vector<char*> varStrings;
+  std::vector<char*> varStrings;
   for (E_Int i = 0; i < nfld; i++)
   {
-    for (E_Int m = 0; m < dimPb-1; m++)
+    for (E_Int m = 0; m < dim-1; m++)
     {
-      if (strncmp(vars[dimPb*i+m], vars[dimPb*i+m+1], strlen(vars[dimPb*i+m])-1) != 0)
+      if (strncmp(vars[dim*i+m], vars[dim*i+m+1], strlen(vars[dim*i+m])-1) != 0)
       {
-        RELEASESHAREDB(res,array,f,cn);
-        RELEASESHAREDB(res,arrayc,fc,cnc);
+        RELEASESHAREDS(array, f);
+        RELEASESHAREDS(arrayc, fc);
         PyErr_SetString(PyExc_TypeError,
                         "computeDiv2: invalid names for vector component fields.");
         return NULL;
       }
     }
     char* local;
-    computeDivVarsString(vars[i*dimPb], local);
+    computeDivVarsString(vars[i*dim], local);
     varStrings.push_back(local);
   }
   
@@ -476,16 +481,16 @@ PyObject* K_POST::computeDiv2Struct(PyObject* self, PyObject* args)
   E_Int nbIntTot = nbIntIJ+nbIntK;
   
   // Build
-  FldArrayF faceField(nbIntTot, dimPb*nfld); faceField.setAllValuesAtNull();
-  FldArrayI voisins(nbIntTot,2); voisins.setAllValuesAt(-1);
+  FldArrayF faceField(nbIntTot, dim*nfld); faceField.setAllValuesAtNull();
+  FldArrayI voisins(nbIntTot, 2); voisins.setAllValuesAt(-1);
   E_Int* cellG = voisins.begin(1); E_Int* cellD = voisins.begin(2);
   PyObject* tpl = NULL;
   
-  if (dimPb == 2)
-    tpl = computeDiv2Struct2D(ni, nj, nic, njc, ixyz, varStringOut, cellNp, 
+  if (dim == 2)
+    tpl = computeDiv2Struct2D(ni, nj, nk, nic, njc, nkc, ixyz, varStringOut, cellNp, 
                               f->begin(posx), f->begin(posy), f->begin(posz),
-                              *fc, faceField, cellG, cellD, indices, fieldX, fieldY, fieldZ); // ATTENTION !!!!!
-  else if (dimPb == 3)
+                              *fc, faceField, cellG, cellD, indices, fieldX, fieldY, fieldZ);
+  else if (dim == 3)
     tpl = computeDiv2Struct3D(ni, nj, nk, nic, njc, nkc, varStringOut, cellNp, 
                               f->begin(posx), f->begin(posy), f->begin(posz),
                               *fc, faceField, cellG, cellD, indices, fieldX, fieldY, fieldZ);
@@ -529,7 +534,7 @@ PyObject* K_POST::computeDiv2Struct3D(
       
       #pragma omp parallel
       {
-        E_Int indint, indcellg, indcelld;
+        E_Int indf, indcellg, indcelld;
         
         // faces en i
         #pragma omp for nowait collapse(3)
@@ -537,11 +542,11 @@ PyObject* K_POST::computeDiv2Struct3D(
         for (E_Int j = 0; j < njc; j++)
         for (E_Int i = 1; i < nic; i++)
         {
-          indint = i + j*ni + k*ninjc;
+          indf = i + j*ni + k*ninjc;
           indcellg = (i - 1) + j*nic + k*nicnjc;
           indcelld = indcellg + 1;
-          cellG[indint] = indcellg; cellD[indint] = indcelld;
-          fintp[indint] = 0.5*(fcn[indcellg] + fcn[indcelld]);
+          cellG[indf] = indcellg; cellD[indf] = indcelld;
+          fintp[indf] = 0.5*(fcn[indcellg] + fcn[indcelld]);
         }
         
         // bords des faces en i
@@ -550,16 +555,16 @@ PyObject* K_POST::computeDiv2Struct3D(
         for (E_Int j = 0; j < njc; j++)
         {
           E_Int i = 0;
-          indint = i + j*ni + k*ninjc;
+          indf = i + j*ni + k*ninjc;
           indcelld = i + j*nic + k*nicnjc;
-          cellG[indint] = -1; cellD[indint] = indcelld;
-          fintp[indint] = fcn[indcelld]; // Extrapolation de l interieur
+          cellG[indf] = -1; cellD[indf] = indcelld;
+          fintp[indf] = fcn[indcelld]; // Extrapolation de l interieur
 
           i = nic;
-          indint = i + j*ni + k*ninjc;
+          indf = i + j*ni + k*ninjc;
           indcellg = (i - 1) + j*nic + k*nicnjc;
-          cellG[indint] = indcellg; cellD[indint] = -1;
-          fintp[indint] = fcn[indcellg]; // Extrapolation de l interieur
+          cellG[indf] = indcellg; cellD[indf] = -1;
+          fintp[indf] = fcn[indcellg]; // Extrapolation de l interieur
         }
         
         // faces en j
@@ -568,11 +573,11 @@ PyObject* K_POST::computeDiv2Struct3D(
         for (E_Int j = 1; j < njc; j++)
         for (E_Int i = 0; i < nic; i++)
         {
-          indint = i + j*nic + k*nicnj + nbIntI;
+          indf = i + j*nic + k*nicnj + nbIntI;
           indcellg = i + (j - 1)*nic + k*nicnjc;
           indcelld = indcellg + nic;
-          cellG[indint] = indcellg; cellD[indint] = indcelld;
-          fintp[indint] = 0.5*(fcn[indcellg] + fcn[indcelld]);
+          cellG[indf] = indcellg; cellD[indf] = indcelld;
+          fintp[indf] = 0.5*(fcn[indcellg] + fcn[indcelld]);
         }
         
         // bords des faces en j
@@ -581,17 +586,17 @@ PyObject* K_POST::computeDiv2Struct3D(
         for (E_Int i = 0; i < nic; i++)
         {
           E_Int j = 0;
-          indint = i + j*nic + k*nicnj + nbIntI;
+          indf = i + j*nic + k*nicnj + nbIntI;
           indcelld = i + j*nic + k*nicnjc;
-          cellG[indint] = -1;
-          cellD[indint] = indcelld;
-          fintp[indint] = fcn[indcelld]; // Extrapolation de l interieur
+          cellG[indf] = -1;
+          cellD[indf] = indcelld;
+          fintp[indf] = fcn[indcelld]; // Extrapolation de l interieur
 
           j = njc;
-          indint = i + j*nic + k*nicnj + nbIntI;
+          indf = i + j*nic + k*nicnj + nbIntI;
           indcellg = i + (j - 1)*nic + k*nicnjc;
-          cellG[indint] = indcellg; cellD[indint] = -1;
-          fintp[indint] = fcn[indcellg]; // Extrapolation de l interieur
+          cellG[indf] = indcellg; cellD[indf] = -1;
+          fintp[indf] = fcn[indcellg]; // Extrapolation de l interieur
         }
         
         // faces en k
@@ -600,11 +605,11 @@ PyObject* K_POST::computeDiv2Struct3D(
         for (E_Int j = 0; j < njc; j++)
         for (E_Int i = 0; i < nic; i++)
         {
-          indint = i + j*nic + k*nicnjc + nbIntIJ;
+          indf = i + j*nic + k*nicnjc + nbIntIJ;
           indcellg = i + j*nic + (k - 1)*nicnjc;
           indcelld = indcellg + nicnjc;
-          cellG[indint] = indcellg; cellD[indint] = indcelld;
-          fintp[indint] = 0.5*(fcn[indcellg] + fcn[indcelld]);
+          cellG[indf] = indcellg; cellD[indf] = indcelld;
+          fintp[indf] = 0.5*(fcn[indcellg] + fcn[indcelld]);
         }
         
         // bords des faces en k
@@ -613,16 +618,16 @@ PyObject* K_POST::computeDiv2Struct3D(
         for (E_Int i = 0; i < nic; i++)
         {
           E_Int k = 0;
-          indint = i + j*nic + k*nicnjc + nbIntIJ;
+          indf = i + j*nic + k*nicnjc + nbIntIJ;
           indcelld = i + j*nic + k*nicnjc;
-          cellG[indint] = -1; cellD[indint] = indcelld;
-          fintp[indint] = fcn[indcelld];
+          cellG[indf] = -1; cellD[indf] = indcelld;
+          fintp[indf] = fcn[indcelld];
 
           k = nkc;
-          indint = i + j*nic + k*nicnjc + nbIntIJ;
+          indf = i + j*nic + k*nicnjc + nbIntIJ;
           indcellg = i + j*nic + (k - 1)*nicnjc;
-          cellG[indint] = indcellg; cellD[indint] = -1;
-          fintp[indint] = fcn[indcellg];
+          cellG[indf] = indcellg; cellD[indf] = -1;
+          fintp[indf] = fcn[indcellg];
         }
       }
     }
@@ -636,7 +641,7 @@ PyObject* K_POST::computeDiv2Struct3D(
       
       #pragma omp parallel
       {
-        E_Int indint, indcellg, indcelld;
+        E_Int indf, indcellg, indcelld;
         
         // faces en i
         #pragma omp for nowait collapse(3)
@@ -644,13 +649,13 @@ PyObject* K_POST::computeDiv2Struct3D(
         for (E_Int j = 0; j < njc; j++)
         for (E_Int i = 1; i < nic; i++)
         {
-          indint = i + j*ni + k*ninjc;
+          indf = i + j*ni + k*ninjc;
           indcellg = (i - 1) + j*nic + k*nicnjc;
           indcelld = indcellg + 1;
-          cellG[indint] = indcellg; cellD[indint] = indcelld;
-          if (cellNp[indcellg] == 0) fintp[indint] = fcn[indcelld];
-          else if (cellNp[indcelld] == 0) fintp[indint] = fcn[indcellg];
-          else fintp[indint] = 0.5*(fcn[indcellg] + fcn[indcelld]);
+          cellG[indf] = indcellg; cellD[indf] = indcelld;
+          if (cellNp[indcellg] == 0) fintp[indf] = fcn[indcelld];
+          else if (cellNp[indcelld] == 0) fintp[indf] = fcn[indcellg];
+          else fintp[indf] = 0.5*(fcn[indcellg] + fcn[indcelld]);
         }
         
         // bords des faces en i
@@ -659,16 +664,16 @@ PyObject* K_POST::computeDiv2Struct3D(
         for (E_Int j = 0; j < njc; j++)
         {
           E_Int i = 0;
-          indint = i + j*ni + k*ninjc;
+          indf = i + j*ni + k*ninjc;
           indcelld = i + j*nic + k*nicnjc;
-          cellG[indint] = -1; cellD[indint] = indcelld;
-          fintp[indint] = fcn[indcelld]; // Extrapolation de l interieur
+          cellG[indf] = -1; cellD[indf] = indcelld;
+          fintp[indf] = fcn[indcelld]; // Extrapolation de l interieur
 
           i = nic;
-          indint = i + j*ni + k*ninjc;
+          indf = i + j*ni + k*ninjc;
           indcellg = (i - 1) + j*nic + k*nicnjc;
-          cellG[indint] = indcellg; cellD[indint] = -1;
-          fintp[indint] = fcn[indcellg]; // Extrapolation de l interieur
+          cellG[indf] = indcellg; cellD[indf] = -1;
+          fintp[indf] = fcn[indcellg]; // Extrapolation de l interieur
         }
         
         // faces en j
@@ -677,13 +682,13 @@ PyObject* K_POST::computeDiv2Struct3D(
         for (E_Int j = 1; j < njc; j++)
         for (E_Int i = 0; i < nic; i++)
         {
-          indint = i + j*nic + k*nicnj + nbIntI;
+          indf = i + j*nic + k*nicnj + nbIntI;
           indcellg = i + (j - 1)*nic + k*nicnjc;
           indcelld = indcellg + nic;
-          cellG[indint] = indcellg; cellD[indint] = indcelld;
-          if (cellNp[indcellg] == 0) fintp[indint] = fcn[indcelld];
-          else if (cellNp[indcelld] == 0) fintp[indint] = fcn[indcellg];
-          else fintp[indint] = 0.5*(fcn[indcellg] + fcn[indcelld]);
+          cellG[indf] = indcellg; cellD[indf] = indcelld;
+          if (cellNp[indcellg] == 0) fintp[indf] = fcn[indcelld];
+          else if (cellNp[indcelld] == 0) fintp[indf] = fcn[indcellg];
+          else fintp[indf] = 0.5*(fcn[indcellg] + fcn[indcelld]);
         }
         
         // bords des faces en j
@@ -692,17 +697,17 @@ PyObject* K_POST::computeDiv2Struct3D(
         for (E_Int i = 0; i < nic; i++)
         {
           E_Int j = 0;
-          indint = i + j*nic + k*nicnj + nbIntI;
+          indf = i + j*nic + k*nicnj + nbIntI;
           indcelld = i + j*nic + k*nicnjc;
-          cellG[indint] = -1;
-          cellD[indint] = indcelld;
-          fintp[indint] = fcn[indcelld]; // Extrapolation de l interieur
+          cellG[indf] = -1;
+          cellD[indf] = indcelld;
+          fintp[indf] = fcn[indcelld]; // Extrapolation de l interieur
 
           j = njc;
-          indint = i + j*nic + k*nicnj + nbIntI;
+          indf = i + j*nic + k*nicnj + nbIntI;
           indcellg = i + (j - 1)*nic + k*nicnjc;
-          cellG[indint] = indcellg; cellD[indint] = -1;
-          fintp[indint] = fcn[indcellg]; // Extrapolation de l interieur
+          cellG[indf] = indcellg; cellD[indf] = -1;
+          fintp[indf] = fcn[indcellg]; // Extrapolation de l interieur
         }
         
         // faces en k
@@ -711,13 +716,13 @@ PyObject* K_POST::computeDiv2Struct3D(
         for (E_Int j = 0; j < njc; j++)
         for (E_Int i = 0; i < nic; i++)
         {
-          indint = i + j*nic + k*nicnjc + nbIntIJ;
+          indf = i + j*nic + k*nicnjc + nbIntIJ;
           indcellg = i + j*nic + (k - 1)*nicnjc;
           indcelld = indcellg + nicnjc;
-          cellG[indint] = indcellg; cellD[indint] = indcelld;
-          if (cellNp[indcellg] == 0) fintp[indint] = fcn[indcelld];
-          else if (cellNp[indcelld] == 0) fintp[indint] = fcn[indcellg];
-          else fintp[indint] = 0.5*(fcn[indcellg] + fcn[indcelld]);
+          cellG[indf] = indcellg; cellD[indf] = indcelld;
+          if (cellNp[indcellg] == 0) fintp[indf] = fcn[indcelld];
+          else if (cellNp[indcelld] == 0) fintp[indf] = fcn[indcellg];
+          else fintp[indf] = 0.5*(fcn[indcellg] + fcn[indcelld]);
         }
         
         // bords des faces en k
@@ -726,16 +731,16 @@ PyObject* K_POST::computeDiv2Struct3D(
         for (E_Int i = 0; i < nic; i++)
         {
           E_Int k = 0;
-          indint = i + j*nic + k*nicnjc + nbIntIJ;
+          indf = i + j*nic + k*nicnjc + nbIntIJ;
           indcelld = i + j*nic + k*nicnjc;
-          cellG[indint] = -1; cellD[indint] = indcelld;
-          fintp[indint] = fcn[indcelld];
+          cellG[indf] = -1; cellD[indf] = indcelld;
+          fintp[indf] = fcn[indcelld];
 
           k = nkc;
-          indint = i + j*nic + k*nicnjc + nbIntIJ;
+          indf = i + j*nic + k*nicnjc + nbIntIJ;
           indcellg = i + j*nic + (k - 1)*nicnjc;
-          cellG[indint] = indcellg; cellD[indint] = -1;
-          fintp[indint] = fcn[indcellg];
+          cellG[indf] = indcellg; cellD[indf] = -1;
+          fintp[indf] = fcn[indcellg];
         }
       }
     }
@@ -762,15 +767,15 @@ PyObject* K_POST::computeDiv2Struct3D(
 
     #pragma omp parallel
     {
-      E_Int indint;
+      E_Int indf;
       for (E_Int eq = 0; eq < nfldg; eq++)
       {
         E_Float* fintp = faceField.begin(eq+1);
         #pragma omp for
         for (E_Int noint = 0; noint < ninterfaces; noint++)
         {
-          indint = pindint[noint];
-          fintp[indint] = pf[eq][noint];
+          indf = pindint[noint];
+          fintp[indf] = pf[eq][noint];
         }
       }
     }
@@ -847,139 +852,148 @@ PyObject* K_POST::computeDiv2Struct3D(
 }
 //=============================================================================
 PyObject* K_POST::computeDiv2Struct2D(
-    E_Int ni, E_Int nj, E_Int nic, E_Int njc,
+    E_Int ni, E_Int nj, E_Int nk, E_Int nic, E_Int njc, E_Int nkc,
     E_Int ixyz, const char* varStringOut, E_Float* cellNp, 
     E_Float* xt, E_Float* yt, E_Float* zt,
     FldArrayF& fc, FldArrayF& faceField, E_Int* cellG, E_Int* cellD,
     PyObject* indices, PyObject* fieldX, PyObject* fieldY, PyObject* fieldZ
 )
 {
-  E_Int nkc = 1;
-  E_Int nicnjc = nic*njc;
-  E_Int ninjc = ni*njc;
-  E_Int nicnj = nic*nj;
-  
-  E_Int nbIntI = ninjc;
-  E_Int nbIntJ = nicnj;
-  E_Int nbIntIJ = nbIntI + nbIntJ;
-  E_Int nbIntTot = nbIntIJ;
+  E_Int n1, n2, n1c, n2c;
+  E_Float *ct1, *ct2;
+
+  if (ixyz == 0)  // XY-plane
+  {
+    n1 = ni; n2 = nj; n1c = nic; n2c = njc;
+    ct1 = xt; ct2 = yt;
+  }
+  else if (ixyz == 1)  // XZ-plane
+  {
+    n1 = ni; n2 = nk; n1c = nic; n2c = nkc;
+    ct1 = xt; ct2 = zt;
+  }
+  else  // YZ-plane
+  {
+    n1 = nj; n2 = nk; n1c = njc; n2c = nkc;
+    ct1 = yt; ct2 = zt;
+  }
+
+  E_Int n1n2c = n1*n2c;
+  E_Int nbInt1 = n1n2c;
+  E_Int nbInt2 = n1c*n2;
+  E_Int nbIntTot = nbInt1 + nbInt2;
+  E_Int ncells = n1c*n2c;
+
+  std::cout << "ni = " << ni << ", nj = " << nj << ", nk = " << nk << std::endl;
+  std::cout << "n1 = " << n1 << ", n2 = " << n2 << std::endl;
+  std::cout << "nbInt1 = " << nbInt1 << ", nbInt2 = " << nbInt2 << ", nbIntTot = " << nbIntTot << std::endl;
+
   E_Int api = fc.getApi();
   E_Int nfldg = fc.getNfld(); // nfldg: num of scalar components
   E_Int nfld = nfldg/2;
-  E_Int ncells = nicnjc;
-  
-  FldArrayF sint(nbIntTot,3); sint.setAllValuesAtNull();
-  E_Float* sxint = sint.begin(1);
-  E_Float* syint = sint.begin(2);
-  E_Float* szint = sint.begin(3);
-  
+
+  FldArrayF sint(nbIntTot, 2); sint.setAllValuesAtNull();
+  E_Float* s1int = sint.begin(1);
+  E_Float* s2int = sint.begin(2);
+
   // Compute length of faces
   #pragma omp parallel
   {
-    E_Int indint, indm, indp;
-    E_Float d13x, d13y, d13z, d24x, d24y, d24z;
-    
+    E_Int indf, indm, indp;
+
     #pragma omp for nowait collapse(2)
-    for (E_Int j = 0; j < njc; j++)
-    for (E_Int i = 0; i < ni; i++)
+    for (E_Int j = 0; j < n2c; j++)
+    for (E_Int i = 0; i < n1; i++)
     {
-      indm = i + j*ni; indp = indm + ni;
-      d13x = xt[indp] - xt[indm];
-      d13y = yt[indp] - yt[indm];
-      d13z = 1;
-      d24x = xt[indm] - xt[indp];
-      d24y = yt[indm] - yt[indp];
-      d24z = 1;
-
-      sxint[indm] = 0.5*(d13y*d24z - d13z*d24y);
-      syint[indm] = 0.5*(d13z*d24x - d13x*d24z);
-      szint[indm] = 0.5*(d13x*d24y - d13y*d24x);
+      indm = i + j*n1;
+      indp = indm + n1;
+      s1int[indm] = ct2[indp] - ct2[indm];
+      s2int[indm] = ct1[indm] - ct1[indp];
     }
-    
-    #pragma omp for collapse(2)
-    for (E_Int j = 0; j < nj; j++)
-    for (E_Int i = 0; i < nic; i++)
-    {
-      indm = i + j*ni; indp = indm + 1;
-      d13x = xt[indp] - xt[indm];
-      d13y = yt[indp] - yt[indm];
-      d13z = 1;
-      d24x = xt[indp] - xt[indm];
-      d24y = yt[indp] - yt[indm];
-      d24z = -1;
 
-      indint = i + j*nic + ninjc;
-      sxint[indint] = 0.5*(d13y*d24z - d13z*d24y);
-      syint[indint] = 0.5*(d13z*d24x - d13x*d24z);
-      szint[indint] = 0.5*(d13x*d24y - d13y*d24x);
+    #pragma omp for collapse(2)
+    for (E_Int j = 0; j < n2; j++)
+    for (E_Int i = 0; i < n1c; i++)
+    {
+      indm = i + j*n1;
+      indp = indm + n1;
+      indf = i + j*n1c + n1n2c;
+      s1int[indf] = ct2[indm] - ct2[indp];
+      s2int[indf] = ct1[indp] - ct1[indm];
     }
   }
-  
+
+  for (E_Int i = 0; i < nbIntTot; i++)
+    std::cout << "s1int["<< i<<"] = " << s1int[i] << ", s2int["<< i<<"] = " << s2int[i] << std::endl;
+
+  for (E_Int i = 0; i < nbIntTot; i++)
+    std::cout << "xt["<< i<<"] = " << xt[i] << ", ct2["<< i<<"] = " << ct2[i] << std::endl;
+
   if (cellNp == NULL)
   {
     for (E_Int eq = 1; eq <= nfldg; eq++)
     {
       E_Float* fcn = fc.begin(eq);
       E_Float* fintp = faceField.begin(eq);
-        
+
       #pragma omp parallel
       {
-        E_Int indint, indcellg, indcelld;
-        
+        E_Int indf, indcellg, indcelld;
+
         // faces en i internes
         #pragma omp for nowait collapse(2)
-        for (E_Int j = 0; j < njc; j++)
-        for (E_Int i = 1; i < nic; i++)
+        for (E_Int j = 0; j < n2c; j++)
+        for (E_Int i = 1; i < n1c; i++)
         {
-          indint = i + j*ni;
-          indcellg = (i - 1) + j*nic; indcelld = indcellg + 1;
-          cellG[indint] = indcellg; cellD[indint] = indcelld;
-          fintp[indint] = 0.5*(fcn[indcellg] + fcn[indcelld]);
+          indf = i + j*n1;
+          indcellg = (i - 1) + j*n1c; indcelld = indcellg + 1;
+          cellG[indf] = indcellg; cellD[indf] = indcelld;
+          fintp[indf] = 0.5*(fcn[indcellg] + fcn[indcelld]);
         }
-        
+
         // bords des faces en i
         #pragma omp for nowait
-        for (E_Int j = 0; j < njc; j++)
+        for (E_Int j = 0; j < n2c; j++)
         {
           // faces i = 0
-          indint = j*ni;
-          indcelld = j*nic;
-          cellG[indint] = -1; cellD[indint] = indcelld;
-          fintp[indint] = fcn[indcelld]; // Extrapolation de l interieur
+          indf = j*n1;
+          indcelld = j*n1c;
+          cellG[indf] = -1; cellD[indf] = indcelld;
+          fintp[indf] = fcn[indcelld]; // Extrapolation de l interieur
 
-          // faces i = ni
-          indint = (ni - 1) + j*ni;
-          indcellg = (nic - 1) + j*nic;
-          cellG[indint] = indcellg; cellD[indint] = -1;
-          fintp[indint] = fcn[indcellg]; // Extrapolation de l interieur
+          // faces i = n1
+          indf = (n1 - 1) + j*n1;
+          indcellg = (n1c - 1) + j*n1c;
+          cellG[indf] = indcellg; cellD[indf] = -1;
+          fintp[indf] = fcn[indcellg]; // Extrapolation de l interieur
         }
 
         // faces en j internes
         #pragma omp for nowait collapse(2)
-        for (E_Int j = 1; j < njc; j++)
-        for (E_Int i = 0; i < nic; i++)
+        for (E_Int j = 1; j < n2c; j++)
+        for (E_Int i = 0; i < n1c; i++)
         {
-          indint = i + j*nic + nbIntI;
-          indcellg = i + (j - 1)*nic; indcelld = indcellg + nic;
-          cellG[indint] = indcellg; cellD[indint] = indcelld;
-          fintp[indint] = 0.5*(fcn[indcellg]+fcn[indcelld]);
+          indf = i + j*n1c + nbInt1;
+          indcellg = i + (j - 1)*n1c; indcelld = indcellg + n1c;
+          cellG[indf] = indcellg; cellD[indf] = indcelld;
+          fintp[indf] = 0.5*(fcn[indcellg]+fcn[indcelld]);
         }
-        
+
         // bords des faces en j
         #pragma omp for
-        for (E_Int i = 0; i < nic; i++)
+        for (E_Int i = 0; i < n1c; i++)
         {
           // faces j = 0
-          indint = i + nbIntI;
+          indf = i + nbInt1;
           indcelld = i;
-          cellG[indint] = -1; cellD[indint] = indcelld;
-          fintp[indint] = fcn[indcelld]; // Extrapolation de l interieur
+          cellG[indf] = -1; cellD[indf] = indcelld;
+          fintp[indf] = fcn[indcelld]; // Extrapolation de l interieur
 
           // faces j = jmax
-          indint = i + njc*nic + nbIntI;
-          indcellg = i + (njc - 1)*nic;
-          cellG[indint] = indcellg; cellD[indint] = -1;
-          fintp[indint] = fcn[indcellg]; // Extrapolation de l interieur
+          indf = i + n2c*n1c + nbInt1;
+          indcellg = i + (n2c - 1)*n1c;
+          cellG[indf] = indcellg; cellD[indf] = -1;
+          fintp[indf] = fcn[indcellg]; // Extrapolation de l interieur
         }
       }
     }
@@ -993,66 +1007,66 @@ PyObject* K_POST::computeDiv2Struct2D(
         
       #pragma omp parallel
       {
-        E_Int indint, indcellg, indcelld;
+        E_Int indf, indcellg, indcelld;
         
         // faces en i internes
         #pragma omp for nowait collapse(2)
-        for (E_Int j = 0; j < njc; j++)
-        for (E_Int i = 1; i < nic; i++)
+        for (E_Int j = 0; j < n2c; j++)
+        for (E_Int i = 1; i < n1c; i++)
         {
-          indint = i + j*ni;
-          indcellg = (i - 1) + j*nic; indcelld = indcellg + 1;
-          cellG[indint] = indcellg; cellD[indint] = indcelld;
-          if (cellNp[indcellg] == 0) fintp[indint] = fcn[indcelld];
-          else if (cellNp[indcelld] == 0) fintp[indint] = fcn[indcellg];
-          else fintp[indint] = 0.5*(fcn[indcellg] + fcn[indcelld]);
+          indf = i + j*n1;
+          indcellg = (i - 1) + j*n1c; indcelld = indcellg + 1;
+          cellG[indf] = indcellg; cellD[indf] = indcelld;
+          if (cellNp[indcellg] == 0) fintp[indf] = fcn[indcelld];
+          else if (cellNp[indcelld] == 0) fintp[indf] = fcn[indcellg];
+          else fintp[indf] = 0.5*(fcn[indcellg] + fcn[indcelld]);
         }
         
         // bords des faces en i
         #pragma omp for nowait
-        for (E_Int j = 0; j < njc; j++)
+        for (E_Int j = 0; j < n2c; j++)
         {
           // faces i = 0
-          indint = j*ni;
-          indcelld = j*nic;
-          cellG[indint] = -1; cellD[indint] = indcelld;
-          fintp[indint] = fcn[indcelld]; // Extrapolation de l interieur
+          indf = j*n1;
+          indcelld = j*n1c;
+          cellG[indf] = -1; cellD[indf] = indcelld;
+          fintp[indf] = fcn[indcelld]; // Extrapolation de l interieur
 
-          // faces i = ni
-          indint = (ni - 1) + j*ni;
-          indcellg = (nic - 1) + j*nic;
-          cellG[indint] = indcellg; cellD[indint] = -1;
-          fintp[indint] = fcn[indcellg]; // Extrapolation de l interieur
+          // faces i = n1
+          indf = (n1 - 1) + j*n1;
+          indcellg = (n1c - 1) + j*n1c;
+          cellG[indf] = indcellg; cellD[indf] = -1;
+          fintp[indf] = fcn[indcellg]; // Extrapolation de l interieur
         }
 
         // faces en j internes
         #pragma omp for nowait collapse(2)
-        for (E_Int j = 1; j < njc; j++)
-        for (E_Int i = 0; i < nic; i++)
+        for (E_Int j = 1; j < n2c; j++)
+        for (E_Int i = 0; i < n1c; i++)
         {
-          indint = i + j*nic + nbIntI;
-          indcellg = i + (j - 1)*nic; indcelld = indcellg + nic;
-          cellG[indint] = indcellg; cellD[indint] = indcelld;
-          if (cellNp[indcellg] == 0) fintp[indint] = fcn[indcelld];
-          else if (cellNp[indcelld] == 0) fintp[indint] = fcn[indcellg];
-          else fintp[indint] = 0.5*(fcn[indcellg] + fcn[indcelld]);
+          indf = i + j*n1c + nbInt1;
+          indcellg = i + (j - 1)*n1c; indcelld = indcellg + n1c;
+          cellG[indf] = indcellg; cellD[indf] = indcelld;
+          if (cellNp[indcellg] == 0) fintp[indf] = fcn[indcelld];
+          else if (cellNp[indcelld] == 0) fintp[indf] = fcn[indcellg];
+          else fintp[indf] = 0.5*(fcn[indcellg] + fcn[indcelld]);
         }
         
         // bords des faces en j
         #pragma omp for
-        for (E_Int i = 0; i < nic; i++)
+        for (E_Int i = 0; i < n1c; i++)
         {
           // faces j = 0
-          indint = i + nbIntI;
+          indf = i + nbInt1;
           indcelld = i;
-          cellG[indint] = -1; cellD[indint] = indcelld;
-          fintp[indint] = fcn[indcelld]; // Extrapolation de l interieur
+          cellG[indf] = -1; cellD[indf] = indcelld;
+          fintp[indf] = fcn[indcelld]; // Extrapolation de l interieur
 
           // faces j = jmax
-          indint = i + njc*nic + nbIntI;
-          indcellg = i + (njc - 1)*nic;
-          cellG[indint] = indcellg; cellD[indint] = -1;
-          fintp[indint] = fcn[indcellg]; // Extrapolation de l interieur
+          indf = i + n2c*n1c + nbInt1;
+          indcellg = i + (n2c - 1)*n1c;
+          cellG[indf] = indcellg; cellD[indf] = -1;
+          fintp[indf] = fcn[indcellg]; // Extrapolation de l interieur
         }
       }
     }
@@ -1078,15 +1092,15 @@ PyObject* K_POST::computeDiv2Struct2D(
 
     #pragma omp parallel
     {
-      E_Int indint;
+      E_Int indf;
       for (E_Int eq = 0; eq < nfldg; eq++)
       {
         E_Float* fintp = faceField.begin(eq+1);
         #pragma omp for
         for (E_Int noint = 0; noint < ninterfaces; noint++)
         {
-          indint = pindint[noint];
-          fintp[indint] = pf[eq][noint];
+          indf = pindint[noint];
+          fintp[indf] = pf[eq][noint];
         }
       }
     }
@@ -1098,59 +1112,49 @@ PyObject* K_POST::computeDiv2Struct2D(
 
   // Build empty array
   PyObject* tpl = K_ARRAY::buildArray3(nfld, varStringOut, nic, njc, nkc, api);
-  FldArrayF* gn;
-  K_ARRAY::getFromArray3(tpl, gn);
-  gn->setAllValuesAtNull();
-
-  E_Int inti = 0; E_Int intj = 0;
-  if (ixyz == 0) { inti = 1; intj = 2; }
-  else if (ixyz == 1) { inti = 1; intj = 3; }
-  else if (ixyz == 2) { inti = 2; intj = 3; }
-  E_Float* siint = sint.begin(inti);
-  E_Float* sjint = sint.begin(intj);
+  FldArrayF* fc2;
+  K_ARRAY::getFromArray3(tpl, fc2);
+  fc2->setAllValuesAtNull();
 
   // divergence
   E_Int indcellg, indcelld;
   E_Float ffi, ffj;
   for (E_Int n = 0; n < nfld; n++)
   {
-    E_Float* gpdv = gn->begin(n+1);
+    E_Float* gpdv = fc2->begin(n+1);
     E_Float* fpi = faceField.begin(2*n+1);
     E_Float* fpj = faceField.begin(2*n+2);
     for (E_Int i = 0; i < nbIntTot; i++)
     {
       indcellg = cellG[i]; indcelld = cellD[i];
       ffi = fpi[i]; ffj = fpj[i];
-      if (indcellg != -1)
-      {
-        gpdv[indcellg] += ffi*siint[i] + ffj*sjint[i];
-      }
-      if (indcelld != -1)
-      {
-        gpdv[indcelld] -= ffi*siint[i] + ffj*sjint[i];
-      }
+      std::cout << "indcellg = " << indcellg << ", indcelld = " << indcelld << ", ffi = " << ffi << ", ffj = " << ffj << std::endl;
+      if (indcellg != -1) gpdv[indcellg] += ffi*s1int[i] + ffj*s2int[i];
+      if (indcelld != -1) gpdv[indcelld] -= ffi*s1int[i] + ffj*s2int[i];
+      if (indcellg != -1) std::cout << "gpdv[indcellg] = " << gpdv[indcellg] << std::endl;
+      if (indcelld != -1) std::cout << "gpdv[indcelld] = " << gpdv[indcelld] << std::endl;
     }
   }
   // free mem
   sint.malloc(0); faceField.malloc(0);
   
-  #pragma omp parallel
-  {
-    E_Float voli;
-    for (E_Int n = 1; n <= nfld; n++)
-    {
-      E_Float* gpdv = gn->begin(n);
-      #pragma omp for
-      for (E_Int indcell = 0; indcell < ncells; indcell++)
-      {
-        K_METRIC::compVolOfStructCell2D(ni, nj, indcell, -1, xt, yt, zt, voli);
-        voli = 1./K_FUNC::E_max(voli, K_CONST::E_MIN_VOL);
-        gpdv[indcell] *= voli;
-      }
-    }
-  }
+  // #pragma omp parallel
+  // {
+  //   E_Float voli;
+  //   for (E_Int n = 1; n <= nfld; n++)
+  //   {
+  //     E_Float* gpdv = fc2->begin(n);
+  //     #pragma omp for
+  //     for (E_Int indcell = 0; indcell < ncells; indcell++)
+  //     {
+  //       K_METRIC::compVolOfStructCell2D(n1, n2, indcell, -1, xt, yt, zt, voli);
+  //       voli = 1./K_FUNC::E_max(voli, K_CONST::E_MIN_VOL);
+  //       gpdv[indcell] *= voli;
+  //     }
+  //   }
+  // }
   
-  RELEASESHAREDS(tpl, gn);
+  RELEASESHAREDS(tpl, fc2);
   return tpl;
 }
 
@@ -1161,7 +1165,7 @@ PyObject* K_POST::computeDiv2Struct2D(
 //=============================================================================
 void K_POST::computeDivVarsString(char* varString, char*& varStringOut)
 {
-  vector<char*> vars;
+  std::vector<char*> vars;
   K_ARRAY::extractVars(varString, vars);
   E_Int c = -1;
   E_Int varsSize = vars.size();
