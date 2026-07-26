@@ -776,6 +776,11 @@ PyObject* K_CONVERTER::registerElements(PyObject* self, PyObject* args)
   E_Float* xp = f->begin(posx);
   E_Float* yp = f->begin(posy);
   E_Float* zp = f->begin(posz);
+
+  std::vector<E_Int> eltMap;
+  std::random_device rd;
+  std::mt19937 gen(rd());
+
   // Parcours les elements, calcule les centres, les enregistre dans le KdTree
   if (res == 1) // structure
   {
@@ -793,7 +798,11 @@ PyObject* K_CONVERTER::registerElements(PyObject* self, PyObject* args)
     #ifdef QUADDOUBLE
     quad_double qinv = quad_double(8.);
     #endif
-    
+
+    eltMap.resize(nelts);
+    std::iota(eltMap.begin(), eltMap.end(), 0);
+    std::shuffle(eltMap.begin(), eltMap.end(), gen);
+
     #pragma omp parallel
     {
       E_Int ip, jp, kp, indcell, indv;
@@ -847,7 +856,7 @@ PyObject* K_CONVERTER::registerElements(PyObject* self, PyObject* args)
             xf += xp[indv]; yf += yp[indv]; zf += zp[indv];
           }
           xf *= inv; yf *= inv; zf *= inv;
-          cx[indcell] = xf; cy[indcell] = yf; cz[indcell] = zf;
+          cx[eltMap[indcell]] = xf; cy[eltMap[indcell]] = yf; cz[eltMap[indcell]] = zf;
         }
         #endif     
       }
@@ -866,7 +875,11 @@ PyObject* K_CONVERTER::registerElements(PyObject* self, PyObject* args)
     E_Float* cx = centers->begin(1);
     E_Float* cy = centers->begin(2);
     E_Float* cz = centers->begin(3);
-    
+
+    eltMap.resize(nelts);
+    std::iota(eltMap.begin(), eltMap.end(), 0);
+    std::shuffle(eltMap.begin(), eltMap.end(), gen);
+
     #pragma omp parallel
     {
       E_Int nf, nv, ind;
@@ -916,7 +929,7 @@ PyObject* K_CONVERTER::registerElements(PyObject* self, PyObject* args)
         #else
         E_Float inv = 1./E_Float(c); xf *= inv; yf *= inv; zf *= inv;
         #endif
-        cx[i] = xf; cy[i] = yf; cz[i] = zf;
+        cx[eltMap[i]] = xf; cy[eltMap[i]] = yf; cz[eltMap[i]] = zf;
       } // loop on elts
     } // omp
   }// NGON
@@ -938,6 +951,10 @@ PyObject* K_CONVERTER::registerElements(PyObject* self, PyObject* args)
     E_Float* cx = centers->begin(1);
     E_Float* cy = centers->begin(2);
     E_Float* cz = centers->begin(3);
+
+    eltMap.resize(ntotelts);
+    std::iota(eltMap.begin(), eltMap.end(), 0);
+    std::shuffle(eltMap.begin(), eltMap.end(), gen);
 
     // Boucle sur toutes les connectivites
     for (E_Int ic = 0; ic < nc; ic++)
@@ -967,9 +984,9 @@ PyObject* K_CONVERTER::registerElements(PyObject* self, PyObject* args)
             qzf = qzf+quad_double(zp[ind]); 
           }
           qxf = qxf/qinv; qyf = qyf/qinv; qzf = qzf/qinv;
-          cx[elOffset+i] = E_Float(qxf);
-          cy[elOffset+i] = E_Float(qyf);
-          cz[elOffset+i] = E_Float(qzf);
+          cx[eltMap[elOffset+i]] = E_Float(qxf);
+          cy[eltMap[elOffset+i]] = E_Float(qyf);
+          cz[eltMap[elOffset+i]] = E_Float(qzf);
           #else
           #ifdef __INTEL_COMPILER
           #pragma float_control(precise, on) 
@@ -980,7 +997,7 @@ PyObject* K_CONVERTER::registerElements(PyObject* self, PyObject* args)
             xf += xp[ind]; yf += yp[ind]; zf += zp[ind];
           }
           xf *= inv; yf*= inv; zf*= inv; 
-          cx[elOffset+i] = xf; cy[elOffset+i] = yf; cz[elOffset+i] = zf;
+          cx[eltMap[elOffset+i]] = xf; cy[eltMap[elOffset+i]] = yf; cz[eltMap[elOffset+i]] = zf;
           #endif
         }//loop for elts
       }// omp
@@ -1006,13 +1023,17 @@ PyObject* K_CONVERTER::registerElements(PyObject* self, PyObject* args)
   PyObject* hook;
   E_Int* type = new E_Int [1]; type[0] = 3;
 
-  E_Int sizePacket = 5;
+  E_Int* iEltMap = new E_Int [eltMap.size()];
+  for (size_t i = 0; i < eltMap.size(); i++) iEltMap[eltMap[i]] = i;
+
+  E_Int sizePacket = 6;
   void** packet = new void* [sizePacket];
   packet[0] = type; // hook type
   packet[1] = centers;
   packet[2] = coordAcc;
   packet[3] = globalKdt;
   packet[4] = bbox;
+  packet[5] = iEltMap;
 #if (PY_MAJOR_VERSION == 2 && PY_MINOR_VERSION < 7) || (PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION < 1)
   hook = PyCObject_FromVoidPtr(packet, NULL);
 #else
@@ -1056,10 +1077,12 @@ PyObject* K_CONVERTER::freeHook(PyObject* self, PyObject* args)
       K_SEARCH::KdTree<FldArrayF>* globalKdt = 
         (K_SEARCH::KdTree<FldArrayF>*) packet[3];
       E_Float* bbox = (E_Float*)packet[4];
+      E_Int* iEltMap = (E_Int*)packet[5];
       
       delete pt;
       delete globalKdt; // delete tout
       delete [] bbox;
+      delete [] iEltMap;
     }
     break;
 

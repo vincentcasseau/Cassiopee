@@ -385,6 +385,7 @@ PyObject* K_CONVERTER::identifyElements(PyObject* self, PyObject* args)
   K_SEARCH::KdTree<FldArrayF>* globalKdt = 
     (K_SEARCH::KdTree<FldArrayF>*) packet[3];
   E_Float* bbox = (E_Float*)packet[4];
+  E_Int* iEltMap = (E_Int*)packet[5];
 
   // Recupere l'array a identifier
   E_Int nil, njl, nkl, res;
@@ -535,6 +536,7 @@ PyObject* K_CONVERTER::identifyElements(PyObject* self, PyObject* args)
         if (zf > bbox[5] + etol) { nptr[i] = -1; continue; }
 
         ind = globalKdt->getClosest(pt); // closest pt
+        ind = iEltMap[ind];
         dx = xt[ind]-xf; dy = yt[ind]-yf; dz = zt[ind]-zf;
         dist = dx*dx + dy*dy + dz*dz;
         if (dist*dist < etol*etol) nptr[ic] = ind+1;
@@ -649,6 +651,7 @@ PyObject* K_CONVERTER::identifyElements(PyObject* self, PyObject* args)
 
         pt[0] = xf; pt[1] = yf; pt[2] = zf;
         ind = globalKdt->getClosest(pt); // closest pt
+        ind = iEltMap[ind];
         dx = xt[ind]-xf; dy = yt[ind]-yf; dz = zt[ind]-zf;
         dist = dx*dx + dy*dy + dz*dz;
         if (dist*dist < etol*etol) nptr[i] = ind+1;
@@ -813,6 +816,7 @@ PyObject* K_CONVERTER::identifyElements(PyObject* self, PyObject* args)
       
           pt[0] = xf; pt[1] = yf; pt[2] = zf;
           ind = globalKdt->getClosest(pt); // closest pt
+          ind = iEltMap[ind];
           dx = xt[ind]-xf; dy = yt[ind]-yf; dz = zt[ind]-zf;
           dist = dx*dx + dy*dy + dz*dz;
           if (dist*dist < etol*etol) nptr[offset+i] = ind+1;
