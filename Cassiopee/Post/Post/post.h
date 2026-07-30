@@ -64,8 +64,7 @@ namespace K_POST
   PyObject* computeGradLSQ(PyObject *self, PyObject *args);
   PyObject* computeNormGrad(PyObject* self, PyObject* args);
   PyObject* computeDiv(PyObject* self, PyObject* args);
-  PyObject* computeDiv2NGon(PyObject* self, PyObject* args);
-  PyObject* computeDiv2Struct(PyObject* self, PyObject* args);
+  PyObject* computeDiv2(PyObject* self, PyObject* args);
   PyObject* computeCurl(PyObject* self, PyObject* args);
   PyObject* computeNormCurl(PyObject* self, PyObject* args);
   PyObject* computeDiff(PyObject* self, PyObject* args);
@@ -892,8 +891,9 @@ namespace K_POST
                                  FldArrayF& fc, FldArrayF& faceField,
                                  E_Int* cellG, E_Int* cellD,
                                  PyObject* indices, PyObject* field);
-  PyObject* computeDiv2Struct2D(E_Int ni, E_Int nj, E_Int nic, E_Int njc,
-                                E_Int ixyz, const char* varStringOut, E_Float* cellNp,
+  PyObject* computeDiv2Struct2D(E_Int ni, E_Int nj, E_Int nk,
+                                E_Int nic, E_Int njc, E_Int nkc, E_Int ixyz,
+                                const char* varStringOut, E_Float* cellNp,
                                 E_Float* xt, E_Float* yt, E_Float* zt,
                                 FldArrayF& fc, FldArrayF& faceField,
                                 E_Int* cellG, E_Int* cellD,
@@ -907,6 +907,12 @@ namespace K_POST
                                 E_Int* cellG, E_Int* cellD,
                                 PyObject* indices, PyObject* fieldX,
                                 PyObject* fieldY, PyObject* fieldZ);
+  PyObject* computeDiv2NGon(FldArrayI* cn, const char* varStringOut, 
+                            E_Float* volp, E_Float* cellNp,
+                            E_Float* xt, E_Float* yt, E_Float* zt, 
+                            FldArrayF& fc,
+                            PyObject* indices, PyObject* fieldX,
+                            PyObject* fieldY, PyObject* fieldZ);
 
   /* Curl */
   E_Int computeCurlStruct(

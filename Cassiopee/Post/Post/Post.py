@@ -497,13 +497,7 @@ def computeDiv2(array, arrayc, vol=None, cellN=None, indices=None, BCFieldX=None
     Usage: computeDiv2(array, arrayc, indices, BCFieldX, BCFieldY, BCFieldZ) """
     if isinstance(array[0], list):
         raise ValueError("computeDiv2: input must be a single zone.")
-    if len(array) == 4:
-        if array[3] == 'NGON' and arrayc[3] == 'NGON*':
-            return post.computeDiv2NGon(array, arrayc, vol, cellN, indices, BCFieldX, BCFieldY, BCFieldZ)
-        else:
-            raise ValueError("computeDiv2: only valid for NGon unstructured zones.")
-    else:
-        return post.computeDiv2Struct(array, arrayc, cellN, indices, BCFieldX, BCFieldY, BCFieldZ)
+    return post.computeDiv2(array, arrayc, vol, cellN, indices, BCFieldX, BCFieldY, BCFieldZ)
 
 def computeCurl(array, vector):
     """Compute the curl of the 3D-field defined in array.

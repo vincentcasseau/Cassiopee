@@ -1780,10 +1780,12 @@ def _computeDiv2(t, var, ghostCells=False, withTNC=False, rmVar=False,
 
         for i in range(nvars):
             if f[i] == []: continue
+            print("len(f[i])", f[i][0])
             divFld = Post.computeDiv2(
                 coords, f[i], vol, cellN, indices=inds,
                 BCFieldX=bcfx[i], BCFieldY=bcfy[i], BCFieldZ=bcfz[i]
             )
+            print("len(divFld)", divFld)
             C.setFields([divFld], z, 'centers')
 
     # Conditional clean up of partial derivatives
