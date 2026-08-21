@@ -885,6 +885,23 @@ def _deleteSolverNodes__(a):
     Internal._rmNodesByType(a, 'ZoneSubRegion_t') # Sonics
     return None
 
+# -- deleteEmptyBases
+def deleteEmptyBases(t):
+    """Delete bases that do not contain a single zone."""
+    tp = Internal.copyRef(t)
+    _deleteEmptyBases(tp)
+    return tp
+
+def _deleteEmptyBases(t):
+    emptyBaseNames = []
+    bases = Internal.getBases(t)
+    for b in bases:
+        zones = Internal.getZones(b)
+        if not zones: emptyBaseNames.append(b[0])
+    for name in emptyBaseNames:
+        Internal._rmNodesByNameAndType(t, name, "CGNSBase_t")
+    return None
+
 # -- deleteEmptyZones
 # Supprime les zones ayant un nombre de noeuds ou d'elements
 # nul (non structure) ou un ni, nj, nk de 0 (structure)
@@ -1099,10 +1116,14 @@ def convertFile2PyTree(fileName, format=None, nptsCurve=20, nptsLine=2,
                 fmt = Internal.getNodeFromName1(CAD, 'format')
                 if fmt is not None: fmt = Internal.getValue(fmt)
                 if file is not None and fmt is not None:
-                    import OCC.PyTree as OCC
-                    import CPlot.Tk as CTK
-                    hook = OCC.readCAD(file, fmt)
-                    CTK.CADHOOK = hook
+                    exists = os.path.exists(file)
+                    if exists:
+                        import OCC.PyTree as OCC
+                        import CPlot.Tk as CTK
+                        hook = OCC.readCAD(file, fmt)
+                        CTK.CADHOOK = hook
+                    else:
+                        print(f"Warning: convertFile2PyTree: CAD file {file} not found.")
             return t
         except:
             if format == 'bin_cgns' or format == 'bin_adf':
@@ -7310,7 +7331,6 @@ def mergeTrees(t1, t2):
     for n in t2[2]:
         if n[3] != 'CGNSBase_t' and n[3] != 'CGNSLibraryVersion_t': nodes.append(n)
 
-    for n in nodes: print(n[0])
     t1p[2] += nodes
 
     return t1p
