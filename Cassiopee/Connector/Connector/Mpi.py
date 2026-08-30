@@ -310,8 +310,11 @@ def exchangeBCMatchData(t, varList):
 # NGON, centered cellN, depth=1
 # BCMatch must be set in t
 #==============================================================================
-def _setHoleInterpolatedPoints(t):
-    """Set cellN=2 around cellN=0."""
+def setHoleInterpolatedPoints(t, cellNName="cellN"):
+    """Set cellN=2. around cellN=0."""
+    if Cmpi.size == 1:
+        return X.setHoleInterpolatedPoints(t, depth=1, cellNName=cellNName,
+                                           loc='centers')
 
     # Compute graph of match
     procDict = Cmpi.getProcDict(t)
@@ -330,14 +333,16 @@ def _setHoleInterpolatedPoints(t):
             GCs = Internal.getNodesFromType2(z, 'GridConnectivity_t')
             for gc in GCs:
                 donor = Internal.getValue(gc)
-                PL = Internal.getBCFaceNode(z, gc)[1] # PointList
-                PLD = Internal.getBCFaceNode(z, gc, donor=True)[1] # PointListDonor
-                fld = Converter.converter.extractBCMatchNG(z, PL, ['cellN'],
-                                                           Internal.__GridCoordinates__,
-                                                           Internal.__FlowSolutionNodes__,
-                                                           Internal.__FlowSolutionCenters__)
+                indR = Internal.getBCFaceNode(z, gc)[1] # PointList
+                indD = Internal.getBCFaceNode(z, gc, donor=True)[1] # PointListDonor
+                fld = Converter.converter.extractBCMatchNG(
+                    z, indR, [cellNName],
+                    Internal.__GridCoordinates__,
+                    Internal.__FlowSolutionNodes__,
+                    Internal.__FlowSolutionCenters__
+                )
                 oppNode = procDict[donor]
-                n = [donor, z[0], fld, PLD.ravel('k')]
+                n = [donor, z[0], fld, indD.ravel('k')]
                 if oppNode not in export: export[oppNode] = [n]
                 else: export[oppNode] += [n]
 
@@ -349,15 +354,17 @@ def _setHoleInterpolatedPoints(t):
     for i in recvDatas:
         for n in recvDatas[i]:
             # donor is supposed to have a unique matching match
-            (donor, source, fld, PLD) = n
+            donor, _, fld, PLD = n
             z = Internal.getNodeFromName2(t, donor)
             zn = z[0]
             dim = Internal.getZoneDim(z)
             if dim[0] == 'Unstructured' and dim[3] == 'NGON':
-                fld1 = Converter.converter.buildBCMatchFieldNG(z, PLD, fld, ['cellN'],
-                                                               Internal.__GridCoordinates__,
-                                                               Internal.__FlowSolutionNodes__,
-                                                               Internal.__FlowSolutionCenters__)
+                fld1 = Converter.converter.buildBCMatchFieldNG(
+                    z, PLD, fld, [cellNName],
+                    Internal.__GridCoordinates__,
+                    Internal.__FlowSolutionNodes__,
+                    Internal.__FlowSolutionCenters__
+                )
             if zn not in indices: indices[zn] = PLD
             else: indices[zn] = numpy.concatenate((indices[zn], PLD))
             if zn not in BCField: BCField[zn] = fld1[1][0].ravel('k')
@@ -365,17 +372,14 @@ def _setHoleInterpolatedPoints(t):
 
     for z in zones:
         zn = z[0]
-        f = C.getField('centers:cellN', z, api=1)[0]
+        f = C.getField(f'centers:{cellNName}', z, api=1)[0]
         if f != []:
-            if zn in indices: inds = indices[zn]
-            else: inds = None
-            if zn in BCField: bcf = BCField[zn]
-            else: bcf = None
-
-            centers = connector.getOversetHolesInterpCellCenters(f, 1, 0, 'cellN', inds, bcf)
+            inds = indices.get(zn, None)
+            bcf = BCField.get(zn, None)
+            centers = connector.getOversetHolesInterpCellCenters(f, 1, 0, cellNName, inds, bcf)
             C.setFields([centers], z, 'centers')
 
-    return None
+    return t
 
 #==============================================================================
 def giveName2Window(p, zname, zopp):
