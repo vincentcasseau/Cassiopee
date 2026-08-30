@@ -31,7 +31,7 @@ if Cmpi.master:
     for i, z in enumerate(zones):
         z[0] = f'zone.{i}'
         Cmpi._setProc(z, i)
-    
+
     C.convertPyTree2File(t, 'out.cgns')
 Cmpi.barrier()
 
