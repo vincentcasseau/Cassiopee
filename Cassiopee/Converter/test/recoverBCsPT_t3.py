@@ -49,6 +49,7 @@ missingBCInfo = []
 C._recoverBCsGeometric(t, BCInfo, removeBC=True,
                        missingBCInfo=missingBCInfo)
 test.testO(missingBCInfo, 3)
+C.convertPyTree2File(t, "out.cgns")
 
 # --- Topologic recoverBCs ---
 """

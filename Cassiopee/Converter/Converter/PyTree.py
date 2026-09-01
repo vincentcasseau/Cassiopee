@@ -4532,6 +4532,7 @@ def _recoverBCsGeometric(t, BCInfo, tol=1.e-11, removeBC=True, missingBCInfo=Non
             zf = T.subzone(z, indicesF, type='faces')
         hook = createHook(zf, 'elementCenters')
 
+        allInvalidIds = []
         for c, bc in enumerate(BCs):
             if bc == []:
                 raise ValueError("_recoverBCsGeometric: boundary is probably ill-defined.")
@@ -4549,6 +4550,7 @@ def _recoverBCsGeometric(t, BCInfo, tol=1.e-11, removeBC=True, missingBCInfo=Non
                     )
                     if storeMissing:
                         invalidIds = invalidIds.astype(Internal.E_NpyInt)
+                        allInvalidIds.append(invalidIds)
                         zu = T.subzone(b, invalidIds, type='elements')
                         missingBCInfo[0].append(zu)
                         missingBCInfo[1].append(BCNames[c])
@@ -4562,6 +4564,8 @@ def _recoverBCsGeometric(t, BCInfo, tol=1.e-11, removeBC=True, missingBCInfo=Non
                     id2[:] = indicesF[ids[:]-1]
                     _addBC2Zone(z, BCNames[c], BCTypes[c], faceList=id2)
                 else:
+                    print(b)
+                    exit()
                     _addBC2Zone(z, BCNames[c], BCTypes[c], subzone=b)
 
                 # Recover BCDataSets
@@ -4583,6 +4587,32 @@ def _recoverBCsGeometric(t, BCInfo, tol=1.e-11, removeBC=True, missingBCInfo=Non
                             Internal._createUniqueChild(d, node[0], 'DataArray_t', value=val1)
 
         freeHook(hook)
+
+        # Update boundary 
+        if allInvalidIds:
+            allInvalidIds = numpy.concatenate(allInvalidIds)
+            if dim[3] == 'NGON':
+                pass
+            else:
+                # Determine which boundary connectivity each face belongs to
+                belts = Internal.getElementBoundaryNodes(z)
+                ers = Internal.getNodesFromName1(belts, "ElementRange")
+                print(ers)
+                offsets = sorted(er[1][0] for er in ers)
+                print(offsets)
+                becIdx = numpy.searchsorted(offsets[1:], allInvalidIds, side="right")
+                print(becIdx)
+                # exit()
+                # new_conns = []
+
+                # for i, conn in enumerate(conns):
+                #     deleted = to_delete[conn_idx == i]
+
+                #     if deleted.size:
+                #         conn = np.delete(conn, deleted - offsets[i], axis=0)
+
+                #     new_conns.append(conn)
+                # new_offsets = np.r_[0, np.cumsum([len(c) for c in new_conns])]
     return None
 
 def _recoverBCsTopologic(t, BCInfo, removeBC=True, indices=None, missingBCInfo=None):
