@@ -4588,7 +4588,7 @@ def _recoverBCsGeometric(t, BCInfo, tol=1.e-11, removeBC=True, missingBCInfo=Non
 
         freeHook(hook)
 
-        # Update boundary 
+        # Update boundary
         if allInvalidIds:
             allInvalidIds = numpy.concatenate(allInvalidIds)
             if dim[3] == 'NGON':
