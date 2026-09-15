@@ -120,8 +120,8 @@ def createDragonMesh0(body, dictOfParams={}, check=False, directory_tmp_files='.
 
     # on travaille sur des geometries triangulees
     body = C.deleteFlowSolutions__(body)
-    body = C.convertArray2Tetra(body)
-    body = T.join(body); body = G.close(body)
+    body = C.convertArray2Tetra(body); G._close(body)
+    body = T.join(body)
     T._reorderAll(body, dir=1)
 
     XMax_surf = C.getMaxValue(body, 'CoordinateX')
@@ -340,7 +340,6 @@ def createDragonMesh0(body, dictOfParams={}, check=False, directory_tmp_files='.
     Internal._rmNodesByName(t, 'FlowSolution*')
     if check: C.convertPyTree2File(t, directory_tmp_files+'tmp.cgns')
     m = T.join(m, t)
-    G._close(m)
     #print(Internal.getZoneDim(m))
 
     m = XOR.closeCells(m)

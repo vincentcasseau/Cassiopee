@@ -1383,7 +1383,6 @@ def getJoinInfo__(join, jointype, dimZone, nodesRef, d):
 #                    zdonor = Internal.getNodeFromName2(t, donor)
 #                    layer = getLayer(zdonor, faceList)
 #                    zp = T.join(zp, layer)
-#                    zp = G.close(zp)
 #                b[2][c] = zp
 #            c += 1
 #    zones = Internal.getZones(tpp)
@@ -1686,7 +1685,6 @@ def addGhostCellsP(t, dims_woghost, list_elts, mask_elts, xyz0, no_layer):
                     # print'mask: zone= ',c, 'rac=', c1, 'plage=',  mask_elts[ c ][ c1 ]
 
                     zp = T.join(zp, layer)
-                    zp = G.close(zp)
                     zp[2]+= zgc
                     zp[2]+=[zbc]
                     c1   += 1

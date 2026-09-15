@@ -99,7 +99,6 @@ def prepareAMRData(t_case, t, IBM_parameters=None, check=False, dim=3, localDir=
 
     tb2_pre = Internal.copyTree(tb2)
     #tb2_pre = T.join(tb2)
-    #tb2_pre = G.close(tb2_pre)
     #tb2_pre = C.newPyTree(["unstr", tb2_pre])
 
     # Distance to IBCs (all IBCs)
@@ -210,7 +209,6 @@ def prepareAMRData(t_case, t, IBM_parameters=None, check=False, dim=3, localDir=
     frontIP_gath = Cmpi.allgatherZones(frontIP)
     frontIP_gath = C.newPyTree(["frontIP", frontIP_gath])
     frontIP_gath = T.join(frontIP_gath)
-    frontIP_gath = G.close(frontIP_gath)
     for node in Internal.getNodesFromType(frontIP_gath, "Elements_t"):
         if node[0] != "GridElements": Internal._rmNode(frontIP_gath, node)
     Cmpi.trace("Gathering front IP [end]  ", master=True, cpu=False)

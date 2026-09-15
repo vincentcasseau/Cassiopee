@@ -1479,7 +1479,7 @@ def tetraMesher(a, maxh=-1., quality=1.2, grading=1.2, triangulateOnly=0,
     try:
         import Transform as T
         a = C.convertArray2Tetra(a)
-        a = T.join(a); a = close(a)
+        a = T.join(a)
     except: pass
     import math
     if a[3] == 'BAR':
@@ -1644,7 +1644,7 @@ def refinedSharpEdges__(surfaces, step, angle):
         import Transform as T; from . import Generator as G
     except:
         raise ImportError("snapSharpEdges: requires Post, Geom, Converter, Transform module.")
-    b = C.convertArray2Tetra(surfaces); b = T.join(b); b = close(b)
+    b = C.convertArray2Tetra(surfaces); b = T.join(b)
 
     # dimension of surfaces: 1D or 2D
     dim = 2
@@ -1700,7 +1700,6 @@ def refinedSharpEdges__(surfaces, step, angle):
     if ncontours != []:
         contours =  C.convertArray2Tetra(ncontours)
         contours = T.join(contours)
-        contours = G.close(contours)
     if corners != []: corners = T.join(corners)
     return [b, contours, corners]
 
@@ -2037,8 +2036,8 @@ def addNormalLayersStruct__(surfaces, distrib, check=0, niterType=0, niter=0, ni
         if surfs[4] != 1: raise ValueError("addNormalLayers: structured surface must be k=1.")
         if surfs[3] == 1: surfaces[nos] = T.addkplane(surfs)
 
-    surfu = C.convertArray2Hexa(surfaces)
-    surfu = T.join(surfu); surfu = close(surfu)
+    surfu = C.convertArray2Hexa(surfaces); surfu = close(surfu)
+    surfu = T.join(surfu)
     surfu = T.reorder(surfu, (1,))
     listOfIndices = KCore.indiceStruct2Unstr2(surfaces, surfu, 1.e-14)
 
@@ -2242,8 +2241,8 @@ def addNormalLayersUnstr__(surface, distrib, check=0, niterType=0, niter=0, nite
     try: import Transform as T; import KCore
     except: raise ImportError("addNormalLayers: requires Converter, Transform modules.")
     if isinstance(surface[0], list): surf = T.join(surface)
-    else: surf = surface
-    surf = close(surf); surf = T.reorder(surf, (1,))
+    else: surf = surface; surf = close(surf)
+    surf = T.reorder(surf, (1,))
     kmax = distrib[1].shape[1] # nb of layers in the normal direction
 
     if kmax < 2: raise ValueError("addNormalLayers: distribution must contain at least 2 points.")

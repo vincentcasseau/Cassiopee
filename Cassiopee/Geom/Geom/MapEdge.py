@@ -115,7 +115,6 @@ def refine__(a, N, factor, sharpAngle):
     else:
         out = C.convertArray2Hexa(out)
         b = T.join(out)
-        b = G.close(b)
     return b
 
 # -- converti une chaine en range (a Structure seulement)

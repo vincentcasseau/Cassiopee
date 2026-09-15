@@ -351,7 +351,7 @@ def extractIBMWallFields(tc, tb=None, coordRef='wall', famZones=[], IBCNames="IB
                 zones = Internal.getNodesFromType1(b, 'Zone_t')
                 if zones != []:
                     zones = C.convertArray2Tetra(zones)
-                    zones = T.join(zones); zones = G.close(zones)
+                    zones = T.join(zones)
                     b[2] = [zones]
 
         if extractIBMInfo:

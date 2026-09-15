@@ -26,7 +26,6 @@ def buildExtension__(c, surfaces, dh, niter=0):
     for nos in range(len(surfaces)):
         if len(surfaces[nos]) == 5: surfaces[nos] = C.convertArray2Hexa(surfaces[nos])
     surfaces = T.join(surfaces)
-    surfaces = G.close(surfaces)
     normals = G.getSmoothNormalMap(surfaces, niter=niter)
     surfaces2 = C.addVars([surfaces,normals])
     res = P.extractMesh([surfaces2], c)
@@ -68,7 +67,6 @@ def surfaceWalk__(surfaces, c, distrib, constraints, niter,alphaRef, check, told
 
     surfaces = C.convertArray2Tetra(surfaces, split='withBarycenters')
     surfaces = T.join(surfaces)
-    surfaces = G.close(surfaces)
     # 1. Projection ortho du contour sur surfaces
     c2 = T.projectOrtho(c0, [surfaces]); c2 = G.close(c2, tol=toldist)
 
