@@ -16,7 +16,6 @@ test.testA(b, 1)
 a = D.sphere6((0,0,0), 1, N=10)
 a = C.convertArray2Tetra(a)
 a = T.join(a)
-a = G.close(a)
 b = D.sphere6((0,0,0), 1, N=15)
 b = b[0]
 b = C.convertArray2Tetra(b)

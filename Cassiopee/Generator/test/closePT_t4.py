@@ -18,7 +18,6 @@ C._initVars(b, 'Density', 2.)
 a = C.convertArray2Node(a)
 b = C.convertArray2Node(b)
 a = T.join(a, b)
-G._close(a)
 test.testT(a, 2)
 
 # ME NODE, overlap
@@ -29,5 +28,4 @@ C._initVars(b, 'Density', 2.)
 a = C.convertArray2Node(a)
 b = C.convertArray2Node(b)
 a = T.join(a, b)
-G._close(a)
 test.testT(a, 3)

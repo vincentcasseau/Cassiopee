@@ -59,7 +59,6 @@ for c in contours:
 
 lc = C.convertArray2Tetra(lc)
 s2 = T.join(lc)
-s2 = G.close(s2)
 # Grille cartesienne (reguliere)
 h = 0.02
 ni = 200; nj = 200; nk = 2

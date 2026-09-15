@@ -865,7 +865,7 @@ def detectTopology (BAR1, profileBody, distThreshold, splitSensib,
         else:
             curvesToJoin = [subCurves[i] for i in block]
             mergedCurves.append(T.join(curvesToJoin))
-            print(f"  [Grouping] 🔗 Merged {len(block)} adjacent '{zoneTypes[block[0]]}' zones into one macro-block.")
+            print(f"  [Grouping] Merged {len(block)} adjacent '{zoneTypes[block[0]]}' zones into one macro-block.")
 
         mergedProt.append(isProtList[block[0]])
         mergedTypes.append(zoneTypes[block[0]])
