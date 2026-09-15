@@ -46,5 +46,4 @@ def wall(line,Bx,By,Bz,nlayers=1,chamfer=-1., shrink=1.):
                 bricks.append(bx2)
         posZ += Bz
     o = T.join(bricks)
-    o = G.close(o)
     return o

@@ -28,7 +28,6 @@ def panel(text="Hello", scale=0.1, h=1.):
     poteau = Cylinders.cylinder(R1=0.75*dt,R2=0.75*dt,h=h)
     poteau = T.translate(poteau, (bb[0]+dx*0.5,bb[1]+dy*0.5,bb[2]-h))
     o = T.join([t,box1,poteau])
-    o = G.close(o)
     return o
 
 #==============================================================================

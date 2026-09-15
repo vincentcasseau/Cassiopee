@@ -21,5 +21,4 @@ def leave(w=1., h=2., N=10):
     b = G.gapfixer(c, pl)
     b2 = T.symmetrize(b, (0,0,0), (0,1,0), (0,0,1))
     o = T.join([b,b2])
-    o = G.close(o)
     return o
