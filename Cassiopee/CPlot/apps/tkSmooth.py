@@ -98,7 +98,7 @@ def smooth():
     # Mesh unique
     try:
         A = C.convertArray2Tetra(zones)
-        A = T.join(A); A = G.close(A)
+        A = T.join(A)
     except Exception as e:
         Panels.displayErrors([0,str(e)], header='Error: smooth')
         CTK.TXT.insert('START', 'Some zones are invalid for smoothing.\n')

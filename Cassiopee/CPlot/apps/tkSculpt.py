@@ -33,7 +33,6 @@ def createTools():
     t3 = D.triangle(P0,P3,P4)
     t4 = D.triangle(P0,P4,P1)
     t = T.join([t1,t2,t3,t4])
-    t = G.close(t)
     TOOLS.append(t)
     # biseau horizontal
     P0 = (0,-1,0)
@@ -47,7 +46,6 @@ def createTools():
     t3 = D.triangle(P0,P3,P4)
     t4 = D.triangle(P0,P4,P1)
     t = T.join([t1,t2,t3,t4])
-    t = G.close(t)
     # biseau vertical
     # pointe spherique
     return TOOLS

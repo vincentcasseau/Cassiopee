@@ -84,7 +84,6 @@ def fixGap():
     p = G.plaster(contours, surfaces)
     contours = C.convertArray2Tetra(contours)
     contours = T.join(contours)
-    contours = G.close(contours)
     b = G.gapfixer(contours, p)
     CTK.saveTree()
     CTK.t[2][1][2].append(b)

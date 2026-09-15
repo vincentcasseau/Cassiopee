@@ -23,7 +23,7 @@ WIDGETS = {}; VARS = []
 #==============================================================================
 def getIBCFrontForZone__(a):
     f0 =  P.selectCells(a, '{centers:cellN} == 2.')
-    f0 = T.join(f0); f0 = G.close(f0)
+    f0 = T.join(f0)
 
     # recuperation des champs en centres perdus par selectCells
     a2 = C.initVars(a, 'centers:cellN', 1.)

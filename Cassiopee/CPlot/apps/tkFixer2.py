@@ -42,7 +42,6 @@ def fixGap():
 
     contours = C.convertArray2Tetra(contours)
     contours = T.join(contours)
-    contours = G.close(contours)
     contours = T.splitManifold(contours)
 
     fail = False; out = []

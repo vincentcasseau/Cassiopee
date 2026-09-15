@@ -240,7 +240,6 @@ def splitTBranches():
         zones.append(z)
 
     a = T.join(zones)
-    a = G.close(a)
     try:
         splits = T.splitTBranches(a, tol)
         if structured == 1: splits = C.convertBAR2Struct(splits)

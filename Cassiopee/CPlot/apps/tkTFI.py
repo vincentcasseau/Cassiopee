@@ -166,7 +166,7 @@ def OTFI():
         z = CTK.t[2][nob][2][noz]
         z = C.convertArray2Hexa(z)
         zones.append(z)
-    zones = T.join(zones); zones = G.close(zones)
+    zones = T.join(zones)
     a = C.convertBAR2Struct(z)
 
     weight = CTK.varsFromWidget(VARS[1].get(), type=1); weight = weight[0]

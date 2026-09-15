@@ -141,7 +141,6 @@ def orbite():
                 path.append(C.convertArray2Tetra(p))
         if path == []: return
         path = T.join(path)
-        path = G.close(path)
         path = C.convertBAR2Struct(path)
         dim = Internal.getZoneDim(path)
         N = dim[1]
