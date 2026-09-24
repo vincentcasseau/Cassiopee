@@ -108,7 +108,12 @@ PyObject* K_POST::selectCells(PyObject* self, PyObject* args)
     RELEASESHAREDB(res2, tag, f2, cnp2);
     return NULL;
   }
-  if (f->getSize() != f2->getSize())
+
+  E_Int api = f->getApi();
+  E_Int nfld = f->getNfld();
+  E_int npts = f->getSize();
+
+  if (npts != f2->getSize())
   {
     RELEASESHAREDB(res, arrayNodes, f, cnp);
     RELEASESHAREDB(res2, tag, f2, cnp2);
@@ -137,262 +142,284 @@ PyObject* K_POST::selectCells(PyObject* self, PyObject* args)
   }
 
   E_Float oneEps = 1.-1.e-10;
-  E_Int vertex;
   // no check of coordinates
   E_Int posx = K_ARRAY::isCoordinateXPresent(varString); posx++;
   E_Int posy = K_ARRAY::isCoordinateYPresent(varString); posy++;
   E_Int posz = K_ARRAY::isCoordinateZPresent(varString); posz++;
-  if (res == 1) // Create connectivity cnp (HEXA or QUAD)
+
+  PyObject* tpltmp;
+  FldArrayF* ftmp; FldArrayI* cntmp;
+
+  if (res == 1)
   {
-    E_Int dim0 = 3;
-    if (ni == 1 || nj == 1 || nk == 1) dim0 = 2;
-    if (nj == 1 && nk == 1) dim0 = 1;
-    else if (ni == 1 && nk == 1) dim0 = 1;
-    else if (ni == 1 && nj == 1) dim0 = 1;
-    eltType = new char [128];
+    // Create BE connectivity
+    E_Int dim0 = 0;
+    if (ni > 1) dim0 += 1;
+    if (nj > 1) dim0 += 1;
+    if (nk > 1) dim0 += 1;
+    eltType = new char [K_ARRAY::VARSTRINGLENGTH];
     if (dim0 == 3) strcpy(eltType, "HEXA");
     else if (dim0 == 2) strcpy(eltType, "QUAD");
     else strcpy(eltType, "BAR");
-    E_Int ni1 = E_max(1, E_Int(ni)-1);
-    E_Int nj1 = E_max(1, E_Int(nj)-1);
-    E_Int nk1 = E_max(1, E_Int(nk)-1);
+
+    E_Int ni1 = K_FUNC::E_max(1, ni-1);
+    E_Int nj1 = K_FUNC::E_max(1, nj-1);
+    E_Int nk1 = K_FUNC::E_max(1, nk-1);
     E_Int ninj = ni*nj;
     E_Int ncells = ni1*nj1*nk1; // nb de cellules structurees
-    cnp = new FldArrayI();
-    FldArrayI& cn = *cnp;
-    E_Int nelts; // nb d'elements non structures
-    
-    switch (dim0)
+
+    tpltmp = K_ARRAY::buildArray3(nfld, varString, npts,
+                                  ncells, eltType, false, api);
+    K_ARRAY::getFromArray3(tpltmp, ftmp, cntmp);
+    FldArrayI& cm = *(cntmp->getConnect(0));
+
+    if (dim0 == 1)
     {
-      case 1:
+      E_Int ind1, ind2;
+      if (nk1 == 1 && nj1 == 1)
       {
-        nelts = ncells;
-        cn.malloc(nelts, 2);
-        E_Int* cn1 = cn.begin(1);
-        E_Int* cn2 = cn.begin(2);
-        E_Int ind1, ind2;
-        if (nk1 == 1 && nj1 == 1)
+        for (E_Int i = 0; i < ni1; i++)
         {
+          ind1 = i + 1;
+          ind2 = ind1 + 1;
+          cm(i,1) = ind1; cm(i,2) = ind2;
+        }
+      }
+      else if (ni1 == 1 && nj1 == 1)
+      {
+        for (E_Int k = 0; k < nk1; k++)
+        {
+          ind1 = k*ni*nj + 1;
+          ind2 = ind1 + ni*nj;
+          cm(k,1) = ind1; cm(k,2) = ind2;
+        }
+      }
+      else  // ni1 == 1 && nk1 == 1
+      {
+        for (E_Int j = 0; j < nj1; j++)
+        {
+          ind1 = j*ni + 1;
+          ind2 = ind1 + ni;
+          cm(j,1) = ind1; cm(j,2) = ind2;
+        }
+      }
+    }
+    else (dim0 == 2)
+    {
+      if (nk1 == 1)
+      {
+        #pragma omp parallel if (nj1 > __MIN_SIZE_MEAN__)
+        {
+          E_Int c, ind1, ind2, ind3, ind4;
+          #pragma omp for collapse(2)
+          for (E_Int j = 0; j < nj1; j++)
           for (E_Int i = 0; i < ni1; i++)
           {
-            ind1 = i + 1;
-            ind2 = ind1 + 1;
-            cn1[i] = ind1; cn2[i] = ind2;
+            ind1 = i + j*ni + 1; // (i,j,1)
+            ind2 = ind1 + 1;     // (i+1,j,1)
+            ind3 = ind2 + ni;    // (i+1,j+1,1)
+            ind4 = ind3 - 1;     // (i,j+1,1)
+            c = i + j*ni1;
+            cm(c,1) = ind1; cm(c,2) = ind2;
+            cm(c,3) = ind3; cm(c,4) = ind4;
           }
         }
-        else if (ni1 == 1 && nj1 == 1)
+      }
+      else if (nj1 == 1)
+      {
+        #pragma omp parallel if (nk1 > __MIN_SIZE_MEAN__)
         {
+          E_Int c, ind1, ind2, ind3, ind4;
+          #pragma omp for collapse(2)
           for (E_Int k = 0; k < nk1; k++)
+          for (E_Int i = 0; i < ni1; i++)
           {
-            ind1 = k*ni*nj + 1;
-            ind2 = ind1 + ni*nj;
-            cn1[k] = ind1; cn2[k] = ind2;
+            ind1 = i + k*ninj + 1;  // (i,1,k)
+            ind2 = ind1 + ninj;     // (i,1,k+1)
+            ind3 = ind2 + 1;        // (i+1,1,k+1)
+            ind4 = ind3 - 1;        // (i,1,k+1)
+            c = i + k*ni1;
+            cm(c,1) = ind1; cm(c,2) = ind2;
+            cm(c,3) = ind3; cm(c,4) = ind4;      
           }
         }
-        else if (ni1 == 1 && nk1 == 1)
+      }
+      else // i1 = 1 
+      {
+        #pragma omp parallel if (nk1 > __MIN_SIZE_MEAN__)
         {
+          E_Int c, ind1, ind2, ind3, ind4;
+          #pragma omp for collapse(2)
+          for (E_Int k = 0; k < nk1; k++)
           for (E_Int j = 0; j < nj1; j++)
           {
-            ind1 = j*ni + 1;
-            ind2 = ind1 + ni;
-            cn1[j] = ind1; cn2[j] = ind2;
+            ind1 = 1 + j*ni + k*ninj; // (1,j,k)
+            ind2 = ind1 + ni;         // (1,j+1,k)
+            ind3 = ind2 + ninj;       // (1,j+1,k+1)
+            ind4 = ind3 - ni;         // (1,j,k+1)
+            c = j+k*nj1;
+            cm(c,1) = ind1; cm(c,2) = ind2;
+            cm(c,3) = ind3; cm(c,4) = ind4;
           }
         }
       }
-      break;
-    
-      case 2:
+    }
+    else  // dim0 = 3
+    {
+      #pragma omp parallel if (nk1 > __MIN_SIZE_MEAN__)
       {
-        nelts = ncells;
-        cn.malloc(nelts, 4);
-        E_Int* cn1 = cn.begin(1);
-        E_Int* cn2 = cn.begin(2);
-        E_Int* cn3 = cn.begin(3);
-        E_Int* cn4 = cn.begin(4);
-
-        if (nk1 == 1)
+        E_Int c, ind1, ind2, ind3, ind4, ind5, ind6, ind7, ind8;
+        #pragma omp for collapse(3)
+        for (E_Int k = 0; k < nk1; k++)
+        for (E_Int j = 0; j < nj1; j++)
+        for (E_Int i = 0; i < ni1; i++)
         {
-#pragma omp parallel default(shared) if (nj1 > __MIN_SIZE_MEAN__)
-          {
-            E_Int ind, ind1, ind2, ind3, ind4;
-#pragma omp for
-            for (E_Int j = 0; j < nj1; j++)
-              for (E_Int i = 0; i < ni1; i++)
-              {
-                //starts from 1
-                ind1 = i + j*ni + 1; //(i,j,1)
-                ind2 = ind1 + 1;  //(i+1,j,1)
-                ind3 = ind2 + ni; //(i+1,j+1,1)
-                ind4 = ind3 - 1;  //(i,j+1,1)
-                ind = i + j*ni1;
-                cn1[ind] = ind1; cn2[ind] = ind2;
-                cn3[ind] = ind3; cn4[ind] = ind4;
-              }
-          }
+          ind1 = 1 + i + j*ni + k*ninj; // A(  i,  j,k)
+          ind2 = ind1 + 1;              // B(i+1,  j,k)
+          ind3 = ind2 + ni;             // C(i+1,j+1,k)
+          ind4 = ind3 - 1;              // D(  i,j+1,k)
+          ind5 = ind1 + ninj;           // E(  i,  j,k+1)
+          ind6 = ind2 + ninj;           // F(i+1,  j,k+1)
+          ind7 = ind3 + ninj;           // G(i+1,j+1,k+1)
+          ind8 = ind4 + ninj;           // H(  i,j+1,k+1) 
+          c = i+j*ni1+k*ni1*nj1;
+          cm(c,1) = ind1; cm(c,2) = ind2;
+          cm(c,3) = ind3; cm(c,4) = ind4;
+          cm(c,5) = ind5; cm(c,6) = ind6;
+          cm(c,7) = ind7; cm(c,8) = ind8;
         }
-        else if (nj1 == 1)
-        {
-#pragma omp parallel default(shared) if (nk1 > __MIN_SIZE_MEAN__)
-          {
-            E_Int ind, ind1, ind2, ind3, ind4;
-#pragma omp for
-            for (E_Int k = 0; k < nk1; k++)
-              for (E_Int i = 0; i < ni1; i++)
-              {
-                ind1 = i + k*ninj + 1;  //(i,1,k)
-                ind2 = ind1 + ninj; //(i,1,k+1)
-                ind3 = ind2 + 1;    //(i+1,1,k+1)
-                ind4 = ind3 - 1;    //(i,1,k+1)
-                ind = i + k*ni1;
-                cn1[ind] = ind1; cn2[ind] = ind2;
-                cn3[ind] = ind3; cn4[ind] = ind4;      
-              }
-          }
-        }
-        else // i1 = 1 
-        {
-#pragma omp parallel default(shared) if (nk1 > __MIN_SIZE_MEAN__)
-          {
-            E_Int ind, ind1, ind2, ind3, ind4;
-#pragma omp for   
-            for (E_Int k = 0; k < nk1; k++)
-              for (E_Int j = 0; j < nj1; j++)
-              {
-                ind1 = 1 + j*ni + k*ninj; //(1,j,k)
-                ind2 = ind1 + ni;   //(1,j+1,k)
-                ind3 = ind2 + ninj; //(1,j+1,k+1)
-                ind4 = ind3 - ni;   //(1,j,k+1)
-                ind = j+k*nj1;
-                cn1[ind] = ind1; cn2[ind] = ind2;
-                cn3[ind] = ind3; cn4[ind] = ind4;
-              }
-          }
-        }// i1 = 1
       }
-      break;
-
-      case 3:
-      { 
-        nelts = ncells;
-        cn.malloc(nelts,8);
-        E_Int* cn1 = cn.begin(1);
-        E_Int* cn2 = cn.begin(2);
-        E_Int* cn3 = cn.begin(3);
-        E_Int* cn4 = cn.begin(4);
-        E_Int* cn5 = cn.begin(5);
-        E_Int* cn6 = cn.begin(6);
-        E_Int* cn7 = cn.begin(7);
-        E_Int* cn8 = cn.begin(8);
-#pragma omp parallel default(shared) if (nk1 > __MIN_SIZE_MEAN__)
-        {
-          E_Int ind, ind1, ind2, ind3, ind4, ind5, ind6, ind7, ind8;
-#pragma omp for
-            for (E_Int k = 0; k < nk1; k++)
-              for (E_Int j = 0; j < nj1; j++)
-                for (E_Int i = 0; i < ni1; i++)
-                {
-                  ind1 = 1 + i + j*ni + k*ninj; //A(  i,  j,k)
-                  ind2 = ind1 + 1;              //B(i+1,  j,k)
-                  ind3 = ind2 + ni;            //C(i+1,j+1,k)
-                  ind4 = ind3 - 1;              //D(  i,j+1,k)
-                  ind5 = ind1 + ninj;           //E(  i,  j,k+1)
-                  ind6 = ind2 + ninj;           //F(i+1,  j,k+1)
-                  ind7 = ind3 + ninj;           //G(i+1,j+1,k+1)
-                  ind8 = ind4 + ninj;           //H(  i,j+1,k+1) 
-                  ind = i+j*ni1+k*ni1*nj1;
-                  cn1[ind] = ind1; cn2[ind] = ind2;
-                  cn3[ind] = ind3; cn4[ind] = ind4;
-                  cn5[ind] = ind5; cn6[ind] = ind6;
-                  cn7[ind] = ind7; cn8[ind] = ind8;
-                }
-          }
-      }
-      break;
     }
   }
 
-  PyObject* l = PyList_New(0);
-
   // Infos sur le type d'element
-  E_Int isNGon = 1; E_Int isNode = 1;
-  isNGon = strcmp(eltType, "NGON"); // vaut 0 si l'elmt est un NGON
-  isNode = strcmp(eltType, "NODE"); // vaut 0 si l'elmt est un NODE
-    
+  E_Int isNGon = K_STRING::cmp(eltType, "NGON"); // vaut 0 si l'elmt est un NGON
+  E_Int isNode = K_STRING::cmp(eltType, "NODE"); // vaut 0 si l'elmt est un NODE
+
   // Selection
+  PyObject* l = PyList_New(0);
   PyObject* tpln;
   PyObject* tplc = NULL;
-  E_Int api = f->getApi();
-  if (isNGon != 0 && isNode != 0) // tous les elements sauf NGON et NODE
+
+  if (isNGon != 0 && isNode != 0)  // BE / ME but NODE
   {
-    E_Int nfld = f->getNfld();
-    E_Int nt = cnp->getNfld();
-    E_Int csize = cnp->getSize();
+    E_Int indv, nvpe, nelts, ii;
+    E_Int nc = cnp->getNConnect();
+
+    E_Int ntotElts = 0, offE = 0;
+    for (E_Int ic = 0; ic < nc; ic++)
+    {
+      FldArray& cm = *(cnp->getConnect(ic));
+      ntotElts += cm.getSize();
+    }
+    
     FldArrayF* an = new FldArrayF();
     FldArrayF& coord = *an;
     FldArrayI* acn = new FldArrayI();
     FldArrayI& cn = *acn;
 
     // Selection des vertex
-    FldArrayI selected(f->getSize(), 2);
-    selected.setAllValuesAtNull();
-    E_Int* selected1 = selected.begin(1);
-    E_Int* selected2 = selected.begin(2);
+    std::vector<E_Int> vindir(npts, 0);
+    std::vector<E_Int> eindir;
+    if (arrayCenters != NULL) eindir.resize(ntotElts, 0);
     E_Float* tagp = f2->begin();
     E_Int isSel = 0;
 
     // Selection des champs aux centres 
     FldArrayF* foutC = NULL;
     if (arrayCenters != NULL) foutC = new FldArrayF(*fC);
-    E_Int ii = 0;
    
-    if (strict == 0) // cell selectionnee des qu'un sommet est tag=1
+    // In a first pass, tag vertex indices and cell indices
+    if (strict == 0)  // cell selected if one vertex is tagged with 1
     {
-      for (E_Int i = 0; i < csize; i++)
+      for (E_Int ic = 0; ic < nc; ic++)
       {
-        for (E_Int nv = 1; nv <= nt; nv++)
+        FldArray& cm = *(cnp->getConnect(ic));
+        nvpe = cm.getNfld();
+        nelts = cm.getSize();
+
+        for (E_Int i = 0; i < nelts; i++)
         {
-          vertex = (*cnp)(i, nv);
-          if (tagp[vertex-1] >= oneEps) 
-          {  
-            for (E_Int nv = 1; nv <= nt; nv++)
-            {
-              vertex = (*cnp)(i, nv);
-              selected1[vertex-1] = 1;
+          for (E_Int j = 1; j <= nvpe; j++)
+          {
+            indv = cm(i,j) - 1;
+            if (tagp[indv] >= oneEps) 
+            {  
+              // cell selected, tag all other vertices
+              for (E_Int j = 1; j <= nvpe; j++)
+              {
+                indv = cm(i,j) - 1;
+                vindir[indv] = 1;
+              }
+              // champs en centres
+              if (arrayCenters != NULL) eindir[i+offE] = 1;
             }
-	          // champs en centres
-            for (E_Int k = 1; k <= nfldC; k++) (*foutC)(ii,k) = (*fC)(i,k);
-            ii++;
-            break; 
           }
         }
+        offE += nelts;
       }
     }
-    else // cell selectionnee si tous les sommets sont tag=1
+    else  // cell selected if all vertices are tagged with 1
     {
-      for (E_Int i = 0; i < csize; i++)
+      for (E_Int ic = 0; ic < nc; ic++)
       {
-        isSel = 0;
-        for (E_Int nv = 1; nv <= nt; nv++)
+        FldArray& cm = *(cnp->getConnect(ic));
+        nvpe = cm.getNfld();
+        nelts = cm.getSize();
+
+        for (E_Int i = 0; i < nelts; i++)
         {
-          vertex = (*cnp)(i, nv);
-          if (tagp[vertex-1] >= oneEps) isSel++;
-        }
-        if (isSel == nt)
-        {
-          for (E_Int nv = 1; nv <= nt; nv++)
+          isSel = 0;
+          for (E_Int j = 1; j <= nvpe; j++)
           {
-            vertex = (*cnp)(i, nv);
-            selected1[vertex-1] = 1;
+            indv = cm(i,j) - 1;
+            if (tagp[indv] >= oneEps) isSel++;
+            else break;
           }
-	       // champs en centres
-	       for (E_Int k = 1; k <= nfldC; k++) (*foutC)(ii,k) = (*fC)(i,k); 
-	       ii++;
+          if (isSel == nvpe)  // cell selected, tag all vertices
+          {
+            for (E_Int j = 1; j <= nvpe; j++)
+            {
+              indv = cm(i,j) - 1;
+              vindir[indv] = 1;
+            }
+            // champs en centres
+            if (arrayCenters != NULL) eindir[i+offE] = 1;
+          }
         }
-      }    
+        offE += nelts;
+      }
     }
 
     // Tableau des champs en centre
     if (foutC != NULL) foutC->reAllocMat(ii, nfldC);
+
+    // Transform the vertex mask of zeros and ones into a vertex map from old to
+    // new connectivities, and get the number of unique vertices, npts2
+    E_Int npts2 = K_CONNECT::prefixSum(vindir);
+
+    // Build new ME connectivity
+    PyObject* tpl = K_ARRAY::buildArray3(nfld, varString, npts2,
+                                         0, "NODE", false, api);
+    FldArrayF* f2;
+    K_ARRAY::getFromArray3(tpl, f2);
+
+    #pragma omp parallel
+    {
+      E_Int indv;
+      // Copy fields
+      for (E_Int n = 1; n <= nfld; n++)
+      {
+        E_Float* fp = f.begin(n);
+        E_Float* f2p = f2->begin(n);
+        #pragma omp for nowait
+        for (E_Int i = 0; i < npts; i++)
+        {
+          indv = vindir[i];
+          if (indv > 0) f2p[indv-1] = fp[i];
+        }
+      }
+    }
 
     E_Int cprev = 0;
     selected2[0] = cprev;
@@ -412,33 +439,30 @@ PyObject* K_POST::selectCells(PyObject* self, PyObject* args)
       E_Float* coordp = coord.begin(n);
       E_Float* fp = f->begin(n);
       cprev = 0;
-      for (E_Int i = 0; i < f->getSize(); i++)
+      for (E_Int i = 0; i < npts; i++)
       {
-        if (selected1[i] == 1)
-        {
-          coordp[cprev] = fp[i]; cprev++;
-        }
+        if (selected1[i] == 1) { coordp[cprev] = fp[i]; cprev++; }
       }
     }
   
     // Tableau des connectivites
-    cn.malloc(csize, nt);
+    cn.malloc(csize, nvpe);
   
     cprev = 0;
     E_Int p;
     for (E_Int i = 0; i < csize; i++)
     {
       p = 1;
-      for (E_Int n = 1; n <= nt; n++)
+      for (E_Int n = 1; n <= nvpe; n++)
       {
         p = p*selected1[(*cnp)(i,n)-1];
       }
       if (p == 1)
       {
-        for (E_Int n = 1; n <= nt; n++)
+        for (E_Int n = 1; n <= nvpe; n++)
         {
-          vertex = (*cnp)(i, n);
-          cn(cprev,n) = selected2[vertex-1]+1;
+          indv = (*cnp)(i, n);
+          cn(cprev,n) = selected2[indv-1]+1;
         }
         cprev++;
       }
@@ -447,7 +471,7 @@ PyObject* K_POST::selectCells(PyObject* self, PyObject* args)
     RELEASESHAREDB(res2, tag, f2, cnp2);
     if (res == 1) delete cnp;
    
-    cn.reAllocMat(cprev, nt);
+    cn.reAllocMat(cprev, nvpe);
     if (cprev == 0) an->reAllocMat(0,nfld);
     else 
     {
@@ -461,21 +485,24 @@ PyObject* K_POST::selectCells(PyObject* self, PyObject* args)
       delete foutC;
     }
     delete an; delete acn;
-    if (res == 1) delete[] eltType;
+    if (res == 1)
+    {
+      delete[] eltType;
+      RELEASESHAREDU(tpltmp, ftmp, cntmp);
+    }
   }
   else if (isNode == 0) // NODE
   {
-    E_Int nfld = f->getNfld();
     FldArrayF* an = new FldArrayF();
     FldArrayF& coord = *an;
 
     // Selection des vertex
-    FldArrayI selected(f->getSize(), 2);
+    FldArrayI selected(npts, 2);
     selected.setAllValuesAtNull();
     E_Int* selectedp = selected.begin();
     E_Float* tagp = f2->begin();
     E_Int count = 0;
-    for (E_Int i = 0; i < f->getSize(); i++)
+    for (E_Int i = 0; i < npts; i++)
     {
       if (tagp[i] >= oneEps) { selectedp[i] = 1; count++; }
     }
@@ -488,7 +515,7 @@ PyObject* K_POST::selectCells(PyObject* self, PyObject* args)
       count = 0;
       E_Float* coordn = coord.begin(n);
       E_Float* fn = f->begin(n);
-      for (E_Int i = 0; i < f->getSize(); i++)
+      for (E_Int i = 0; i < npts; i++)
       {
         if (selectedp[i] == 1)
         {
@@ -902,7 +929,7 @@ PyObject* K_POST::selectCells3(PyObject* self, PyObject* args)
 
   delete [] nb; delete [] pos;
   
-  if (flag == 0) { RELEASESHAREDB(res2, tag, f2, cn2); }
-  else { RELEASESHAREDN(tag, f2); }
+  if (flag == 0) RELEASESHAREDB(res2, tag, f2, cn2);
+  else RELEASESHAREDN(tag, f2);
   return o;
 }

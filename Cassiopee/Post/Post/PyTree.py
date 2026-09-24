@@ -483,6 +483,7 @@ def selectCells2(t, tagName, strict=0, cleanConnectivity=True):
     zones = Internal.getZones(tp)
     for z in zones:
         # Get ParentElement node if it exists
+        api = 1
         GEl = Internal.getElementNodes(z)
         NGON = 0; found = False; PE = None
         for c in GEl:
@@ -491,17 +492,19 @@ def selectCells2(t, tagName, strict=0, cleanConnectivity=True):
         if found:
             node = GEl[NGON]
             PE = Internal.getNodeFromName1(node, 'ParentElements')
+        else:
+            api = 1 # TODO
 
         if loc == 0: # noeuds
-            fb = C.getFields(Internal.__FlowSolutionCenters__, z, api=1)[0]
-            taga = C.getFields(Internal.__FlowSolutionNodes__, z, api=1)
+            fb = C.getFields(Internal.__FlowSolutionCenters__, z, api=api)[0]
+            taga = C.getFields(Internal.__FlowSolutionNodes__, z, api=api)
             taga = Converter.extractVars(taga, [tagName])[0]
         else:
-            fb = C.getFields(Internal.__FlowSolutionCenters__, z, api=1)[0]
+            fb = C.getFields(Internal.__FlowSolutionCenters__, z, api=api)[0]
             taga = Converter.extractVars(fb, [res[1]])
 
-        fc = C.getFields(Internal.__GridCoordinates__, z, api=1)[0]
-        fa = C.getFields(Internal.__FlowSolutionNodes__, z, api=1)[0]
+        fc = C.getFields(Internal.__GridCoordinates__, z, api=api)[0]
+        fa = C.getFields(Internal.__FlowSolutionNodes__, z, api=api)[0]
 
         if loc != 0: # centres
             if KCore.isNamePresent(fb,res[1]) > -1:
@@ -521,7 +524,7 @@ def selectCells2(t, tagName, strict=0, cleanConnectivity=True):
 
             else:  # pas de champ en centres
                 if PE is not None:
-                    (PE2, fp) = Post.selectCells2(f, taga, [], strict, loc, PE[1], cleanConnectivity)
+                    PE2, fp = Post.selectCells2(f, taga, [], strict, loc, PE[1], cleanConnectivity)
                 else:
                     fp = Post.selectCells2(f, taga, [], strict, loc, None, cleanConnectivity)
                 Internal._rmNodesFromName(z,Internal.__FlowSolutionCenters__)

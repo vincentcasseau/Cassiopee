@@ -118,30 +118,35 @@ PyObject* K_POST::selectCellCenters(PyObject* self, PyObject* args)
     return NULL;
   }
 
+  E_Int api = f->getApi();
+  E_Int nfld = f->getNfld();
+  E_int npts = f->getSize();
+
   E_Float oneEps = 1.-1.e-10;
   E_Float* tagp = tag->begin();
   // no check of coordinates
   E_Int posx = K_ARRAY::isCoordinateXPresent(varString); posx++;
   E_Int posy = K_ARRAY::isCoordinateYPresent(varString); posy++;
   E_Int posz = K_ARRAY::isCoordinateZPresent(varString); posz++;
-  E_Int api = f->getApi();
-  E_Int nfld = f->getNfld();
-  if (res == 1) // Create connectivity cnp (HEXA or QUAD)
+
+  if (res == 1)
   {
-    E_Int dim0 = 3;
-    if (ni == 1 || nj == 1 || nk == 1) dim0 = 2;
-    if (nj == 1 && nk == 1) dim0 = 1;
-    else if (ni == 1 && nk == 1) dim0 = 1;
-    else if (ni == 1 && nj == 1) dim0 = 1;
-    eltType = new char [128];
+    // Create BE connectivity
+    E_Int dim0 = 0;
+    if (ni > 1) dim0 += 1;
+    if (nj > 1) dim0 += 1;
+    if (nk > 1) dim0 += 1;
+    eltType = new char [K_ARRAY::VARSTRINGLENGTH];
     if (dim0 == 3) strcpy(eltType, "HEXA");
     else if (dim0 == 2) strcpy(eltType, "QUAD");
     else strcpy(eltType, "BAR");
-    E_Int ni1 = E_max(1, E_Int(ni)-1);
-    E_Int nj1 = E_max(1, E_Int(nj)-1);
-    E_Int nk1 = E_max(1, E_Int(nk)-1);
+
+    E_Int ni1 = K_FUNC::E_max(1, ni-1);
+    E_Int nj1 = K_FUNC::E_max(1, nj-1);
+    E_Int nk1 = K_FUNC::E_max(1, nk-1);
     E_Int ninj = ni*nj;
     E_Int ncells = ni1*nj1*nk1; // nb de cellules structurees
+
     if (tag->getSize() != ncells)
     {
       RELEASESHAREDB(res, arrayNodes, f, cnp);
@@ -152,136 +157,138 @@ PyObject* K_POST::selectCellCenters(PyObject* self, PyObject* args)
     }
     cnp = new FldArrayI();
     FldArrayI& cn = *cnp;
-    E_Int nelts; // nb d'elements non structures
-    
-    E_Int ind1, ind2, ind3, ind4, ind5, ind6, ind7, ind8;
-    E_Int c = 0;
     
     if (dim0 == 1)
     {
-      nelts = ncells;
-      cn.malloc(nelts, 2);
-
       if (nj1 == 1 && nk1 == 1)
       {
         for (E_Int i = 0; i < ni1; i++)
         {
-          // starts from 1
-          ind1 = i + 1; //(i,1,1)
-          ind2 = ind1 + 1;  //(i+1,1,1)
-          cn(c,1) = ind1; cn(c,2) = ind2;  
-          c++;
+          ind1 = i + 1;     // (i,1,1)
+          ind2 = ind1 + 1;  // (i+1,1,1)
+          cm(i,1) = ind1; cm(i,2) = ind2;
         }
       }
       else if (ni1 == 1 && nk1 == 1)
       {
         for (E_Int j = 0; j < nj1; j++)
         {
-          ind1 = j*ni + 1;  //(1,j,1)
-          ind2 = ind1 + ni; //(1,j+1,1)
-          cn(c,1) = ind1; cn(c,2) = ind2;
-          c++;         
+          ind1 = j*ni + 1;   // (1,j,1)
+          ind2 = ind1 + ni;  // (1,j+1,1)
+          cm(i,1) = ind1; cm(i,2) = ind2;     
         }
       }
       else
       {
         for (E_Int k = 0; k < nk1; k++)
         {
-          ind1 = 1 + k*ninj; //(1,1,k)
-          ind2 = ind1 + ninj;   //(1,1,k+1)
-          cn(c,1) = ind1; cn(c,2) = ind2;
-          c++;
+          ind1 = 1 + k*ninj;   // (1,1,k)
+          ind2 = ind1 + ninj;  // (1,1,k+1)
+          cm(i,1) = ind1; cm(i,2) = ind2;
         }
       }
     }
     else if (dim0 == 2)
     {
-      nelts = ncells;
-      cn.malloc(nelts, 4);
       if (nk1 == 1)
       {
-        for (E_Int j = 0; j < nj1; j++)
+        #pragma omp parallel if (nj1 > __MIN_SIZE_MEAN__)
+        {
+          E_Int c, ind1, ind2, ind3, ind4;
+          #pragma omp for collapse(2)
+          for (E_Int j = 0; j < nj1; j++)
           for (E_Int i = 0; i < ni1; i++)
           {
-            //starts from 1
-            ind1 = i + j*ni + 1; //(i,j,1)
-            ind2 = ind1 + 1;  //(i+1,j,1)
-            ind3 = ind2 + ni; //(i+1,j+1,1)
-            ind4 = ind3 - 1;  //(i,j+1,1)
-            cn(c,1) = ind1; cn(c,2) = ind2;
-            cn(c,3) = ind3; cn(c,4) = ind4;
-            c++;
+            ind1 = i + j*ni + 1; // (i,j,1)
+            ind2 = ind1 + 1;     // (i+1,j,1)
+            ind3 = ind2 + ni;    // (i+1,j+1,1)
+            ind4 = ind3 - 1;     // (i,j+1,1)
+            c = i + j*ni1;
+            cm(c,1) = ind1; cm(c,2) = ind2;
+            cm(c,3) = ind3; cm(c,4) = ind4;
           }
+        }
       }
       else if (nj1 == 1)
       {
-        for (E_Int k = 0; k < nk1; k++)
+        #pragma omp parallel if (nk1 > __MIN_SIZE_MEAN__)
+        {
+          E_Int c, ind1, ind2, ind3, ind4;
+          #pragma omp for collapse(2)
+          for (E_Int k = 0; k < nk1; k++)
           for (E_Int i = 0; i < ni1; i++)
           {
-            ind1 = i + k*ninj + 1;  //(i,1,k)
-            ind2 = ind1 + ninj; //(i,1,k+1)
-            ind3 = ind2 + 1;    //(i+1,1,k+1)
-            ind4 = ind3 - 1;    //(i,1,k+1)
-            cn(c,1) = ind1; cn(c,2) = ind2;
-            cn(c,3) = ind3; cn(c,4) = ind4;
-            c++;
+            ind1 = i + k*ninj + 1;  // (i,1,k)
+            ind2 = ind1 + ninj;     // (i,1,k+1)
+            ind3 = ind2 + 1;        // (i+1,1,k+1)
+            ind4 = ind3 - 1;        // (i,1,k+1)
+            c = i + k*ni1;
+            cm(c,1) = ind1; cm(c,2) = ind2;
+            cm(c,3) = ind3; cm(c,4) = ind4;
           }
+        }
       }
       else // i1 = 1 
       {
-        for (E_Int k = 0; k < nk1; k++)
+        #pragma omp parallel if (nk1 > __MIN_SIZE_MEAN__)
+        {
+          E_Int c, ind1, ind2, ind3, ind4;
+          #pragma omp for collapse(2)
+          for (E_Int k = 0; k < nk1; k++)
           for (E_Int j = 0; j < nj1; j++)
           {
-            ind1 = 1 + j*ni + k*ninj; //(1,j,k)
-            ind2 = ind1 + ni;   //(1,j+1,k)
-            ind3 = ind2 + ninj; //(1,j+1,k+1)
-            ind4 = ind3 - ni;   //(1,j,k+1)
-            cn(c,1) = ind1; cn(c,2) = ind2;
-            cn(c,3) = ind3; cn(c,4) = ind4;
-            c++;
+            ind1 = 1 + j*ni + k*ninj; // (1,j,k)
+            ind2 = ind1 + ni;         // (1,j+1,k)
+            ind3 = ind2 + ninj;       // (1,j+1,k+1)
+            ind4 = ind3 - ni;         // (1,j,k+1)
+            c = j+k*nj1;
+            cm(c,1) = ind1; cm(c,2) = ind2;
+            cm(c,3) = ind3; cm(c,4) = ind4;
           }
-      }// i1 = 1
-    }//dim 2
+        }
+      }
+    }
     else 
     { 
-      nelts = ncells;
-      cn.malloc(nelts,8);
-      
-      for (E_Int k = 0; k < nk1; k++)
+      #pragma omp parallel if (nk1 > __MIN_SIZE_MEAN__)
+      {
+        E_Int c, ind1, ind2, ind3, ind4, ind5, ind6, ind7, ind8;
+        #pragma omp for collapse(3)
+        for (E_Int k = 0; k < nk1; k++)
         for (E_Int j = 0; j < nj1; j++)
-          for (E_Int i = 0; i < ni1; i++)
-          {
-            ind1 = 1 + i + j*ni + k*ninj; //A(  i,  j,k)
-            ind2 = ind1 + 1;              //B(i+1,  j,k)
-            ind3 = ind2 + ni;             //C(i+1,j+1,k)
-            ind4 = ind3 - 1;              //D(  i,j+1,k)
-            ind5 = ind1 + ninj;           //E(  i,  j,k+1)
-            ind6 = ind2 + ninj;           //F(i+1,  j,k+1)
-            ind7 = ind3 + ninj;           //G(i+1,j+1,k+1)
-            ind8 = ind4 + ninj;           //H(  i,j+1,k+1) 
-            
-            cn(c,1) = ind1; cn(c,2) = ind2;
-            cn(c,3) = ind3; cn(c,4) = ind4;
-            cn(c,5) = ind5; cn(c,6) = ind6;
-            cn(c,7) = ind7; cn(c,8) = ind8;
-            c++;
-          }
-    } //dim = 3
+        for (E_Int i = 0; i < ni1; i++)
+        {
+          ind1 = 1 + i + j*ni + k*ninj; // A(  i,  j,k)
+          ind2 = ind1 + 1;              // B(i+1,  j,k)
+          ind3 = ind2 + ni;             // C(i+1,j+1,k)
+          ind4 = ind3 - 1;              // D(  i,j+1,k)
+          ind5 = ind1 + ninj;           // E(  i,  j,k+1)
+          ind6 = ind2 + ninj;           // F(i+1,  j,k+1)
+          ind7 = ind3 + ninj;           // G(i+1,j+1,k+1)
+          ind8 = ind4 + ninj;           // H(  i,j+1,k+1) 
+          c = = i+j*ni1+k*ni1*nj1;
+          cm(c,1) = ind1; cm(c,2) = ind2;
+          cm(c,3) = ind3; cm(c,4) = ind4;
+          cm(c,5) = ind5; cm(c,6) = ind6;
+          cm(c,7) = ind7; cm(c,8) = ind8;
+        }
+      }
+    }
   }
 
   // Selection
   PyObject* l = PyList_New(0);
-  PyObject* tpln = NULL;
+  PyObject* tpln;
   PyObject* tplc = NULL;
 
-  if (strcmp(eltType, "NGON") != 0) // tous les elements sauf NGON
+  if (K_STRING::cmp(eltType, "NGON") != 0) // tous les elements sauf NGON
   {
     FldArrayF* fout = new FldArrayF(*f);
     FldArrayF* foutC = NULL;
     if (arrayCenters != NULL) foutC = new FldArrayF();
     FldArrayI* acn = new FldArrayI();
     FldArrayI& cn = *acn;
-    E_Int nt = cnp->getNfld();
+    E_Int nvpe = cnp->getNfld();
     E_Int ne = cnp->getSize();
 
     E_Int nthreads = __NUMTHREADS__;
@@ -292,11 +299,11 @@ PyObject* K_POST::selectCellCenters(PyObject* self, PyObject* args)
     E_Int* prev = new E_Int [nthreads];
     for (E_Int i = 0; i < nthreads; i++)
     {
-      ptr[i] = new E_Int [net*nt];
-      ptrF[i] = (nfldC > 0) ? new E_Float[nfldC*net*nt] : NULL;
+      ptr[i] = new E_Int [net*nvpe];
+      ptrF[i] = (nfldC > 0) ? new E_Float[nfldC*net*nvpe] : NULL;
     }
 
-#pragma omp parallel default(shared)
+    #pragma omp parallel default(shared)
     {
       E_Int ithread = __CURRENT_THREAD__;
       nes[ithread] = 0;  
@@ -305,12 +312,12 @@ PyObject* K_POST::selectCellCenters(PyObject* self, PyObject* args)
       E_Int* cnt = ptr[ithread];
       E_Float* ftcenter = ptrF[ithread];
 
-#pragma omp for
+      #pragma omp for
       for (E_Int i = 0; i < ne; i++)
       {
         if (tagp[i] >= oneEps)
         {
-          for (E_Int n = 1; n <= nt; n++)
+          for (E_Int n = 1; n <= nvpe; n++)
           {
             cnt[cprev+(n-1)] = (*cnp)(i,n);
           }
@@ -321,7 +328,7 @@ PyObject* K_POST::selectCellCenters(PyObject* self, PyObject* args)
             E_Float* fcpl = fC->begin(k);
             ftcenter[cprev2+(k-1)] = fcpl[i];
           }
-          cprev += nt; nes[ithread]++;
+          cprev += nvpe; nes[ithread]++;
           cprev2 += nfldC;
         }
       }
@@ -335,10 +342,10 @@ PyObject* K_POST::selectCellCenters(PyObject* self, PyObject* args)
     for (E_Int i = 0; i < nthreads; i++) { prev[i] = nntot; nntot += nes[i]; }
 
     // Compact 
-    cn.malloc(nntot, nt);
+    cn.malloc(nntot, nvpe);
     if (arrayCenters != NULL) foutC->malloc(nntot, nfldC);
 
-#pragma omp parallel default(shared)
+    #pragma omp parallel default(shared)
     {
       E_Int ithread = __CURRENT_THREAD__;
       E_Int* cnt = ptr[ithread];
@@ -346,9 +353,9 @@ PyObject* K_POST::selectCellCenters(PyObject* self, PyObject* args)
       E_Int p = prev[ithread];
       for (E_Int i = 0; i < nes[ithread]; i++)
       {
-        for (E_Int n = 1; n <= nt; n++)
+        for (E_Int n = 1; n <= nvpe; n++)
         {
-          cn(i+p, n) = cnt[i*nt+(n-1)];
+          cn(i+p, n) = cnt[i*nvpe+(n-1)];
         }
 
         for (E_Int k = 1; k <= nfldC; k++)
