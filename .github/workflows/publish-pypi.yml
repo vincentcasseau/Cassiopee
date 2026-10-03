@@ -33,6 +33,7 @@ jobs:
       - name: Build Cassiopee in a Docker container
         run: |
           docker run --rm -v $GITHUB_WORKSPACE/..:/io quay.io/pypa/manylinux2014_x86_64:latest /bin/bash -c "
+              set -e
               export PATH=/opt/python/cp312-cp312/bin:\$PATH
               yum update && yum install -y \
                   gcc \
@@ -67,8 +68,8 @@ jobs:
                   wheel \
                   auditwheel \
                   setuptools \
-                  scons \
-                  numpy
+                  scons
+              pip3 install --only-binary=numpy "numpy<2.3"
               export PATH=/usr/lib64/openmpi/bin:\$PATH
               export LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:\$LD_LIBRARY_PATH
               export CFLAGS="-std=c99"
