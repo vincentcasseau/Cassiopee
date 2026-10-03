@@ -5,6 +5,7 @@ on:
   push:
     tags:
       - 'v*'
+      - '20*.*'
     branches:
       - 'pypi'
 
@@ -14,10 +15,10 @@ jobs:
         
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
            python-version: "3.8"
           
@@ -209,23 +210,23 @@ jobs:
               ls wheelhouse
           "
             
-      # - name: Publish to Test-PyPI
-      #   env:
-      #     TWINE_USERNAME: __token__
-      #     TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
-      #   run: |
-      #     export CASSIOPEE=$GITHUB_WORKSPACE/
-      #     ls $CASSIOPEE/wheels/wheelhouse/
-      #     for kwheel in $(find $CASSIOPEE/wheels/wheelhouse/ -name '*manylinux*.whl'); do
-      #         twine upload --repository-url https://test.pypi.org/legacy/ --verbose $kwheel;
-      #     done
+       - name: Publish to Test-PyPI
+         env:
+           TWINE_USERNAME: __token__
+           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
+         run: |
+           export CASSIOPEE=$GITHUB_WORKSPACE/
+           ls $CASSIOPEE/wheels/wheelhouse/
+           for kwheel in $(find $CASSIOPEE/wheels/wheelhouse/ -name '*manylinux*.whl'); do
+               twine upload --repository-url https://test.pypi.org/legacy/ --verbose $kwheel;
+           done
           
-      - name: Publish to PyPI
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-        run: |
-          export CASSIOPEE=$GITHUB_WORKSPACE
-          for kwheel in $(find $CASSIOPEE/wheels/wheelhouse/ -name '*manylinux*.whl'); do
-              twine upload --verbose $kwheel;
-          done
+      #- name: Publish to PyPI
+      #  env:
+      #    TWINE_USERNAME: __token__
+      #    TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+      #  run: |
+      #    export CASSIOPEE=$GITHUB_WORKSPACE
+      #    for kwheel in $(find $CASSIOPEE/wheels/wheelhouse/ -name '*manylinux*.whl'); do
+      #        twine upload --verbose $kwheel;
+      #    done
