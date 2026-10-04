@@ -6852,7 +6852,7 @@ def center2Node(t, var=None, cellNType=0, useGhost=True, indices=None, BCField=N
                 if ghost is None and useGhost:
                     a = Internal.addGhostCells(t, t, 1, adaptBCs=0, modified=[Internal.__FlowSolutionCenters__])
                 else: a = Internal.copyRef(t)
-                fieldc = getFields(Internal.__FlowSolutionCenters__, a, api=1)
+                fieldc = getFields(Internal.__FlowSolutionCenters__, a, api=3)
                 fieldn = []
                 listVar = []
                 for i in fieldc:
@@ -6866,11 +6866,11 @@ def center2Node(t, var=None, cellNType=0, useGhost=True, indices=None, BCField=N
                 if ghost is None and useGhost:
                     a = Internal.rmGhostCells(a, a, 1, adaptBCs=0,
                                               modified=[listVar, Internal.__FlowSolutionCenters__])
-                fieldsc = getFields(Internal.__FlowSolutionNodes__, a, api=1)
+                fieldsc = getFields(Internal.__FlowSolutionNodes__, a, api=3)
 
         # cleanup
         t = deleteFlowSolutions__(t, 'centers')
-        t = TZA1(t, 'nodes', 'nodes', True, Converter.center2Node, cellNType, None)
+        t = TZA3(t, 'nodes', 'nodes', True, Converter.center2Node, cellNType, None)
         if fieldsc != []: setFields(fieldsc, t, 'centers', writeDim=False)
         return t
 
