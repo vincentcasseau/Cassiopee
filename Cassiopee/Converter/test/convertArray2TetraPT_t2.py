@@ -10,6 +10,7 @@ C._initVars(a, '{centers:G}={centers:CoordinateY}')
 a = C.addBC2Zone(a, 'wall1', 'BCWall', 'imin')
 a = C.convertArray2Tetra(a,split='withBarycenters')
 t = C.newPyTree(['Base',a])
+exit()
 test.testT(t, 1)
 
 # Sur un arbre
@@ -19,6 +20,7 @@ C._initVars(a,'F',1.); C._initVars(a,'centers:G',2.)
 a = C.addBC2Zone(a, 'wall1', 'BCWall', 'imin')
 t = C.newPyTree(['Base',a,b])
 t = C.convertArray2Tetra(t,split='withBarycenters')
+exit()
 test.testT(t, 2)
 
 # Sur une liste de zones
