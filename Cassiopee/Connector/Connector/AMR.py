@@ -232,6 +232,7 @@ def prepareAMRData(t_case, t, IBM_parameters=None, check=False, dim=3, localDir=
     # Keep cells outside of Immersed Body
     Cmpi.trace(" Removing blanked cells [start]", master=True, cpu=False)
     t = P.selectCells(t, "{cellN}==1.", strict=1)
+    t = G.close(t, 1e-12, True, False, False, False, False, False)  # rmDuplicatedPts
     # Make sure that the only node of type Elements_t is 'GridElements'
     for node in Internal.getNodesFromType(t, "Elements_t"):
         if node[0] != "GridElements":
