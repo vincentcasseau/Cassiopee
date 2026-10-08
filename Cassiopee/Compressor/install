@@ -1,8 +1,7 @@
 #! /bin/sh
 #
 # Installation de Compressor
-if ([ $# -eq 0 ])
-then
+if [ $# -eq 0 ]; then
     if [ "$CASSIOPEE" = "" ]; then
         echo "You must specify a CASSIOPEE variable in your environment."
         echo "This variable specifies the installation path of *Cassiopee*."
@@ -13,9 +12,11 @@ then
     fi
     INSTALLPATH="$CASSIOPEE/Dist/bin/$ELSAPROD"
 
-elif ([ $# -eq 1 ])
-then
+elif [ $# -eq 1 ]; then
     INSTALLPATH="$1"
+    if [ $INSTALLPATH = "module" ]; then
+        INSTALLPATH="Dist/bin/$ELSAPROD"
+    fi
 else
     echo 'install: install in $CASSIOPEE/Dist/bin/$ELSAPROD'
     echo ' -or- '

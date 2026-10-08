@@ -59,8 +59,10 @@ if [ "$INSTALL_MODS" -eq 1 ]; then
         echo "This variable identifies the processor type."
         usage
     fi
-    if [ -z $PREFIX ]; then
+    if [ -z "$PREFIX" ]; then
         INSTALLPATH="$CASSIOPEE/Dist/bin/$ELSAPROD"
+    elif [ "$PREFIX" = "module" ]; then
+        INSTALLPATH="module"
     else
         INSTALLPATH="$PREFIX/Dist/bin/$ELSAPROD"
     fi
@@ -105,9 +107,12 @@ fi
 
 # Copy environment scripts
 if [ "$INSTALL_MODS" -eq 1 ]; then
-    if [ -z $PREFIX ]; then
+    if [ -z "$PREFIX" ]; then
         cp Envs/env_Cassiopee* "$CASSIOPEE"/Dist
         cp Envs/sh_Cassiopee*  "$CASSIOPEE"/Dist
+    elif [ "$PREFIX" = "module" ]; then
+        cp Envs/env_Cassiopee* "$CASSIOPEE"/KCore/Dist
+        cp Envs/sh_Cassiopee*  "$CASSIOPEE"/KCore/Dist
     else
         cp Envs/env_Cassiopee* "$PREFIX"/Dist
         cp Envs/sh_Cassiopee*  "$PREFIX"/Dist
