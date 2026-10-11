@@ -287,20 +287,16 @@ def getVarNames(t, excludeXYZ=False, loc='both', mode=0):
 # Returns 0: variable is present in at least one zone, but not all.
 # Returns 1: variable is present in all zones
 def isNamePresent(t, varname):
-    v = varname.split(':',1)
-    if len(v) > 1 and v[0] == 'nodes': varname = v[1]
     zvars = getVarNames(t)
     if len(zvars) == 0: return -1
-    one = 0; n = 0
+    v = varname.split(':', 1)
+    if len(v) > 1 and v[0] == 'nodes': varname = v[1]
+    n = 0
     for z in zvars:
-        found = 0
-        for v in z:
-            if v == varname: found = 1; one = 1; n += 1; break
-        if found == 0:
-            if one == 1: return 0
-    if one == 0: return -1
-    elif n != len(zvars): return 0
-    else: return 1
+        if varname in z: n += 1
+    if n == 0: return -1
+    if n == len(zvars): return 1
+    return 0
 
 # -- getNobNozOfZone
 # IN: a: zone
@@ -311,13 +307,9 @@ def isNamePresent(t, varname):
 def getNobNozOfZone(a, t):
     """Return the (nob, noz) of a in t.
      Usage: getNobNozOfZone(a, t)"""
-    nob = 0; noz = 0
-    for b in t[2]:
-        noz = 0
-        for z in b[2]:
+    for nob, b in enumerate(t[2]):
+        for noz, z in enumerate(b[2]):
             if id(z) == id(a): return (nob, noz)
-            noz += 1
-        nob += 1
     return (-1, -1)
 
 # -- getNobOfBase
@@ -329,10 +321,8 @@ def getNobNozOfZone(a, t):
 def getNobOfBase(base, t):
     """Return the nob of a base in t.
     Usage: getNobOfBase(base, t)"""
-    nob = 0
-    for b in t[2]:
+    for nob, b in enumerate(t[2]):
         if id(b) == id(base): return nob
-        nob += 1
     return -1
 
 # -- GetZoneNames
@@ -3495,43 +3485,51 @@ def getArgMax(t, var):
     return Converter.getArgMax(A, var)
 
 # -- getMinValue
-def getMinValue(t, varName):
+def getMinValue(t, var):
     """Get the minimum value of variable defined by var.
     Usage: getMinValue(t, var)"""
-    if not isinstance(varName, list): varNames = [varName]
-    else: varNames = varName
+    if not isinstance(var, list): varNames = [var]
+    else: varNames = var
+    if Internal.__GridCoordinates__ in varNames:
+        pos = varNames.index(Internal.__GridCoordinates__)
+        varNames = (
+            varNames[:pos]
+            + ['CoordinateX', 'CoordinateY', 'CoordinateZ']
+            + varNames[pos+1:]
+        )
     out = []
-    if varNames[0] == Internal.__GridCoordinates__:
-        varNames = ['CoordinateX', 'CoordinateY', 'CoordinateZ']
     for v in varNames:
         A = getField(v, t, api=3)
-        va = v.split(':')
-        if len(va) > 1: v = va[1]
-        minValue = 1.e9
+        vwoLoc = v.split(':')[-1]
+        minValue = numpy.finfo(numpy.float64).max
         for i in A:
             if i != []:
-                minValue = min(minValue, Converter.getMinValue(i, v))
+                minValue = min(minValue, Converter.getMinValue(i, vwoLoc))
         out.append(minValue)
     if len(out) == 1: return out[0]
     else: return out
 
 # -- getMaxValue
-def getMaxValue(t, varName):
+def getMaxValue(t, var):
     """Get the maximum value of variable defined by var.
     Usage: getMaxValue(t, var)"""
-    if not isinstance(varName, list): varNames = [varName]
-    else: varNames = varName
+    if not isinstance(var, list): varNames = [var]
+    else: varNames = var
+    if Internal.__GridCoordinates__ in varNames:
+        pos = varNames.index(Internal.__GridCoordinates__)
+        varNames = (
+            varNames[:pos]
+            + ['CoordinateX', 'CoordinateY', 'CoordinateZ']
+            + varNames[pos+1:]
+        )
     out = []
-    if varNames[0] == Internal.__GridCoordinates__:
-        varNames = ['CoordinateX', 'CoordinateY', 'CoordinateZ']
     for v in varNames:
         A = getField(v, t, api=3)
-        va = v.split(':')
-        if len(va) > 1: v = va[1]
-        maxValue = -1.e9
+        vwoLoc = v.split(':')[-1]
+        maxValue = numpy.finfo(numpy.float64).min
         for i in A:
             if i != []:
-                maxValue = max(maxValue, Converter.getMaxValue(i, v))
+                maxValue = max(maxValue, Converter.getMaxValue(i, vwoLoc))
         out.append(maxValue)
     if len(out) == 1: return out[0]
     else: return out
@@ -3540,10 +3538,22 @@ def getMaxValue(t, varName):
 def getMeanValue(t, var):
     """Get the mean value of variable defined by var.
     Usage: getMeanValue(t, var)"""
-    A = getField(var, t, api=3)
-    v = var.split(':')
-    if len(v) > 1: var = v[1]
-    return Converter.getMeanValue(A, var)
+    if not isinstance(var, list): varNames = [var]
+    else: varNames = var
+    out = []
+    if Internal.__GridCoordinates__ in varNames:
+        pos = varNames.index(Internal.__GridCoordinates__)
+        varNames = (
+            varNames[:pos]
+            + ['CoordinateX', 'CoordinateY', 'CoordinateZ']
+            + varNames[pos+1:]
+        )
+    for v in varNames:
+        A = getField(v, t, api=3)
+        vwoLoc = v.split(':')[-1]
+        out.append(Converter.getMeanValue(A, vwoLoc))
+    if len(out) == 1: return out[0]
+    else: return out
 
 # -- getMeanRangeValue
 def getMeanRangeValue(t, var, rmin, rmax):
