@@ -3,8 +3,8 @@
 usage() {
   cat <<EOF
 Usage: $0                                             : Remove build/ and .sconsign.dblite for all modules listed in MODULES
-       $0 --force, -f                                 : Also uninstall the modules listed in MODULES (package directories and .dist-info
-                                                         metadata) from Cassiopee's site-packages directory
+       $0 --force, -f                                 : Also uninstall the modules listed in MODULES from Cassiopee's site-packages 
+                                                                  directory (package directories and .dist-info metadata) 
        $0 --help, -h                                  : Print help message
 EOF
 }
@@ -52,7 +52,10 @@ do
               shopt -u nocaseglob
           fi
       fi
-      rm -rf .sconsign.dblite
+      rm -rf .sconsign.dblite __pycache__
+      shopt -s nocaseglob
+      rm -rf "${mod}"*.egg-info "cassiopee_${mod}"*.egg-info
+      shopt -u nocaseglob
       cd ..
   fi
 done
