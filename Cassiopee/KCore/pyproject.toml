@@ -72,6 +72,7 @@ Changelog = "https://onera.github.io/Cassiopee/current/ReleaseNotes.html"
 #notifyCassiopee = "notifyCassiopee:main"
 
 [tool.setuptools]
+package-dir = {"" = "."}
 packages = ["KCore"]
 script-files = [
   "test/notifyCassiopee",

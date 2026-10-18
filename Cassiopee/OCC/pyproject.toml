@@ -71,6 +71,7 @@ Issues = "https://github.com/onera/Cassiopee/issues"
 Changelog = "https://onera.github.io/Cassiopee/current/ReleaseNotes.html"
 
 [tool.setuptools]
+package-dir = {"" = "."}
 packages = ["OCC"]
 
 [tool.setuptools.dynamic]
