@@ -94,7 +94,11 @@ jobs:
               mkdir -p \$CASSIOPEE/wheels/int32
               cd \$CASSIOPEE/wheels/int32
               for kwheel in \$(find \$CASSIOPEE/tmp/ -name \"*.whl\"); do
-                  auditwheel repair \$kwheel || exit 1
+                  if [[ \"\$kwheel\" == *-none-any.whl ]]; then
+                      cp \"\$kwheel\" .
+                  else
+                      auditwheel repair \"\$kwheel\" || exit 1
+                  fi
               done
               ls .
               ls wheelhouse
@@ -113,7 +117,11 @@ jobs:
               mkdir -p \$CASSIOPEE/wheels/int64
               cd \$CASSIOPEE/wheels/int64
               for kwheel in \$(find \$CASSIOPEE/tmp/ -name \"*.whl\"); do
-                  auditwheel repair \$kwheel || exit 1
+                  if [[ \"\$kwheel\" == *-none-any.whl ]]; then
+                      cp \"\$kwheel\" .
+                  else
+                      auditwheel repair \"\$kwheel\" || exit 1
+                  fi
               done
               ls .
               ls wheelhouse
