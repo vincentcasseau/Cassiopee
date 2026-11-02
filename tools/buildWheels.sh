@@ -6,7 +6,14 @@
 #       /bin/bash /io/Cassiopee/tools/build_wheels.sh
 set -e
 
-export PATH=/opt/python/cp311-cp311/bin:$PATH
+PYTHON_ABIS=(
+    cp38-cp38
+    cp39-cp39
+    cp310-cp310
+    cp311-cp311
+    cp312-cp312
+    cp313-cp313
+)
 
 yum update -y && yum install -y \
     gcc \
@@ -38,20 +45,6 @@ yum update -y && yum install -y \
     OCE-ocaf \
     OCE-visualization
 
-pip3 install \
-    wheel \
-    auditwheel \
-    setuptools \
-    scons
-pip3 install --only-binary=numpy "numpy>=2.0,<2.3"
-
-export PATH=/usr/lib64/openmpi/bin:$PATH
-export LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:$LD_LIBRARY_PATH
-export CFLAGS="-std=c99"
-pip3 install mpi4py
-export CFLAGS="-std=c11"
-python --version && python -m pip list
-
 export CASSIOPEE=/io/Cassiopee
 cd "$CASSIOPEE/Cassiopee"
 sed -i 's/Modeler//g' MODULES
@@ -65,12 +58,24 @@ sed -i 's/OCC//g' MODULES
 # in $CASSIOPEE/wheels/<int32|int64>/wheelhouse/
 repairWheels() {
     local intSize="$1"
+    local pythonABI="$2"
     rm -rf "$CASSIOPEE/tmp"
-    mkdir -p "$CASSIOPEE/tmp/"
-    find /tmp/ -type f -name 'cassiopee_*.whl' -exec mv {} "$CASSIOPEE/tmp/" \;
-    mkdir -p "$CASSIOPEE/wheels/$intSize/wheelhouse/"
+    mkdir -p "$CASSIOPEE/tmp"
+
+    find /tmp/ -type f \( \
+        -name "cassiopee_*-${pythonABI}-*.whl" -o \
+        -name "cassiopee_*-none-any.whl" \
+    \) -exec mv {} "$CASSIOPEE/tmp/" \;
+
+    if ! compgen -G "$CASSIOPEE/tmp/*-${pythonABI}-*.whl" >/dev/null; then
+        echo "ERROR: No Cassiopee wheels found for $pythonABI"
+        exit 1
+    fi
+
+    mkdir -p "$CASSIOPEE/wheels/$intSize/wheelhouse"
     cd "$CASSIOPEE/wheels/$intSize"
-    for kwheel in $(find "$CASSIOPEE/tmp/" -name "*.whl"); do
+
+    for kwheel in "$CASSIOPEE"/tmp/*.whl; do
         if [[ "$kwheel" == *-none-any.whl ]]; then
             cp "$kwheel" wheelhouse/
         else
@@ -84,11 +89,54 @@ repairWheels() {
 buildMetaWheel() {
     local intSize="$1"
     mkdir -p "$CASSIOPEE/wheels/$intSize/meta"
-    python -m pip wheel \
+    "$PYTHONEXE" -m pip wheel \
         --no-deps \
         --no-build-isolation \
         --wheel-dir "$CASSIOPEE/wheels/$intSize/meta" \
         "$CASSIOPEE"
+}
+
+buildPythonWheels() {
+    local intSize="$1"
+    local py="$2"
+    local python="/opt/python/$py/bin/python"
+
+    echo "=========================================="
+    echo "Building $intSize with $py"
+    echo "=========================================="
+
+    export PATH="/opt/python/$py/bin:$BASE_PATH"
+    export PYTHONEXE="$python"
+    hash -r
+
+    "$PYTHONEXE" -m pip install --upgrade pip
+
+    "$PYTHONEXE" -m pip install \
+        wheel auditwheel setuptools scons
+
+    if [[ "$py" == "cp38-cp38" ]]; then
+        "$PYTHONEXE" -m pip install \
+            --only-binary=numpy "numpy>=1.23.3,<2"
+    else
+        "$PYTHONEXE" -m pip install \
+            --only-binary=numpy "numpy>=2.0,<2.3"
+    fi
+
+    MPICC=mpicc CFLAGS="-std=c99" \
+        "$PYTHONEXE" -m pip install \
+        --no-cache-dir --no-binary=mpi4py mpi4py
+    export CFLAGS="-std=c11"
+
+    "$PYTHONEXE" -c \
+        'import sys, numpy; print(sys.executable); print(numpy.__version__)'
+
+    cd "$CASSIOPEE"
+    ./install || {
+        echo "Cassiopee $intSize $py installation failed"
+        exit 1
+    }
+
+    repairWheels "$intSize" "$py"
 }
 
 # Append -i8 to the project name and to every cassiopee* dependency in a
@@ -107,10 +155,16 @@ renamePackagesInt64() {
 # ---------------------------------------------------------------------------
 export MACHINE=azure
 . "$CASSIOPEE/Cassiopee/Envs/sh_Cassiopee_r8"
-cd "$CASSIOPEE"
-./install || { echo "Cassiopee int32 install failed"; exit 1; }
+
+export PATH=/usr/lib64/openmpi/bin:$PATH
+export LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:$LD_LIBRARY_PATH
+BASE_PATH="$PATH"
+
+for py in "${PYTHON_ABIS[@]}"; do
+    buildPythonWheels int32 "$py"
+done
+
 buildMetaWheel int32
-repairWheels int32
 
 # ---------------------------------------------------------------------------
 # Installation int64 (-i8)
@@ -126,6 +180,13 @@ done
 export MACHINE=azure_i8
 . "$CASSIOPEE/Cassiopee/Envs/sh_Cassiopee_r8"
 cd "$CASSIOPEE"
-./install || { echo "Cassiopee int64 install failed"; exit 1; }
+
+export PATH=/usr/lib64/openmpi/bin:$PATH
+export LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:$LD_LIBRARY_PATH
+BASE_PATH="$PATH"
+
+for py in "${PYTHON_ABIS[@]}"; do
+    buildPythonWheels int64 "$py"
+done
+
 buildMetaWheel int64
-repairWheels int64

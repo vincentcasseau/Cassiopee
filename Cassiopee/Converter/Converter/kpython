@@ -1,248 +1,256 @@
 #!/bin/bash
-# Lancement de python en parallele
-# kpython -n 2 script.py: lance 2 process, choisit le nbre de threads en fonction de la ressource
-# kpython -n2 -t4 script.py: lance 2 process avec 4 threads chacuns
-# kpython -a "env::" -n2 script.py: lance mpirun avec une option supplementaire
-# kpython -p: ajoute un profiling python
+# Print help message
+usage() {
+    cat <<EOF
+Parallel python launcher of CASSIOPEE.
+  kpython -n 2 script.py          : 2 processes, threads chosen from available resources
+  kpython -n2 -t4 script.py       : 2 processes with 4 threads each
+  kpython -a "env::" -n2 script.py: extra option(s) for the launcher (mpirun)
+  kpython -p script.py            : python profiling (cProfile)
+  kpython -s / -g                 : sanitizer / gdb
+
+Configurations stored in JSON dicts (see "$CASSIOPEE/etc/templates/kpythonUserConfigs.json").
+EOF
+}
+
+# Sanitize inputs
 if [ $# -eq 0 ]; then
-    echo 'kpython -n 5 -t 2 script.py'
-    exit 1
+    usage >&2; exit 1
 fi
 
-# executable python
-if [ -z "$PYTHONEXE" ]; then
-    PYTHONEXE=python
-fi
-
-# OMP_NUM_THREADS init
-if [ -n "$OMP_NUM_THREADS" ]; then
-    OMPNUMTHREADSINIT=$OMP_NUM_THREADS
-else
-    OMPNUMTHREADSINIT="1"
-fi
-
-# Ressources 
-if [ -n "$OMP_NUM_THREADS" ]; then
-    ncpu=$OMP_NUM_THREADS # suppose que l'OMP_NUM_THREADS de env correspond a tous les coeurs disponibles
-else
-    ncpu=$(grep processor /proc/cpuinfo | tail -1 | cut -f2 -d: )
-    if [ -z "$ncpu" ]; then
-        ncpu=1
-    else
-        ncpu=$((ncpu + 1))
-    fi
+if [ -z "$CASSIOPEE" ]; then
+    echo "Environment variable CASSIOPEE must be set."
+    echo "CASSIOPEE identifies the root directory of the Cassiopee repository."
+    usage >&2; exit 1
 fi
 
 if [ -z "$ELSAPROD" ]; then
     echo "Environment variable ELSAPROD must be set."
     echo "ELSAPROD identifies the target machine or computing environment."
-    exit 1
+    usage >&2; exit 1
 fi
 
-# set mpi number of processes (-n)
-NPROCS="0"
-# set number of threads (-t)
-NTHREADS="0"
-# more args for mpirun (-a)
-ARGS=""
-# SANITIZE (-s)
-SANITIZE="0"
-# GDB (-g)
-GDB="0"
+# kpython configuration dicts
+DEV_PRODS=$(dirname "$(readlink -f "$0")")/kpythonConfigs.json
+USER_PRODS="$CASSIOPEE/etc/templates/kpythonUserConfigs.json"   # optional
+
+# python executable (may contain several words, e.g. "vglrun python")
+: "${PYTHONEXE:=python}"
+PYCMD=($PYTHONEXE)   # intentional word splitting
+
+# OMP_NUM_THREADS init
+OMPNUMTHREADSINIT=${OMP_NUM_THREADS:-1}
+
+# Resources
+if [ -n "$OMP_NUM_THREADS" ]; then
+    ncpu=$OMP_NUM_THREADS # assume env OMP_NUM_THREADS = all available cores
+else
+    ncpu=$(grep -c '^processor' /proc/cpuinfo 2>/dev/null)
+    [ -z "$ncpu" ] || [ "$ncpu" -lt 1 ] && ncpu=1
+fi
+
+NPROCS="0"        # (-n) number of mpi processes
+NTHREADS="0"      # (-t) number of threads
+USER_ARGS=()      # (-a) extra args for the launcher
+PYARGS=()         # args for python itself
+SANITIZE="0"      # (-s)
+GDB="0"           # (-g)
 
 while getopts :hpsgn:t:a: OPTION
 do
     case $OPTION in
-        h)
-            echo 'ex: kpython -n 5 -t 2 script.py'
-            echo 'Run 5 processes with 2 threads.'
-            echo 'kpython -a "args": pass args to mpi run.'
-            echo 'kpython -s: use sanitize if compiled in debug.'    
-            exit 1
-            ;;
+        h) usage; exit 0 ;;
         n)
-            if [[ ${OPTARG:0:1} == "p" ]]
-            then
+            if [[ ${OPTARG:0:1} == "p" ]]; then
                 NPROCS=${OPTARG:1}
             else
                 NPROCS=$OPTARG
             fi
             ;;
-        t)
-            NTHREADS=$OPTARG
+        t) NTHREADS=$OPTARG ;;
+        a) USER_ARGS+=($OPTARG) ;;
+        p) PYARGS+=(-m cProfile -s tottime) ;;
+        s) SANITIZE="1" ;;
+        g) GDB="1" ;;
+        :)
+            echo "kpython: option -$OPTARG requires an argument" >&2
+            usage >&2; exit 1
             ;;
-        a)
-            ARGS+=$OPTARG
-            ;;
-        p) 
-            ARGS+="-m cProfile -s tottime"
-            ;;
-        s) 
-            SANITIZE="1"
-            ;;
-        g)
-            GDB="1"
-            ;;
-        \?)
-            PYARGS+=$OPTARG
-            ;;
+        \?) PYARGS+=("-$OPTARG") ;;
     esac
 done
 shift $((OPTIND-1))
-# Remaining script name and arguments
-SCRIPT=$*
 
-# Machine avec remote GL (utilisant virtual GL)
-#if command -v xdpyinfo &> /dev/null
-#then
-#    xdpyinfo &> /dev/null
-#    if [ $? == 0 ]; then
-#        xdpyinfo | grep VNC &> /dev/null
-#        if [ $? -eq 0 ]; then
-#            cat $SCRIPT | grep "offscreen=1" > /dev/null
-#            if [ $? -ne 0 ]; then
-#                cat $SCRIPT | grep "offscreen=7" > /dev/null
-#                if [ $? -ne 0 ]; then
-#                    cat $SCRIPT | grep "offscreen=5" > /dev/null
-#                    if [ $? -ne 0 ]; then
-#                        PYTHONEXE='vglrun '$PYTHONEXE
-#                    fi
-#                fi
-#            fi
-#        fi
-#    fi
-#fi
+SCRIPT_ARGS=("$@")
 
-if [ "$NTHREADS" = "0" ]
-then
-    if [ "$NPROCS" != "0" ]
-    then
-        NTHREADS=`expr $ncpu / $NPROCS`
+# Threads
+if [ "$NTHREADS" = "0" ]; then
+    if [ "$NPROCS" != "0" ]; then
+        NTHREADS=$(( ncpu / NPROCS ))
     else
         NTHREADS=$ncpu
     fi
-    if [ "$NTHREADS" = "0" ]
-    then
-        NTHREADS=1
-    fi
+    [ "$NTHREADS" -lt 1 ] && NTHREADS=1
 fi
-echo 'Running '$SCRIPT' with Nprocs='$NPROCS' and Nthreads='$NTHREADS
+echo "Running ${SCRIPT_ARGS[*]} with Nprocs=$NPROCS and Nthreads=$NTHREADS"
 
-if [ "$NPROCS" = "0" ]
-then # sequential run forced
-    export MPIRUN=0
-    export OMP_NUM_THREADS=$NTHREADS
-    if [ $SANITIZE = '1' -a $GDB = '0' ]
-    then
-        export LD_PRELOAD=$ASAN_LIB
-        $PYTHONEXE $ARGS $SCRIPT
-        unset LD_PRELOAD
-    elif [ $SANITIZE = '1' -a $GDB = '1' ]
-    then
-        export LD_PRELOAD=$ASAN_LIB
-        gdb --args $PYTHONEXE $ARGS $SCRIPT
-        unset LD_PRELOAD
-    elif [ $SANITIZE = '0' -a $GDB = '1' ]
-    then
-        gdb --args $PYTHONEXE $ARGS $SCRIPT #--eval-command="r "$SCRIPT 
-    else
-        $PYTHONEXE $ARGS $SCRIPT
-    fi
-    export OMP_NUM_THREADS=$OMPNUMTHREADSINIT
-    unset MPIRUN
-else # parallel run forced
-    export MPIRUN=1
-    export OMP_NUM_THREADS=$NTHREADS
-    case "$ELSAPROD" in
-        x86_r8) # eos
-            # intelMpi
-            mpirun $ARGS -n $NPROCS -genv OMP_NUM_THREADS=$NTHREADS -l $PYTHONEXE $SCRIPT
-            [ $? -ne 0 ] && exit 1;
-            ;;
-        ld|ld_*) # localhost
-            # openMpi    
-            if [ $SANITIZE = '1' ]
-            then
-                mpirun $ARGS -x LD_PRELOAD=$ASAN_LIB -x OMP_NUM_THREADS=$NTHREADS -np $NPROCS $PYTHONEXE $SCRIPT
-            else
-                mpirun $ARGS -x OMP_NUM_THREADS=$NTHREADS -np $NPROCS $PYTHONEXE $SCRIPT
-            fi
-            [ $? -ne 0 ] && exit 1;
-            ;;
-        visung|visung_*) # visung
-            # openMpi
-            mpirun $ARGS -x OMP_NUM_THREADS=$NTHREADS -np $NPROCS $PYTHONEXE $SCRIPT
-            [ $? -ne 0 ] && exit 1;
-            ;;
-        sator_cas|sator_cas_*|sator_sky|sator_sky_*|sator_sph|sator_sph_*) # sator intel
-            # intelMpi
-            mpirun $ARGS -n $NPROCS -l -ordered-output $PYTHONEXE $SCRIPT
-            [ $? -ne 0 ] && exit 1;
-            ;;
-        sator_gcc|sator_gcc_*) # sator gcc
-            # openMpi
-            if [ $SANITIZE = '1' ]
-            then
-                mpirun $ARGS -x LD_PRELOAD=$ASAN_LIB -x OMP_NUM_THREADS=$NTHREADS -np $NPROCS $PYTHONEXE $SCRIPT
-            else
-                mpirun $ARGS -x OMP_NUM_THREADS=$NTHREADS -np $NPROCS $PYTHONEXE $SCRIPT
-            fi
-            [ $? -ne 0 ] && exit 1;
-            ;;
-        sator_coda|sator_coda[_,2]*) # sator coda
-            # openMpi
-            if [ $SANITIZE = '1' ]
-            then
-                mpirun $ARGS -x LD_PRELOAD=$ASAN_LIB -x OMP_NUM_THREADS=$NTHREADS -np $NPROCS --bind-to core --map-by socket:PE=$NTHREADS $PYTHONEXE $SCRIPT  #--report-bindings
-            else
-                mpirun $ARGS -x OMP_NUM_THREADS=$NTHREADS -np $NPROCS --bind-to core --map-by socket:PE=$NTHREADS $PYTHONEXE $SCRIPT  #--report-bindings
-            fi
-            [ $? -ne 0 ] && exit 1;
-            ;;
-        spiro|spiro_*) # spiro
-            # intelMpi
-            mpirun $ARGS -n $NPROCS -genv OMP_NUM_THREADS=$NTHREADS -l -ordered-output $PYTHONEXE $SCRIPT
-            [ $? -ne 0 ] && exit 1;
-            ;;
-        juno_gcc|juno_gcc_*) # juno gcc, to list before juno
-            # openMpi
-            if [ $SANITIZE = '1' ]
-            then
-                mpirun $ARGS -x LD_PRELOAD=$ASAN_LIB -x OMP_NUM_THREADS=$NTHREADS -np $NPROCS $PYTHONEXE $SCRIPT
-            else
-                mpirun $ARGS -x OMP_NUM_THREADS=$NTHREADS -np $NPROCS $PYTHONEXE $SCRIPT
-            fi
-            [ $? -ne 0 ] && exit 1;  
-            ;;
-        juno_coda|juno_coda[_,2]*) # juno coda, to list before juno
-            # openMpi
-            if [ $SANITIZE = '1' ]
-            then
-                mpirun $ARGS -x LD_PRELOAD=$ASAN_LIB -x OMP_NUM_THREADS=$NTHREADS -np $NPROCS --bind-to core --map-by socket:PE=$NTHREADS $PYTHONEXE $SCRIPT  #--report-bindings
-            else
-                mpirun $ARGS -x OMP_NUM_THREADS=$NTHREADS -np $NPROCS --bind-to core --map-by socket:PE=$NTHREADS $PYTHONEXE $SCRIPT  #--report-bindings
-            fi
-            [ $? -ne 0 ] && exit 1;  
-            ;;
-        juno|juno_*) # juno
-            # intelMpi
-            mpirun $ARGS -n $NPROCS -genv OMP_NUM_THREADS=$NTHREADS -l -ordered-output $PYTHONEXE $SCRIPT
-            [ $? -ne 0 ] && exit 1;
-            ;;
-        cobalt) # cobalt
-            export OMP_NUM_THREADS=$NTHREADS
-            ccc_mprun -n $NPROCS $PYTHONEXE $SCRIPT
-            [ $? -ne 0 ] && exit 1;
-            ;;
-        win64) # MSYS 2 With Win64 production
-            # MSMPI
-            mpiexec $ARGS -np $NPROCS $PYTHONEXE $SCRIPT
-            [ $? -ne 0 ] && exit 1;
-            ;;
-        *) # default
-            mpirun $ARGS -np $NPROCS $PYTHONEXE $SCRIPT
-            [ $? -ne 0 ] && exit 1;
-    esac
-    unset MPIRUN
-    export OMP_NUM_THREADS=$OMPNUMTHREADSINIT
+if [ "$SANITIZE" = "1" ] && [ -z "$ASAN_LIB" ]; then
+    echo "kpython: warning: -s given but ASAN_LIB is not set" >&2
 fi
+
+#######################################################################
+# Launcher configuration (JSON)
+#
+# Two dicts, keys = prod names (a "_i8" suffix, e.g. sator_gcc_i8, is the
+# int64 variant of a prod):
+#   - developer prods: $KPYTHON_PRODS (default: kpython_prods.json next to
+#     this script)
+#   - user prods, optional: $KPYTHON_USER_PRODS (default: ~/.kpython_prods.json)
+#
+# Lookup of $ELSAPROD, from most to least specific, e.g. sator_gcc_i8:
+#   sator_gcc_i8 -> sator_gcc -> sator -> default
+# (a trailing number is also tried stripped: sator_coda2 -> sator_coda).
+# For each name, user prods are checked first, then developer prods.
+# KPYTHON_DEBUG=1 prints which entry was selected.
+#
+# Entry keys: launcher, nprocs_flag, args, sanitize_args, env, extends.
+# Placeholders: {nthreads} {nprocs} {asan_lib}.
+# "extends": name of another prod (user prods first, then developer prods);
+# keys of the child override the parent's. A user prod may extend the
+# developer prod of the same name.
+#
+# Output of parse_conf, one item per line:
+#   L=launcher  F=nprocs flag  A=argument  E=KEY=VALUE (env)
+parse_conf() {
+"${PYCMD[@]}" - "$DEV_PRODS" "$USER_PRODS" "$ELSAPROD" "$NTHREADS" "$NPROCS" "$ASAN_LIB" "$SANITIZE" <<'PYEOF'
+import json, os, sys
+dev_file, user_file, prod, nthreads, nprocs, asan, sanitize = sys.argv[1:8]
+subs = {"{nthreads}": nthreads, "{nprocs}": nprocs, "{asan_lib}": asan}
+
+def sub(s):
+    for k, v in subs.items():
+        s = s.replace(k, v)
+    return s
+
+def read(path, required):
+    if not os.path.isfile(path):
+        if required:
+            sys.exit("kpython: prods file not found: %s" % path)
+        return {}
+    try:
+        with open(path) as f:
+            d = json.load(f)
+    except (IOError, ValueError) as e:
+        sys.exit("kpython: cannot read %s: %s" % (path, e))
+    if not isinstance(d, dict):
+        sys.exit("kpython: %s must contain a JSON dict" % path)
+    return d
+
+user = read(user_file, False)
+dev = read(dev_file, True)
+
+def get(name, srcs=("user", "devel")):
+    for s in srcs:
+        d = user if s == "user" else dev
+        if name in d:
+            return s, d[name]
+    return None, None
+
+def candidates(p):
+    while p:
+        yield p
+        if p.endswith("_i8"):          # int64 variant falls back to base prod
+            p = p[:-3]
+            continue
+        q = p.rstrip("0123456789")     # sator_coda2 -> sator_coda
+        if q and q != p:
+            yield q
+        if "_" not in p:
+            break
+        p = p.rsplit("_", 1)[0]
+    yield "default"
+
+def resolve(src, name, c, seen=()):
+    key = (src, name)
+    if key in seen:
+        sys.exit("kpython: circular 'extends' involving %s" % name)
+    c = dict(c)
+    base = c.pop("extends", None)
+    if not base:
+        return c
+    srcs = ("devel",) if (base == name and src == "user") else ("user", "devel")
+    bsrc, b = get(base, srcs)
+    if b is None:
+        sys.exit("kpython: prod '%s' extends unknown prod '%s'" % (name, base))
+    out = resolve(bsrc, base, b, seen + (key,))
+    out.update(c)
+    return out
+
+for cand in candidates(prod):
+    src, entry = get(cand)
+    if entry is not None:
+        break
+else:
+    sys.exit("kpython: no entry for '%s' and no 'default' in %s" % (prod, dev_file))
+
+if os.environ.get("KPYTHON_DEBUG"):
+    sys.stderr.write("kpython: ELSAPROD=%s -> '%s' from %s prods\n" % (prod, cand, src))
+
+c = resolve(src, cand, entry)
+print("L=" + c.get("launcher", "mpirun"))
+print("F=" + c.get("nprocs_flag", "-np"))
+for a in c.get("args", []):
+    print("A=" + sub(a))
+if sanitize == "1":
+    for a in c.get("sanitize_args", []):
+        print("A=" + sub(a))
+for k, v in c.get("env", {}).items():
+    print("E=%s=%s" % (k, sub(v)))
+PYEOF
+}
+
+#######################################################################
+# Run
+#######################################################################
+
+export OMP_NUM_THREADS=$NTHREADS
+
+if [ "$NPROCS" = "0" ]; then
+    # Sequential run
+    export MPIRUN=0
+    CMD=("${PYCMD[@]}" "${USER_ARGS[@]}" "${PYARGS[@]}" "${SCRIPT_ARGS[@]}")
+    [ "$GDB" = "1" ] && CMD=(gdb --args "${CMD[@]}")
+    if [ "$SANITIZE" = "1" ]; then
+        LD_PRELOAD=$ASAN_LIB "${CMD[@]}"
+    else
+        "${CMD[@]}"
+    fi
+    exitcode=$?
+else
+    # Parallel run
+    export MPIRUN=1
+    CONF_OUT=$(parse_conf) || exit 1
+
+    LAUNCHER=mpirun
+    NPFLAG=-np
+    CONF_ARGS=()
+    while IFS= read -r line; do
+        case ${line%%=*} in
+            L) LAUNCHER=${line#*=} ;;
+            F) NPFLAG=${line#*=} ;;
+            A) CONF_ARGS+=("${line#*=}") ;;
+            E) export "${line#*=}" ;;
+        esac
+    done <<< "$CONF_OUT"
+
+    # GDB is not supported in parallel mode
+    "$LAUNCHER" "${USER_ARGS[@]}" "${CONF_ARGS[@]}" "$NPFLAG" "$NPROCS" \
+        "${PYCMD[@]}" "${PYARGS[@]}" "${SCRIPT_ARGS[@]}"
+    exitcode=$?
+fi
+
+unset MPIRUN
+export OMP_NUM_THREADS=$OMPNUMTHREADSINIT
+
+# Propagate the exit code
+exit $exitcode

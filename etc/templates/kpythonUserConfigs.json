@@ -1,0 +1,15 @@
+{
+    "sator_gcc": {
+        "extends": "sator_gcc",
+        "args": [
+              "-x",
+              "OMP_NUM_THREADS={nthreads}",
+              "--bind-to",
+              "none"
+            ]
+    },
+    "mylaptop": {
+        "extends": "openmpi"
+    }
+}
+

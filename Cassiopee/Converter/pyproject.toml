@@ -53,7 +53,8 @@ script-files = ["Converter/kpython"]
 
 [tool.setuptools.package-data]
 Converter = [
-  "buildInfo.json"
+  "buildInfo.json",
+  "kpythonConfigs.json"
 ]
 
 [tool.setuptools.dynamic]

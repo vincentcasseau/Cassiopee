@@ -1,0 +1,68 @@
+{
+    "default": {
+        "launcher":"mpirun",
+        "nprocs_flag": "-np",
+        "args": []
+    },
+
+    "openmpi": {
+        "launcher": "mpirun",
+        "nprocs_flag": "-np",
+        "args": ["-x", "OMP_NUM_THREADS={nthreads}"],
+        "sanitize_args": ["-x", "LD_PRELOAD={asan_lib}"]
+    },
+
+    "openmpi_bind": {
+        "extends": "openmpi",
+        "args": [
+            "-x", "OMP_NUM_THREADS={nthreads}",
+            "--bind-to",
+            "core",
+            "--map-by",
+            "socket:PE={nthreads}"
+        ]
+    },
+
+    "intelmpi": {
+        "launcher": "mpirun",
+        "nprocs_flag": "-n",
+        "args": ["-genv", "OMP_NUM_THREADS={nthreads}", "-l", "-ordered-output"]
+    },
+
+    "sator_intel": {
+        "launcher": "mpirun",
+        "nprocs_flag": "-n",
+        "args": ["-l", "-ordered-output"]
+    },
+
+    "x86_r8": {
+        "launcher": "mpirun",
+        "nprocs_flag": "-n",
+        "args": ["-genv", "OMP_NUM_THREADS={nthreads}", "-l"]
+    },
+
+    "cobalt": {
+        "launcher": "ccc_mprun",
+        "nprocs_flag": "-n", 
+        "args": []
+    },
+
+    "win64": {
+        "launcher": "mpiexec",
+        "nprocs_flag": "-np",
+        "args": []
+    },
+
+    "ld": { "extends": "openmpi" },
+    
+    "juno": { "extends": "intelmpi" },
+    "juno_gcc": { "extends": "openmpi" },
+    "juno_coda": { "extends": "openmpi_bind" },
+    "visung": { "extends": "openmpi" },
+    "sator_cas": { "extends": "sator_intel" },
+    "sator_sky": { "extends": "sator_intel" },
+    "sator_sph": { "extends": "sator_intel" },
+    "sator_gcc": { "extends": "openmpi" },
+    "sator_coda": { "extends": "openmpi_bind" },
+    "spiro": { "extends": "intelmpi" }
+}
